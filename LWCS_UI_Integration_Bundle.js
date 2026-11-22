@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:38631c0c0d4be8968cf6d7fea493269435552b3adcc269b3c50674d35fa99961|cockpit/pages-role.js:fa9067bb21153f550fb370c6c358a72f1b32495d18633aa57c186ed55da2709a|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:e1115fa844e83f680738ff10194b69c68fb4121de7d0d036103fe52cb3c37527|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -49328,6 +49328,12 @@ ${播报文本}
   const layer = document.createElement('div'); layer.className = 'float-layer'; cockpitEl.appendChild(layer);
   const floatOpen = () => !!layer.firstChild || !!$('.inline-detail');
   function clearFloat() { layer.replaceChildren(); $$('.inline-detail').forEach(el => el.remove()); }
+  // 停靠详情对齐座舱窗口（.screens）的左右与底边，最高占窗口六成，内部自己滚
+  const dockDetail = box => {
+    const stageEl = $('.stage'), sr = screens.getBoundingClientRect(), gr = stageEl.getBoundingClientRect();
+    Object.assign(box.style, { left: (sr.left - gr.left) + 'px', width: sr.width + 'px', bottom: (gr.bottom - sr.bottom) + 'px', maxHeight: Math.round(sr.height * .62) + 'px' });
+  };
+  addEventListener('resize', () => { const box = $('.inline-detail.docked'); if (box) dockDetail(box); });
   function project(html, anchor, swap = false) {
     const old = swap && !isMobile() ? $('.fcard', layer) : null;
     if (old) { $('.holo-in', old).innerHTML = html; tbdPass(old); old.style.transition = reduce ? '' : 'top .2s cubic-bezier(.2,.8,.2,1)'; place(old, anchor); return; }
@@ -49335,6 +49341,15 @@ ${播报文本}
     const body = `<div class="holo" role="region" aria-label="详情"><div class="holo-in">${html}</div></div>`;
     if (isMobile() && anchor) {
       const box = document.createElement('div'); box.className = 'inline-detail'; box.innerHTML = body;
+      // 上下排：停靠在座舱窗口底部，浮在内容上（无遮罩，不挡其他操作）；不插进内容、不滚动，换环只换内容
+      if (stacked()) {
+        // 从魂环牌打开时，浮层顶部带一排同一武魂的魂环牌（浮层会盖住原来那排），在浮层里直接换环
+        const picks = anchor.closest('.ring-picks');
+        if (picks) box.prepend(picks.cloneNode(true));
+        box.classList.add('docked'); $('.stage').appendChild(box); dockDetail(box); charge(box);
+        if (!reduce) box.animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        return;
+      }
       // 锚点在成排容器（如魂环舞台）里时，详情插在整个容器之后，不塞进绝对定位的舞台内部
       const slot = anchor.closest('[data-float]');
       (slot?.parentElement?.matches('.soul-deck') ? slot.parentElement : slot || anchor).insertAdjacentElement('afterend', box); charge(box);
@@ -50106,7 +50121,7 @@ ${播报文本}
   const bloodCard = c => {
     const bl = c.ch.血脉之力 || {}, rings = c.entries(bl).filter(([k, v]) => /魂环/.test(k) && v && typeof v === 'object').map(([, v]) => v);
     if (c.blank(bl.血脉) || !rings.length) return '';
-    return `<div class="soul-card blood"><div class="soul-stage">${c.ringStage(rings)}</div>${soulPlate('血脉', c.esc(bl.血脉), `<em>${rings.length} 环</em>`)}</div>`;
+    return `<div class="soul-card blood"><div class="soul-stage">${c.ringStage(rings)}</div>${soulPlate('血脉', c.esc(bl.血脉), `<em>${rings.length} 环</em>`)}${c.ringPicks(rings, () => 'aria-disabled="true" tabindex="-1"')}</div>`;
   };
   const genderMark = g => g === '女' ? '♀' : g === '男' ? '♂' : '';
   // 行动时长：1 tick = 10 分钟；结束时刻跨日时标「次日」

@@ -70,7 +70,7 @@
   const bloodCard = c => {
     const bl = c.ch.血脉之力 || {}, rings = c.entries(bl).filter(([k, v]) => /魂环/.test(k) && v && typeof v === 'object').map(([, v]) => v);
     if (c.blank(bl.血脉) || !rings.length) return '';
-    return `<div class="soul-card blood"><div class="soul-stage">${c.ringStage(rings)}</div>${soulPlate('血脉', c.esc(bl.血脉), `<em>${rings.length} 环</em>`)}</div>`;
+    return `<div class="soul-card blood"><div class="soul-stage">${c.ringStage(rings)}</div>${soulPlate('血脉', c.esc(bl.血脉), `<em>${rings.length} 环</em>`)}${c.ringPicks(rings, () => 'aria-disabled="true" tabindex="-1"')}</div>`;
   };
   const genderMark = g => g === '女' ? '♀' : g === '男' ? '♂' : '';
   // 行动时长：1 tick = 10 分钟；结束时刻跨日时标「次日」

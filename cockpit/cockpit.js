@@ -578,6 +578,12 @@
   const layer = document.createElement('div'); layer.className = 'float-layer'; cockpitEl.appendChild(layer);
   const floatOpen = () => !!layer.firstChild || !!$('.inline-detail');
   function clearFloat() { layer.replaceChildren(); $$('.inline-detail').forEach(el => el.remove()); }
+  // 停靠详情对齐座舱窗口（.screens）的左右与底边，最高占窗口六成，内部自己滚
+  const dockDetail = box => {
+    const stageEl = $('.stage'), sr = screens.getBoundingClientRect(), gr = stageEl.getBoundingClientRect();
+    Object.assign(box.style, { left: (sr.left - gr.left) + 'px', width: sr.width + 'px', bottom: (gr.bottom - sr.bottom) + 'px', maxHeight: Math.round(sr.height * .62) + 'px' });
+  };
+  addEventListener('resize', () => { const box = $('.inline-detail.docked'); if (box) dockDetail(box); });
   function project(html, anchor, swap = false) {
     const old = swap && !isMobile() ? $('.fcard', layer) : null;
     if (old) { $('.holo-in', old).innerHTML = html; tbdPass(old); old.style.transition = reduce ? '' : 'top .2s cubic-bezier(.2,.8,.2,1)'; place(old, anchor); return; }
@@ -585,6 +591,15 @@
     const body = `<div class="holo" role="region" aria-label="详情"><div class="holo-in">${html}</div></div>`;
     if (isMobile() && anchor) {
       const box = document.createElement('div'); box.className = 'inline-detail'; box.innerHTML = body;
+      // 上下排：停靠在座舱窗口底部，浮在内容上（无遮罩，不挡其他操作）；不插进内容、不滚动，换环只换内容
+      if (stacked()) {
+        // 从魂环牌打开时，浮层顶部带一排同一武魂的魂环牌（浮层会盖住原来那排），在浮层里直接换环
+        const picks = anchor.closest('.ring-picks');
+        if (picks) box.prepend(picks.cloneNode(true));
+        box.classList.add('docked'); $('.stage').appendChild(box); dockDetail(box); charge(box);
+        if (!reduce) box.animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        return;
+      }
       // 锚点在成排容器（如魂环舞台）里时，详情插在整个容器之后，不塞进绝对定位的舞台内部
       const slot = anchor.closest('[data-float]');
       (slot?.parentElement?.matches('.soul-deck') ? slot.parentElement : slot || anchor).insertAdjacentElement('afterend', box); charge(box);

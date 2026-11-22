@@ -217,8 +217,9 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .ring-pick.on{background:radial-gradient(circle,rgba(90,165,255,.38),transparent 70%)}
 .ring-pick.on .medal{filter:drop-shadow(0 0 6px rgba(80,160,255,.95))}
 .ring-pick:disabled{opacity:.4;cursor:default}
-/* 触屏：魂环舞台只作展示，不接收点按（不出魂环塔） */
-.cockpit.touch .soul-stage .mvu-soul-ring-showcase{pointer-events:none}
+.ring-pick[aria-disabled="true"]{cursor:default}
+/* 触屏：不显示魂环舞台（连台座），武魂台只留铭牌 + 魂环牌 */
+.cockpit.touch .soul-card>.soul-stage{display:none}
 .cockpit.touch .soul-deck{align-items:start}.insp-head .medal{--md:3.4em}
 .holo .medal b{color:#ffe7a6;text-shadow:0 0 5px rgba(0,0,0,.85)}
 .insp-head>div:not(.medal){flex:1;min-width:0}
@@ -349,6 +350,10 @@ button.tile{appearance:none;border:0;font:inherit;color:inherit;text-align:left;
 .cockpit.stack .screens>.wing.l:not(.wing-strip){order:2}
 .cockpit.stack .screens>.wing.r{order:3}
 .cockpit.stack .screens>.wing.wing-none{display:none}
+/* 魂技等详情：停靠在窗口底部浮出（不插进内容、不滚动），内部自己滚 */
+.cockpit.stack .stage>.inline-detail.docked{position:absolute;z-index:8;display:block;margin:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;box-shadow:0 -12px 26px rgba(5,10,25,.5);background:linear-gradient(180deg,#16294d,#0d1a34)}
+.cockpit.stack .inline-detail.docked>.ring-picks{justify-content:flex-start;margin:0;padding:.55em .9em .2em}
+.cockpit.stack .inline-detail.docked .ring-pick .medal b{color:#ffe7a6;text-shadow:0 0 5px rgba(0,0,0,.85)}
 /* 选择条：列表横排、可横向滑动，行只留头像 + 名字 + 末尾数值 */
 .cockpit.stack .wing.wing-strip .pad{gap:.5em;padding:.75em .9em .7em}
 .cockpit.stack .wing.wing-strip .list{flex-direction:row;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;gap:.45em;padding-bottom:.15em;touch-action:pan-x pan-y}
