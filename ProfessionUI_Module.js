@@ -3463,6 +3463,15 @@ class ProfessionUIComponent {
     let q = (maxQ >= 1.5 ? 0.95 : 0.90) + (maxQ >= 1.5 ? 0.45 : 0.25) * syncBonus + Math.random() * 0.05;
     return this.clamp(Number(q.toFixed(2)), 0.8, Math.min(maxQ, maxQ > 1.2 ? 1.5 : 1.2));
   }
+  // 品质传递：所用材料（金属批次、图纸…）的平均品质系数乘到检定出的品质上；原料与对方提供的材料按 1
+  读取材料平均品质系数(materialNames = []) {
+    const 列表 = materialNames.map(名称 => Number(this.读取材料上下文(名称)?.物品?.品质系数 ?? 1)).filter(值 => Number.isFinite(值) && 值 > 0);
+    return 列表.length ? 列表.reduce((总和, 值) => 总和 + 值, 0) / 列表.length : 1;
+  }
+  传递材料品质(检定品质 = 1, materialNames = []) {
+    return Number(this.clamp(Number(检定品质 || 1) * this.读取材料平均品质系数(materialNames), 0.8, 2).toFixed(2));
+  }
+
   getGenericQuality(runtime, tier, isGreatSuccess) {
     const base = runtime.lv >= this.getForgeUnlockLevel(tier) + 1 ? 1.08 : 0.98;
     return this.clamp(Number((base + runtime.expRatio * 0.12 + (isGreatSuccess ? 0.15 : 0) + Math.random() * 0.05).toFixed(2)), 0.8, 1.25);
@@ -3630,11 +3639,11 @@ class ProfessionUIComponent {
             const 本次融合率 = 锻造是否融锻
               ? Number(commissionCtx.fusionSync || this.getForgeFusionRate(commissionCtx.executorRuntime || runtime, materialNames))
               : Number(firstMaterial?.副职业参数?.融合参数?.融合率 ?? 100);
-            const 本次品质 = commissionCtx.isOfficial
+            const 本次品质 = this.传递材料品质(commissionCtx.isOfficial
               ? 1
               : (锻造是否融锻
                 ? this.getForgeFusionQuality(tier, this.getForgeMaxQ(tier, 锻造复合数), 本次融合率, roll, isGreatSuccess)
-                : this.clamp(isGreatSuccess ? 1.2 : this.getForgeSingleQuality(tier, commissionCtx.executorRuntime || runtime), 0.8, 1.2));
+                : this.clamp(isGreatSuccess ? 1.2 : this.getForgeSingleQuality(tier, commissionCtx.executorRuntime || runtime), 0.8, 1.2)), materialNames);
             const 产物名 = this.读取锻造产物键(targetName, materialNames, 锻造是否融锻);
             if (!产物汇总[产物名]) {
               产物汇总[产物名] = {
@@ -3650,7 +3659,7 @@ class ProfessionUIComponent {
             产物汇总[产物名].品质系数累计 += Number(本次品质 || 1);
           } else if (this.activeMode === 'design') {
             const 产物名 = this.getDesignOutputName(targetName, tier, materialNames);
-            const 品质系数 = commissionCtx.isOfficial ? 1 : this.getGenericQuality(commissionCtx.executorRuntime || runtime, tier, isGreatSuccess);
+            const 品质系数 = this.传递材料品质(commissionCtx.isOfficial ? 1 : this.getGenericQuality(commissionCtx.executorRuntime || runtime, tier, isGreatSuccess), materialNames);
             if (!产物汇总[产物名]) {
               产物汇总[产物名] = { 数量: 0, 物品分类: '设计图纸', 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数累计: 0, 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}绘制` };
             }
@@ -3658,7 +3667,7 @@ class ProfessionUIComponent {
             产物汇总[产物名].品质系数累计 += Number(品质系数 || 1);
           } else if (this.activeMode === 'manufacture') {
             const 产物信息 = this.getManufactureOutputMeta(targetName, materialNames, tier);
-            const 品质系数 = commissionCtx.isOfficial ? 1 : this.getGenericQuality(commissionCtx.executorRuntime || runtime, tier, isGreatSuccess);
+            const 品质系数 = this.传递材料品质(commissionCtx.isOfficial ? 1 : this.getGenericQuality(commissionCtx.executorRuntime || runtime, tier, isGreatSuccess), materialNames);
             if (!产物汇总[产物信息.name]) {
               产物汇总[产物信息.name] = { 数量: 0, 物品分类: 产物信息.分类, 魂导等级: 产物信息.魂导等级 || 0, 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数累计: 0, 描述: `由${commissionCtx.executorName}完成${本次工序显示名}` };
             }
@@ -3802,6 +3811,7 @@ class ProfessionUIComponent {
       if (commissionCtx.isOfficial) finalQ = 1.0;
       else if (isFusion) finalQ = this.getForgeFusionQuality(tier, maxQ, fusionRate, roll, isGreatSuccess);
       else finalQ = this.clamp(isGreatSuccess ? 1.2 : this.getForgeSingleQuality(tier, commissionCtx.executorRuntime || runtime), 0.8, 1.2);
+      finalQ = this.传递材料品质(finalQ, materialNames);
 
       const 融锻失败文本 = 失败次数 ? `（融锻中失败 ${失败次数} 次后成功）` : '';
       if (isGreatSuccess) {
@@ -3872,7 +3882,7 @@ class ProfessionUIComponent {
     const roll = Math.floor(Math.random() * 100) + 1;
     const isGreatSuccess = roll <= 5 && !commissionCtx.isOfficial;
     const isSuccess = isGreatSuccess || roll <= successRate;
-    const finalQ = isSuccess ? (commissionCtx.isOfficial ? 1.0 : this.getGenericQuality(commissionCtx.executorRuntime || runtime, tier, isGreatSuccess)) : 0;
+    const finalQ = isSuccess ? this.传递材料品质(commissionCtx.isOfficial ? 1.0 : this.getGenericQuality(commissionCtx.executorRuntime || runtime, tier, isGreatSuccess), materialNames) : 0;
     let expGain = cfg.expGain[tier] || 50;
     if (isGreatSuccess && !commissionCtx.isCommission) expGain *= 2;
     expGain = this.applyProfessionExpGainMultiplier(expGain, commissionCtx);
