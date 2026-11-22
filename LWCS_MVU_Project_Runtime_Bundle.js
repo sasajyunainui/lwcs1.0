@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:be3fb7b38504d7303fcbd070c9e942a47257441cc0d12d52315ab4567a71bd54|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:dfa26264de0e5f509bc0522b6e092a8997ff96fa3ec062db4bfa7d9ac38cb426 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:be3fb7b38504d7303fcbd070c9e942a47257441cc0d12d52315ab4567a71bd54|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:60305a52b4e92c94a632fdbed4015c63a60cd9f31a324d3caa4c5e87229c82e2 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -44306,6 +44306,34 @@ function 收集运行时地图命中键列表_V1(数据根 = {}, 文本 = '') {
   return 收集运行时地点命中_V1(数据根, 文本, { 上限: 24 }).map(命中 => 命中.名称);
 }
 
+// 商店即地点：文本提到当前所在地点（或文本里已命中的地点）沿途某家店时，按地点路径列入命中（如「东海城-锻造师协会分店」），
+// 「已存在实体」清单因此认得它，模型不再另造同名动态地点。只看玩家当前位置与已命中地点这几条路径上的商店，不扫全大陆；
+// 店名整词出现、或去掉 分店 / 分会 / 分部 后的名字出现都算
+function 收集运行时商店地点命中_V1(数据根 = {}, 文本 = '', 已命中地点 = []) {
+  const 地点表 = 数据根?.world?.地点;
+  if (!地点表 || typeof 地点表 !== 'object') return [];
+  const 玩家 = 数据根?.char?.[数据根?.sys?.玩家名];
+  const 路径列表 = [...已命中地点, String(玩家?.状态?.位置 || '')]
+    .map(路径 => String(路径 || '').trim().replace(/^(?:斗罗大陆|斗灵大陆)-?/, ''))
+    .filter(Boolean);
+  const 结果 = new Set();
+  new Set(路径列表).forEach(路径 => {
+    let 游标 = 地点表;
+    const 前缀 = [];
+    for (const 段 of 路径.split(/[-/]/).map(片段 => 片段.trim()).filter(Boolean)) {
+      const 节点 = 游标 && typeof 游标 === 'object' ? 游标[段] : null;
+      if (!节点 || typeof 节点 !== 'object') break;
+      前缀.push(段);
+      Object.keys(节点.商店 && typeof 节点.商店 === 'object' ? 节点.商店 : {}).forEach(店名 => {
+        const 基名 = 店名.replace(/(?:分店|分会|分部)$/, '');
+        if (运行时文本包含片段_V1(文本, 店名) || 运行时文本包含片段_V1(文本, 基名)) 结果.add(`${前缀.join('-')}-${店名}`);
+      });
+      游标 = 节点.子节点;
+    }
+  });
+  return Array.from(结果);
+}
+
 function 运行时文本包含片段_V1(文本 = '', 片段 = '') {
   const 左 = String(文本 || '').toLowerCase();
   const 右 = String(片段 || '').trim().toLowerCase();
@@ -46751,6 +46779,7 @@ function 生成MVU更新结构提示_V1(数据输入 = null, userInput = '', 最
   (Array.isArray(草稿上下文.命中角色) ? 草稿上下文.命中角色 : []).forEach(角色名 => {
     if (数据根?.char?.[角色名]) 更新提示命中.角色.add(角色名);
   });
+  收集运行时商店地点命中_V1(数据根, 命中文本, Array.from(更新提示命中.地点)).forEach(地点名 => 更新提示命中.地点.add(地点名));
   const 角色名集合 = 取运行时基础角色名集合_V1(数据根, 命中文本, { 运行时命中名称: 草稿命中 });
   (Array.isArray(草稿上下文.命中角色) ? 草稿上下文.命中角色 : []).forEach(角色名 => {
     if (数据根?.char?.[角色名]) 角色名集合.add(角色名);
