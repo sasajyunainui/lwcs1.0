@@ -99,20 +99,36 @@
     }
     return lib;
   };
+  // 头像、立绘在独立图片仓库 lwcs-assets（GitHub raw 读；放进 lwcs 会让包更超 jsDelivr 50MB 上限）。
+  // 同一角色几部都有图时取当前时代那一部，没有再按 斗三 → 斗二 → 斗一 → 斗四 找
   const portraitIndex = {};
-  const portraitBase = () => document.documentElement.dataset.lwcsCharacterAssets || 'http://127.0.0.1:39281/assets/characters/';
+  const portraitBase = () => document.documentElement.dataset.lwcsPortraitAssets || 'https://raw.githubusercontent.com/sasajyunainui/lwcs-assets/main/characters/';
+  const ERA_BOOK = { dldl: 'dl1', jueshitangmen: 'dl2', current: 'dl3', zjdl: 'dl4' };
+  const eraBook = () => {
+    const I = rt('__LWCS_ERA_RUNTIME_INTEGRATION_V1__');
+    try { return ERA_BOOK[I?.resolveResourceEraAtTick?.(num(S?.world?.时间?.tick))] || 'dl3'; } catch (e) { return 'dl3'; }
+  };
+  const pickBook = books => books ? books[eraBook()] || books.dl3 || books.dl2 || books.dl1 || books.dl4 || null : null;
+  // 名字没有图就按别名找（角色库里的「别名」）
+  const portraitOf = name => {
+    const direct = pickBook(portraitIndex[name]); if (direct) return direct;
+    const aliases = library('character')?.角色?.[name]?.别名;
+    for (const alias of Array.isArray(aliases) ? aliases : []) { const hit = pickBook(portraitIndex[alias]); if (hit) return hit; }
+    return null;
+  };
+  const portraitFile = file => portraitBase() + encodeURIComponent(file);
   const loadPortraits = () => fetch(portraitBase() + 'manifest.json').then(r => r.json()).then(m => {
-    for (const c of m.characters || []) { if (!portraitIndex[c.name] || c.book === 'dl3') portraitIndex[c.name] = c; }
+    for (const c of m.characters || []) for (const key of [c.name, ...(c.aliases || [])]) (portraitIndex[key] ||= {})[c.book] ||= c;
     C.refresh();
   }).catch(() => {});
   const AVATAR_KEY = 'lwcs-cockpit-avatar-';
   const avatarSrc = name => {
     const own = ADP?.avatarSrc?.(name); if (own) return own;
     try { const up = localStorage.getItem(AVATAR_KEY + name); if (up) return up; } catch (e) {}
-    const p = portraitIndex[name]; return p ? portraitBase() + p.avatar : '';
+    const p = portraitOf(name); return p?.avatar ? portraitFile(p.avatar) : '';
   };
   // 只有头像、没有立绘的角色（如从百科补的头像）不拼立绘地址
-  const standingSrc = name => { const p = portraitIndex[name]; return p && p.standing ? portraitBase() + p.standing : ''; };
+  const standingSrc = name => { const p = portraitOf(name); return p?.standing ? portraitFile(p.standing) : ''; };
   const miniAva = name => { const src = avatarSrc(name); return `<span class="mini-ava">${src ? `<img src="${esc(src)}" alt="">` : esc(String(name).slice(-2, -1) || name[0])}</span>`; };
 
   // ---------- 小部件 ----------
