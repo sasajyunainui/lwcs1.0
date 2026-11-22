@@ -1279,6 +1279,7 @@ const SchemaRootObject = z
             交手约定: z.any().optional().describe('交手约定：不还手、只硬接、压制修为（按参战者名字）；限魂技: N（全场只用前 N 个魂技）'),
             攻击记录: z.any().optional().describe('各参战者出手次数与单次最大伤害占比（系统自动维护）'),
             佯装记录: z.any().optional().describe('本场各参战者佯装蓄力的次数（系统自动维护）'),
+            骗招察觉: z.any().optional().describe('骗招被看破且骗招者察觉到的次数 { 骗招者名字: { 看破者名字: 次数 } }（系统自动维护）'),
             站位: z.any().optional().describe('两档距离：各参战者在前或在后 { 名字: 前|后 }（系统自动维护）'),
             缠斗: z.any().optional().describe('交战关系：谁和谁近身缠在一起 { 名字: { 对方名字: 最近交手回合 } }（系统自动维护）'),
             战前已开武魂: z.any().optional().describe('开战前已放出武魂的参战者名字（推进预设填写）'),

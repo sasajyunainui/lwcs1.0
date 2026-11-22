@@ -4293,6 +4293,21 @@
     return combatData;
   }
 
+  // 看破第二层（用户 11-22）：骗招被看破时，对每个看破者掷骗招者察觉了没有（BattleDecision deceptionRealizeChance）；察觉了记进
+  // 骗招察觉 { 骗招者名字: { 看破者名字: 次数 } }（战斗层字段），骗招者之后对它行骗按更易被看破估（BattleDecision deceptionEstimate）。
+  function recordDeceptionRealized(combatData = {}, deceiver = {}, seerIds = []) {
+    if (typeof decisionRuntime?.deceptionRealizeChance !== 'function' || !Array.isArray(seerIds) || !seerIds.length) return [];
+    const realized = [];
+    for (const id of seerIds.map(String)) {
+      const seer = listCombatUnits(combatData).find(unit => String(previewRuntime.unitId(unit)) === id);
+      if (!seer || !(Math.random() < Number(decisionRuntime.deceptionRealizeChance(combatData, deceiver, seer) || 0))) continue;
+      realized.push(id);
+      const records = combatData.骗招察觉 && typeof combatData.骗招察觉 === 'object' ? combatData.骗招察觉 : {};
+      const name = previewRuntime.unitName(deceiver), seerName = previewRuntime.unitName(seer), own = records[name] || {};
+      combatData.骗招察觉 = { ...records, [name]: { ...own, [seerName]: Number(own[seerName] || 0) + 1 } };
+    }
+    return realized;
+  }
   function listCombatUnits(combatData = {}) {
     const seen = new Set();
     return [...listPrimaryCombatUnits(combatData), ...listSummonCombatUnits(combatData)].filter(unit => {
@@ -11595,6 +11610,7 @@
             .filter(unit => !neverSeen && Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, {}) ?? 0))
             .map(unit => String(previewRuntime.unitId(unit)));
           actor.__battleRuntime.activeDefenseStance = { ...actor.__battleRuntime.activeDefenseStance, bait: true, seenBy };
+          recordDeceptionRealized(combatData, actor, seenBy);
           const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
           combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
         }
@@ -11624,6 +11640,7 @@
           .filter(unit => !neverSeen && Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, declaration.feintSkill) ?? 0))
           .map(unit => previewRuntime.unitId(unit));
         actor.蓄力技能 = previewRuntime.feintRecord(declaration.feintSkill, declaration.targetIds || [], actionEvent.actionId, seenBy);
+        recordDeceptionRealized(combatData, actor, seenBy);
         // 佯装记录 { 名字: 次数 } (a battle-level field, kept across requests): each feint makes the next easier to see through.
         const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
         combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
@@ -20253,6 +20270,7 @@
               const neverSeen = globalThis.__LWCS_DECISION_DEBUG__?.feintNeverSeen === true;
               const seen = !neverSeen && Math.random() < chance ? 1 : 0;
               declaration = { ...declaration, feintStrike: { seen, chance, rolled: true } };
+              if (seen === 1 && target) recordDeceptionRealized(combatData, actor, [targetId]);
               const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
               combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
             }

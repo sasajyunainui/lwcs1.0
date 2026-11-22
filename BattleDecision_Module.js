@@ -2169,6 +2169,17 @@
     const sense = Number(preview.readResourceMax(observer, '精神力')) || 0, theirs = Number(preview.readResourceMax(target, '精神力')) || 0;
     return sense > BELIEF_SENSE_FLOOR && sense > theirs;
   }
+  // 精神力优势（用户 11-22「战场上的判断和精神力有很大关系」）: how far the observer's sense outreaches the other's — 0 below
+  // BELIEF_SENSE_FLOOR or at most theirs, else (mine ÷ theirs − 1) up to 1 (twice theirs). Weighs reading a feint and a move.
+  function senseEdge(observer = {}, target = {}) {
+    const sense = Number(preview.readResourceMax(observer, '精神力')) || 0, theirs = Number(preview.readResourceMax(target, '精神力')) || 0;
+    return sense > BELIEF_SENSE_FLOOR && sense > theirs ? clamp(sense / Math.max(1, theirs) - 1, 0, 1) : 0;
+  }
+  // 探查、破隐、看破类状态（战斗效果 探查反制 / sense_pierce, BattlePreview）或破隐能力：原先只破隐身，11-22 起也看破骗招。
+  function sensePierces(unit = {}) {
+    return Object.values(unit?.状态效果 || {}).some(state => state?.战斗效果?.探查反制 === true || state?.战斗效果?.sense_pierce === true) ||
+      /探查|破隐|看破|神识锁定|感知反制/.test(String(unit?.破隐能力 || ''));
+  }
   // The share of a hit an unseen 控制系 keeps off by a control thrown first (S84: 16% of hits × the 42% they kept off).
   const BELIEF_ROUTINE_PREEMPT_SHARE = 0.16 * 0.42;
   const beliefExchangeCache = new WeakMap();
@@ -2177,30 +2188,55 @@
   // knows the skill (its 战斗暴露 bit, known to it) knows it needs no charge. Rolled per enemy when the feint starts (BattleRuntime).
   // Each feint it has already put on in the battle (战斗.佯装记录, BattleRuntime) adds FEINT_SEE_REPEAT: one fooled, or one that watched
   // a charge melt away unreleased, is wary of the next (11-17: a 精神系 at a quarter HP feinted 40 turns running against a 控制系
-  // that kept guarding — 400 rounds).
-  const FEINT_SEE_BASE = 0.15, FEINT_SEE_CLARITY = 0.6, FEINT_SEE_MENTAL = 0.2, FEINT_SEE_REPEAT = 0.35;
+  // that kept guarding — 400 rounds). A sense that outreaches the feinter's adds FEINT_SEE_SENSE × senseEdge, a 探查/破隐/看破 state
+  // FEINT_SEE_PIERCE (11-22), a battle experience above the feinter's FEINT_SEE_EXPERIENCE × the gap (11-22「还是得考虑精神力，战斗经验
+  // 啥的决定」). Starting values, measured later against the novel's feints.
+  const FEINT_SEE_BASE = 0.15, FEINT_SEE_CLARITY = 0.6, FEINT_SEE_MENTAL = 0.2, FEINT_SEE_REPEAT = 0.35, FEINT_SEE_SENSE = 0.3, FEINT_SEE_PIERCE = 0.3,
+    FEINT_SEE_EXPERIENCE = 0.2;
   function feintSeeThroughChance(world = {}, observer = {}, feinter = {}, skill = {}) {
     const name = String(skill?.魂技名 || skill?.name || '').trim();
     if (name && beliefKnowsExposure(observer, feinter, world) && preview.exposedSkills(feinter).some(known => String(known?.魂技名 || known?.name || '').trim() === name)) return 1;
     const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(feinter)) || 0) + beliefFamiliarExchanges(observer, feinter, world);
     const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FEINT_SEE_MENTAL : 0;
     const shown = Number(world?.佯装记录?.[preview.unitName(feinter)] || 0) || 0;
-    return clamp(FEINT_SEE_BASE + FEINT_SEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FEINT_SEE_REPEAT * shown, 0, 1);
+    return clamp(FEINT_SEE_BASE + FEINT_SEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FEINT_SEE_REPEAT * shown +
+      FEINT_SEE_SENSE * senseEdge(observer, feinter) + (sensePierces(observer) ? FEINT_SEE_PIERCE : 0) +
+      FEINT_SEE_EXPERIENCE * Math.max(0, experienceOf(observer) - experienceOf(feinter)), 0, 1);
+  }
+  /* 看破第二层（用户 11-22「佯装者也不能被对面看破自己还天真的以为不会被看破吧？…首先是决定是否被看破，其次是决定那边是否能反应过来
+     被看破」）：骗招（佯装蓄力、卖破绽、虚招）被看破时，骗招者察觉自己被看破的概率——DECEPTION_REALIZE_BASE，加上它对看破者的了解
+     （DECEPTION_REALIZE_CLARITY × 交手与熟人的清楚程度）、精神力优势（DECEPTION_REALIZE_SENSE × senseEdge）、战斗经验高出的部分
+     （DECEPTION_REALIZE_EXPERIENCE × 差），至多 DECEPTION_REALIZE_CAP。BattleRuntime 对每个看破者掷，察觉了记进 骗招察觉
+     { 骗招者名字: { 看破者名字: 次数 } }。起始值，之后用原作骗招战例校准。 */
+  const DECEPTION_REALIZE_BASE = 0.2, DECEPTION_REALIZE_CLARITY = 0.4, DECEPTION_REALIZE_SENSE = 0.3, DECEPTION_REALIZE_EXPERIENCE = 0.2, DECEPTION_REALIZE_CAP = 0.9;
+  function deceptionRealizeChance(world = {}, deceiver = {}, seer = {}) {
+    const seen = Number(beliefExchangeCounts(world, sideOf(world, deceiver)).get(preview.unitId(seer)) || 0) + beliefFamiliarExchanges(deceiver, seer, world);
+    return clamp(DECEPTION_REALIZE_BASE + DECEPTION_REALIZE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + DECEPTION_REALIZE_SENSE * senseEdge(deceiver, seer) +
+      DECEPTION_REALIZE_EXPERIENCE * Math.max(0, experienceOf(deceiver) - experienceOf(seer)), 0, DECEPTION_REALIZE_CAP);
+  }
+  // 骗招者估的看破率（估值用；运行时照旧按 feintSeeThroughChance 掷）：察觉过这个人看破自己，就对它更提防——剩下的那份再补
+  // DECEPTION_AWARE_WARY；没察觉过就按原式（「天真」）。
+  const DECEPTION_AWARE_WARY = 0.5;
+  function deceptionEstimate(world = {}, observer = {}, deceiver = {}, skill = {}) {
+    const chance = feintSeeThroughChance(world, observer, deceiver, skill);
+    const aware = Number(world?.骗招察觉?.[preview.unitName(deceiver)]?.[preview.unitName(observer)] || 0) > 0;
+    return aware ? chance + (1 - chance) * DECEPTION_AWARE_WARY : chance;
   }
   // 看穿来招（T34 11-19 用户定「看穿来招可提前出手」；原作 38 步应对时放魂技——缠绕、魅惑、蛛网束缚、护体铠甲）: the chance a unit
   // reads a move as it starts, so its answer may take as long as the move's whole windup on top of its reaction window (BattleRuntime
   // rolls it per answer). FORESEE_BASE, more by how clearly it has the attacker (FORESEE_CLARITY × the clarity of their exchanges and
-  // acquaintance), more for a 精神系 (FORESEE_MENTAL) and for a sense that outreaches the attacker's (FORESEE_SENSE, beliefSenses),
+  // acquaintance), more for a 精神系 (FORESEE_MENTAL) and by how far its sense outreaches the attacker's (FORESEE_SENSE × senseEdge;
+  // until 11-22 a flat 0.15 once it outreached at all, beliefSenses),
   // more again when it has seen this very skill (FORESEE_KNOWN); at most FORESEE_CAP. Starting values, measured later.
   // FORESEE_SCALE（root.__LWCS_TUNE__.FORESEE_SCALE）scales the whole chance, for calibrating against the novel.
-  const FORESEE_BASE = 0.1, FORESEE_CLARITY = 0.4, FORESEE_MENTAL = 0.15, FORESEE_SENSE = 0.15, FORESEE_KNOWN = 0.3, FORESEE_CAP = 0.9;
+  const FORESEE_BASE = 0.1, FORESEE_CLARITY = 0.4, FORESEE_MENTAL = 0.15, FORESEE_SENSE = 0.3, FORESEE_KNOWN = 0.3, FORESEE_CAP = 0.9;
   const FORESEE_SCALE = Number(root.__LWCS_TUNE__?.FORESEE_SCALE ?? 1);
   function foreseeChance(world = {}, observer = {}, attacker = {}, skill = {}) {
     const name = String(skill?.魂技名 || skill?.name || '').trim();
     const known = name && beliefKnowsExposure(observer, attacker, world) && preview.exposedSkills(attacker).some(entry => String(entry?.魂技名 || entry?.name || '').trim() === name);
     const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(attacker)) || 0) + beliefFamiliarExchanges(observer, attacker, world);
     const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FORESEE_MENTAL : 0;
-    return clamp(FORESEE_SCALE * (FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + (beliefSenses(observer, attacker) ? FORESEE_SENSE : 0) +
+    return clamp(FORESEE_SCALE * (FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FORESEE_SENSE * senseEdge(observer, attacker) +
       (known ? FORESEE_KNOWN : 0)), 0, FORESEE_CAP);
   }
 
@@ -6729,7 +6765,7 @@
         if (!held || power(declaration) > power(held.candidate.declaration)) best.set(key, { candidate, target });
       }
       for (const { candidate, target } of best.values()) candidates.push({ ...candidate, candidateId: `${candidate.candidateId}:feint`,
-        declaration: { ...candidate.declaration, feintStrike: { seen: clamp(Number(feintSeeThroughChance(worldSnapshot, target, advanceActor, {})) || 0, 0, 1) },
+        declaration: { ...candidate.declaration, feintStrike: { seen: clamp(Number(deceptionEstimate(worldSnapshot, target, advanceActor, {})) || 0, 0, 1) },
           actionId: `${candidate.declaration.actionId || candidate.candidateId}:feint` } });
     }
     // 迎面撞上（11-20 两档距离检查 B3：强攻系被突进时对轰、抢先 32%，贴身时 58%）：对方近身冲过来，迎向来招者的答招不用赶路——
@@ -42872,7 +42908,7 @@
         // (BAIT_COUNTER_BONUS). Seen through, it sees the stance (the sure strike back too) and comes or turns away as at a stance.
         if (declaration?.bait === true) {
           idleStance = 0;
-          const seenShare = clamp(Number(feintSeeThroughChance(table.world, table.units[row], actor, {})) || 0, 0, 1);
+          const seenShare = clamp(Number(deceptionEstimate(table.world, table.units[row], actor, {})) || 0, 0, 1);
           const baited = r20Exchange(answer[actorRow][row], answer[row][actorRow], strikeAgain, strikeBack * (Number(preview.BAIT_COUNTER_BONUS) || 1), 1);
           // 11-19 用户定「硬挨换反击」（BattleRuntime baitTaken）：没看穿的来者整招打实，换来必开、加重的反击；看穿的来者面对的
           // 就是普通防守架势（格挡照常，反击照架势判）——和防御一样，来不来按架势（comesPrepared）算。
@@ -43204,7 +43240,7 @@
       const ownStanding = Math.max(1, table.sides.filter((side, row) => side === table.sides[actorRow] && table.alive[row] > 0).length);
       let none = 1, odds = 0, landed = 0;
       for (const [unit] of foes) {
-        const p = (1 - feintSeeThroughChance(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
+        const p = (1 - deceptionEstimate(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
         none *= 1 - p; odds += p;
         landed += p * cachedBaseActionValue(feinter, unit, 'RELEASE_SKILL', declaration.feintSkill, context, table.world) / 100;
       }
@@ -43219,7 +43255,7 @@
       if (odds > 0 && feint > 0) {
         const meets = [];
         for (const [unit, row] of foes) {
-          const p = (1 - feintSeeThroughChance(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
+          const p = (1 - deceptionEstimate(table.world, unit, feinter, declaration.feintSkill)) * R20_FEINT_BAIT / ownStanding;
           const lands = cachedBaseActionValue(feinter, unit, 'RELEASE_SKILL', declaration.feintSkill, context, table.world) / 100;
           if (p > 0 && lands > 0) meets.push({ from: actorRow, to: row, at: 0, delta: -(1 - none) * p / odds * lands });
         }
@@ -45597,6 +45633,7 @@
     typicalAttackRatio,
     typicalStatRatio,
     feintSeeThroughChance,
+    deceptionRealizeChance,
     foreseeChance,
     projectCooperativeSummonDeclaration,
     actionCompletesWithinBattleHorizon,

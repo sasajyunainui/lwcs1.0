@@ -1050,6 +1050,8 @@ class BattleUIComponent {
       '攻击记录',
       // 佯装蓄力的次数（BattleDecision feintSeeThroughChance：佯装过越多越容易看破）。
       '佯装记录',
+      // 看破第二层：骗招者察觉到谁看破过自己（BattleRuntime recordDeceptionRealized，BattleDecision deceptionEstimate）。
+      '骗招察觉',
       // 两档距离的站位（BattleRuntime syncBattlePositions / recordBattlePositions）。
       '站位',
       // 交战关系：谁和谁缠在一起（BattleRuntime syncEngagements / recordEngagements）。
