@@ -458,8 +458,13 @@
       if (timed) existing.duration = Math.max(Number(existing.duration || 0), normalizedDuration);
       else delete existing.duration;
       existing.__本回合新附加 = true;
-      existing.shield_value = Math.max(0, Number(existing.shield_value || 0)) + amount;
+      // 同技能不叠加（叠加规则「同技能不叠加」）试过（11-22，LWCS_TUNE.SHIELD_NO_STACK）：同一来源的护盾再上只刷新到这一次的量——元素系三放
+      // 第 3 魂技护盾叠到生命上限的 59%；但 3v3 退场校准随之出现 2～3 局打满 30 回合（疑似估值仍按技能写的护盾量计价、反复重放），待查，
+      // 默认仍累加。返回实际多出的量。
+      const before = Math.max(0, Number(existing.shield_value || 0));
+      existing.shield_value = root.__LWCS_TUNE__?.SHIELD_NO_STACK === true ? Math.max(before, amount) : before + amount;
       if (effect?.对应等级 !== undefined) existing.对应等级 = Math.max(0, Number(effect.对应等级 || 0));
+      return existing.shield_value - before;
     } else {
       unit.状态效果[stateName] = {
         类型: 'buff', 状态: stateName, 状态名称: stateName, 层数: 1,
@@ -15416,9 +15421,12 @@
     return previewRuntime.calculateReactionContest(reactor, sourceActor, declaration);
   }
 
-  // 援护: who may step in front of `target` against this attack, and whether one of them does. Eligible: a unit of the
-  // target's side (not a summon) that can act, has not acted this round, is not charging or guard-broken, and gets there
-  // in time (BattlePreview interceptWindupBudget). The choice among them, or none, is the decision layer's
+  // 援护（拦截，用户 11-22「改成拦截规则吧」：守护是事先选定、占行动、全程挡；拦截是应对、只挡这一下）: who may step in front of `target`
+  // against this attack, and whether one of them does. Eligible: a unit of the target's side (not a summon) that can answer, is free —
+  // not locked with an enemy other than the attacker (BattlePreview lockedOpponentsOf), not charging, not guard-broken, not one that
+  // lives to support (辅助、治疗、食物系) — and gets there in time (BattlePreview interceptWindupBudget). It costs no action of the
+  // round (until 11-22 it took the unit's own action and only a unit that had not acted yet could): the one who steps in answers the
+  // hit as its answer, and a melee hit taken locks the two (recordEngagement), so it is not free for the next one. The choice among them, or none, is the decision layer's
   // (BattleDecision chooseInterceptor) — for a unit the player controls too.
   // 位移重做（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」，第 86/110 章替队友挡致命一击）: 友方身上有一道没用掉的换位躲避，
   // 记着换位的施法者；来袭单体攻击落在友方之前，由该施法者（同阵营、还能行动、不是攻击者）承受——施法者与友方对调了位置。
@@ -15436,6 +15444,8 @@
 
   function chooseStructuredInterceptor(combatData = {}, attacker = {}, declaration = {}, target = {}) {
     if (typeof decisionRuntime?.chooseInterceptor !== 'function') return null;
+    const supportsFirst = unit => /辅助|治疗|食物/.test(String(unit?.属性?.系别 || unit?.系别 || '').trim());
+    const interceptorFree = unit => (previewRuntime.lockedOpponentsOf ? previewRuntime.lockedOpponentsOf(combatData, unit) : []).every(other => other === attacker);
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
     // 位移重做: 换位拉进己方阵中的敌人，本回合援护盖不到它。
     if (previewRuntime.positionDeniesCover(target, round)) return null;
@@ -15445,16 +15455,15 @@
       if (!unit || unit === target || unit.召唤键 || inferUnitSide(combatData, unit) !== side) continue;
       const opportunity = unit.__battleRuntime?.naturalOpportunity;
       gateHook({ allyId: previewRuntime.unitId(unit), targetId: previewRuntime.unitId(target), attackerId: previewRuntime.unitId(attacker),
-        gate: !previewRuntime.isBattleCapable(unit) || !structuredActorCanAct(unit, 'ACTIVE') ? 'CANNOT_ACT' : unit.蓄力技能 || previewRuntime.fusionChargeHost(combatData, unit) ? 'CHARGING'
-          : previewRuntime.guardBrokenOf(unit, round) ? 'GUARD_BROKEN' : String(opportunity?.status || '').trim() !== 'PENDING' || Number(opportunity?.round || 0) !== round ? `ACTED:${String(opportunity?.status || 'NONE')}`
+        gate: !previewRuntime.isBattleCapable(unit) || !structuredActorCanAct(unit, 'REACTION') ? 'CANNOT_ACT' : unit.蓄力技能 || previewRuntime.fusionChargeHost(combatData, unit) ? 'CHARGING'
+          : previewRuntime.guardBrokenOf(unit, round) ? 'GUARD_BROKEN' : supportsFirst(unit) ? 'SUPPORT' : !interceptorFree(unit) ? 'ENGAGED'
             : previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) < 0 ? 'TOO_FAST' : 'OK',
         windup: previewRuntime.actionWindup(attacker, declaration), budget: previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) });
     }
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
-      inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
+      inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'REACTION') &&
       !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
-      String(unit.__battleRuntime?.naturalOpportunity?.status || '').trim() === 'PENDING' &&
-      Number(unit.__battleRuntime.naturalOpportunity.round || 0) === round &&
+      !supportsFirst(unit) && interceptorFree(unit) &&
       previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) >= 0);
     if (!candidates.length) return null;
     const chosen = String(decisionRuntime.chooseInterceptor({
@@ -20485,10 +20494,7 @@
                 shared.declaration = redirected;
                 actionContext.declaration = redirected;
                 if (actionContext.primaryTarget === target) actionContext.primaryTarget = interceptor;
-                const opportunity = interceptor.__battleRuntime.naturalOpportunity;
-                opportunity.status = 'CONSUMED_BY_INTERCEPT';
-                opportunity.consumedByActionId = String(actionContext.actionEvent.actionId || '').trim();
-                opportunity.actionName = '援护';
+                // 拦截不占援护者本回合的行动（11-22）：它照常应对这一击（下面的应对机会），本回合自己的行动照旧。
                 writeLedgerEvent(combatData, {
                   eventKind: 'runtime_trace', round: Number(combatData.回合 || 0),
                   actorId: interceptorId, actorName: previewRuntime.unitName(interceptor),

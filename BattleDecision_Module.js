@@ -5807,7 +5807,7 @@
     // takes, less its routine attack) treated a support's HP as a fighter's and charged the whole action given up, so in
     // 262 chances over 24 2v2 battles nobody ever stepped in. The race knows what each unit brings (a support's buffs and
     // heals too), how long each lasts and what a unit that loses its turn this round no longer does. Stepping in is worth
-    // the race with the one stepping in hit and denied its turn, against the race with the target hit; the best over
+    // the race with the one stepping in hit (since 11-22 it keeps its turn: 拦截 is an answer), against the race with the target hit; the best over
     // INTERCEPT_RACE_MARGIN steps in.
     const side = sideOf(world, target);
     const table = r20Facts({ visibleWorld: world, actorId: preview.unitId(target), actorSide: side,
@@ -5819,8 +5819,8 @@
       if (row === undefined) return null;
       const remaining = table.remaining.slice();
       remaining[row] = Math.max(0, remaining[row] - hit);
+      // 拦截不占本回合行动（11-22「改成拦截规则吧」，BattleRuntime chooseStructuredInterceptor）：挡下的人只挨这一下，行动照旧。
       const idle = new Array(count).fill(0);
-      if (stepIn) idle[row] = 1;
       const plan = { denied: table.held || null, idle, until: new Array(count).fill(0), base: table, leaves: null, baseCount: count, changed: new Array(count).fill(false),
         busy: table.busy || null, strikes: table.strikes || null };
       return r20Race({ ...table, remaining, alive: table.alive.slice(), stamina: table.stamina.slice() }, side, plan);
@@ -41331,6 +41331,84 @@
     if (root.__LWCS_TUNE__?.NECESSITY_DRY === true || !out.size) return null;
     return new Set(out.keys());
   }
+  /* 局部战团·按战团剪候选（方案 project-state 局部战团方案-20261122.md 第十一节）：决策时按推演第 0 步的规则算一次战团（真实缠斗 table.locked ＋
+     自由人按分工偏好挑敌、扑后排的近战被自由的拦截者截下）。行动者是自由人：不剪（挑谁缠是它的决定）；在战团里：敌方单体候选只留
+     ①缠着它的 ②落单者（不在战团、它那边无自由拦截者）③回援（缠着本方危险队友的敌人）④正在蓄力的 ⑤还自由的敌人；其余不估。
+     开关 LWCS_TUNE.GROUPS_PRUNE（默认关）、GROUPS_PRUNE_DRY（只算只报，钩子 onGroupPrune）。 */
+  function r20GroupPrune(request, candidateIds, frozenById) {
+    const tune = root.__LWCS_TUNE__ || {};
+    if (!(tune.GROUPS_PRUNE === true || tune.GROUPS_PRUNE_DRY === true) || !isPreparedDecisionRequest(request) ||
+      String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() !== 'ACTIVE') return null;
+    const table = r20Facts(request), actorRow = table.index.get(String(request.actorId || ''));
+    if (actorRow === undefined) return null;
+    const count = table.ids.length, sides = table.sides, units = table.units, out = table.out;
+    if (new Set(sides).size !== 2) return null;
+    const alive = row => table.remaining[row] > 0, acts = row => alive(row) && !!table.acts?.[row];
+    const role = r20RaceRoles(units, count), ranged = row => role[row] === '远程', supportFirst = row => role[row] === '支援';
+    const front = row => units[row]?.__battleRuntime?.position !== '后';
+    const bond = Array.from({ length: count }, () => new Set());
+    for (let row = 0; row < count; row += 1) {
+      const locked = table.locked?.[row];
+      if (locked) for (const other of locked) if (other < count && alive(row) && alive(other) && sides[other] !== sides[row]) { bond[row].add(other); bond[other].add(row); }
+    }
+    // 能拦（与 BattleRuntime chooseStructuredInterceptor 同一规则）。
+    const canIntercept = (row, attacker = -1, target = -1) => acts(row) && !supportFirst(row) && !units[row]?.蓄力技能 && [...bond[row]].every(other => other === attacker) &&
+      (attacker < 0 || target < 0 || !preview.interceptWindupBudget || Number(preview.interceptWindupBudget(units[attacker], R20_ASSUMED_MOVE, units[row], units[target])) >= 0);
+    const best = row => { let most = 0; for (let other = 0; other < count; other += 1) if (sides[other] !== sides[row] && alive(other)) most = Math.max(most, out[row][other]); return most; };
+    const prefers = (row, other) => {
+      switch (role[row]) {
+        case '强攻': return front(other) || /强攻|防御/.test(role[other]);
+        case '敏攻': return !front(other) || /支援|控制/.test(role[other]);
+        case '控制': return /控制|远程|支援/.test(role[other]) || !!units[other]?.蓄力技能;
+        case '防御': return front(other);
+        default: return false;
+      }
+    };
+    const loners = [];
+    for (let row = 0; row < count; row += 1) if (acts(row) && !bond[row].size && !supportFirst(row) && !ranged(row) && row !== actorRow) loners.push(row);
+    loners.sort((left, right) => best(right) - best(left));
+    for (const row of loners) {
+      if (bond[row].size) continue;
+      let pick = -1, value = 0;
+      for (let other = 0; other < count; other += 1) {
+        if (sides[other] === sides[row] || !alive(other)) continue;
+        const v = out[row][other] * (prefers(row, other) ? R20_GROUP_PREFER : 1);
+        if (v > value) { value = v; pick = other; }
+      }
+      if (pick < 0) continue;
+      let to = pick;
+      if (!front(pick) || supportFirst(pick)) {
+        let guard = -1, most = -1;
+        for (let other = 0; other < count; other += 1) if (other !== pick && sides[other] === sides[pick] && canIntercept(other, row, pick)) { const v = out[other][row]; if (v > most) { most = v; guard = other; } }
+        if (guard >= 0) to = guard;
+      }
+      bond[row].add(to); bond[to].add(row);
+    }
+    const own = sides[actorRow];
+    root.__LWCS_DECISION_DEBUG__?.onGroupPrune?.({ request, phase: 'groups', free: !bond[actorRow].size, bond: [...bond[actorRow]].map(row => table.ids[row]) });
+    if (!bond[actorRow].size) return null;
+    const endangered = row => { const net = (Number(table.pressure?.[row]) || 0) - (Number(table.mend?.[row]) || 0); return alive(row) && net > 1e-9 && table.remaining[row] / net < R20_GUARD_DANGER_ROUNDS; };
+    const covered = row => { for (let other = 0; other < count; other += 1) if (other !== row && sides[other] === sides[row] && canIntercept(other)) return true; return false; };
+    const allowed = new Set(bond[actorRow]);
+    for (let row = 0; row < count; row += 1) {
+      if (sides[row] === own || !alive(row)) continue;
+      if (!bond[row].size && !covered(row)) allowed.add(row);                                   // 落单
+      if (!bond[row].size) allowed.add(row);                                                    // 还自由的
+      if (units[row]?.蓄力技能) allowed.add(row);                                              // 正在蓄力
+      if ([...bond[row]].some(ally => sides[ally] === own && ally !== actorRow && endangered(ally))) allowed.add(row);   // 回援
+    }
+    const pruned = new Map();
+    for (const candidateId of candidateIds) {
+      const d = frozenById.get(candidateId)?.declaration || {}, kind = String(d.actionKind || '').toUpperCase();
+      if (!['BASIC_ATTACK', 'RELEASE_SKILL'].includes(kind) || !Array.isArray(d.targetIds) || d.targetIds.length !== 1) continue;
+      const row = table.index.get(String(d.targetIds[0]));
+      if (row === undefined || sides[row] === own || allowed.has(row)) continue;
+      pruned.set(candidateId, '别的战团里的敌人');
+    }
+    root.__LWCS_DECISION_DEBUG__?.onGroupPrune?.({ request, phase: 'prune', candidates: candidateIds.length, pruned });
+    if (tune.GROUPS_PRUNE_DRY === true || !pruned.size) return null;
+    return new Set(pruned.keys());
+  }
   // 简化演算开关（座舱设置「战斗演算」写 __LWCS_BATTLE_SIMPLE__）。
   const r20Simple = () => { try { return root.__LWCS_BATTLE_SIMPLE__ === true || root.parent?.__LWCS_BATTLE_SIMPLE__ === true; } catch (error) { return root.__LWCS_BATTLE_SIMPLE__ === true; } };
   const R20_SIMPLE_KEEP = 4;
@@ -41502,7 +41580,11 @@
         if (step === 0 && plan?.commit && alive(plan.commit.row) && alive(plan.commit.to)) { bond[plan.commit.row].add(plan.commit.to); bond[plan.commit.to].add(plan.commit.row); }
         const role = groupRoles, ranged = unit => role[unit] === '远程', supportFirst = unit => role[unit] === '支援';
         const front = unit => groupUnits[unit]?.__battleRuntime?.position !== '后';
-        const canIntercept = unit => alive(unit) && striking(unit) && !bond[unit].size && !supportFirst(unit) && !ranged(unit) && (role[unit] === '防御' || front(unit));
+        // 能拦（与 BattleRuntime chooseStructuredInterceptor 同一规则）：空闲（没缠上或只与这个攻击者缠着）、能出手、不蓄力、非辅助治疗食物系、来得及。
+        const interceptMove = R20_ASSUMED_MOVE;
+        const canIntercept = (unit, attacker = -1, target = -1) => alive(unit) && striking(unit) && !supportFirst(unit) && !groupUnits[unit]?.蓄力技能 &&
+          [...bond[unit]].every(other => other === attacker) &&
+          (attacker < 0 || target < 0 || !preview.interceptWindupBudget || Number(preview.interceptWindupBudget(groupUnits[attacker], interceptMove, groupUnits[unit], groupUnits[target])) >= 0);
         const best = unit => { let most = 0; for (let other = 0; other < count; other += 1) if (sides[other] !== sides[unit] && alive(other)) most = Math.max(most, cells(unit, other).out[unit][other]); return most; };
         const prefers = (unit, other) => {
           switch (role[unit]) {
@@ -41529,7 +41611,7 @@
           let to = pick;
           if (!front(pick) || supportFirst(pick)) {
             let guard = -1, most = -1;
-            for (let other = 0; other < count; other += 1) if (other !== pick && sides[other] === sides[pick] && canIntercept(other)) {
+            for (let other = 0; other < count; other += 1) if (other !== pick && sides[other] === sides[pick] && canIntercept(other, unit, pick)) {
               const v = cells(other, unit).out[other][unit]; if (v > most) { most = v; guard = other; }
             }
             if (guard >= 0) to = guard;
@@ -44851,7 +44933,8 @@
     // 简化演算（用户 11-21，设置「战斗演算：简化」，默认完整）：同一招打多个敌方单体目标时，只把粗估（表里这一招对目标的输出 ×
     // 目标优先级）前 R20_SIMPLE_KEEP 名和必留目标（缠斗对手、残血最低、优先级最高、对自己输出最高）送去完整估值；其余不估，
     // 分数记为保留者最低分以下（不会被选中）。粗估实测只中 65%～74%（11-21 测量 B），所以只在用户选了简化时用。
-    const prunes = [r20SimplePrune(request, candidateIds, frozenById), r20RolePrune(request, candidateIds, frozenById), r20NecessityPrune(request, candidateIds, frozenById)].filter(Boolean);
+    const prunes = [r20SimplePrune(request, candidateIds, frozenById), r20RolePrune(request, candidateIds, frozenById), r20NecessityPrune(request, candidateIds, frozenById),
+      r20GroupPrune(request, candidateIds, frozenById)].filter(Boolean);
     const pruned = prunes.length > 1 ? new Set(prunes.flatMap(set => [...set])) : prunes[0] || null;
     const valueOf = candidateId => {
       if (pruned?.has(candidateId)) return null;
