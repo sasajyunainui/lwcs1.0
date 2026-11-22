@@ -754,3 +754,8 @@ div.rail-item{cursor:default}
 
 /* 设置页：一键更新推进资源 */
 .set-tile small.plot-sync{cursor:help}
+
+/* 手机竖排：整页由 .screens 统一滚动。内层滚动容器自己滚不动时，overscroll-behavior:contain 会把手指滑动截在里面不交给外层
+   （设置页卡片、世界页列表上滑不动，只有标题和留白能拖）。这两处不再自己滚，其余内层滚动区到头也接力给外层 */
+.cockpit.stack :is(.set-tiles,.q-list){overflow:visible}
+.cockpit.stack .screens :is(.pad,.scroll,.dz-body,.set-tiles,.q-list,.dz2-skills){overscroll-behavior:auto}
