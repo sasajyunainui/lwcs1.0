@@ -41101,6 +41101,10 @@
   function r20Race(facts, own, plan = null) {
     r20Work.races += 1;
     const { sides, remaining, alive } = facts, count = sides.length, cover = facts.cover || null;
+    // 持续守护：被保护者危险与否读表里的压力与治疗（r20Derive），守护者 → 被保护者。
+    const pressureOf = facts.pressure || plan?.base?.pressure || null, mendOf = facts.mend || plan?.base?.mend || null;
+    const guardWard = new Array(count).fill(-1);
+    if (cover) cover.forEach((by, ward) => { if (by?.guard && by.row >= 0 && by.row < count) guardWard[by.row] = ward; });
     const left = remaining.map((value, index) => value * alive[index]), charges = facts.guard.slice();
     // Stamina beside HP (own units; Infinity where it is not known or there is none): it loses what the unit takes and is
     // not mended.
@@ -41151,7 +41155,10 @@
       const cells = (unit, other) => unit >= held || other >= held ? facts
         : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled(unit, other);
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
-      const striking = unit => acting(unit) && !(idle && time < idle[unit]);
+      // 持续守护（11-22）：第一回合照常护着；之后被保护者危险（照表里的压力，剩下的不到 R20_GUARD_DANGER_ROUNDS 回合）时掩护生效、守护者不出手，脱险了守护者照常打。
+      const endangered = row => { const net = (Number(pressureOf?.[row]) || 0) - (Number(mendOf?.[row]) || 0); return left[row] > 1e-9 && net > 1e-9 && left[row] / net < R20_GUARD_DANGER_ROUNDS; };
+      const guarding = unit => guardWard[unit] >= 0 && time >= 1 - 1e-9 && endangered(guardWard[unit]);
+      const striking = unit => acting(unit) && !(idle && time < idle[unit]) && !guarding(unit);
       // What a unit still does of its own actions (held by the enemies' controls, or spent keeping its own up).
       const free = unit => (1 - heldShare[unit]) * (1 - pace[unit]);
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
@@ -41331,7 +41338,7 @@
       }
       // A hit on a unit under 护卫 lands on its guard while the guard stands, can act and the state lasts (r20Cover).
       const struck = row => { const by = cover?.[row];
-        return by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) ? by.row : row; };
+        return by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) && (!by.guard || time < 1 - 1e-9 || endangered(row)) ? by.row : row; };
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), ally = focus[sides[unit]].unit;
@@ -41546,6 +41553,8 @@
   // 按对象的缓存就能命中；内容相同，算出的格子也相同。late（窗口视图）与当下分开记。
   // 第 7 项开关（对照用）：LWCS_TUNE.SAME_SIDE_REUSE = false 时同边对子照旧全部重算。
   const R20_SAME_SIDE_REUSE_ON = root.__LWCS_TUNE__?.SAME_SIDE_REUSE !== false;
+  const R20_GUARD_PERSIST = root.__LWCS_TUNE__?.GUARD_PERSIST !== false;
+  const R20_GUARD_DANGER_ROUNDS = Number(root.__LWCS_TUNE__?.GUARD_DANGER_ROUNDS ?? 2);
   const r20CanonicalUnits = new WeakMap(), r20OriginIds = new WeakMap();
   let r20OriginSequence = 0;
   function r20CanonicalUnit(table, unit, late) {
@@ -42710,10 +42719,14 @@
     }
     for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - r20Injury * Math.max(0, hpMark[row] - remaining[row]));
     const cover = (table.cover || []).slice();
-    // 守护: the ally it stands before is covered by the actor until the actor's next action (r20Race cover).
+    // 守护: the ally it stands before is covered by the actor (r20Race cover). 持续守护（用户 11-22 定：原作「站在队友身前」——守护的价值在
+    // 一直护着，队友越危险越值）：估值时守护者一直护着、这期间不出手（idle），直到它倒下或推演结束（被控制不能行动时掩护停，r20Race acting）；
+    // 此前只护到守护者下一次行动，之后照默认去打，守护只值「队友晚倒一回合」，与队友危不危险无关（检查目录第 34 题）。
+    // LWCS_TUNE.GUARD_PERSIST = false 回到只护一回合。
+    let guarding = false;
     if (String(candidate?.declaration?.actionKind || '').toUpperCase() === 'GUARD' && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE' && actorRow !== undefined) {
       const ward = table.index.get(String(candidate.declaration.targetIds?.[0] || ''));
-      if (ward !== undefined && ward !== actorRow && table.sides[ward] === table.sides[actorRow]) { cover[ward] = { row: actorRow, until: 1 }; seen += 1; }
+      if (ward !== undefined && ward !== actorRow && table.sides[ward] === table.sides[actorRow]) { cover[ward] = R20_GUARD_PERSIST ? { row: actorRow, until: Infinity, guard: true } : { row: actorRow, until: 1 }; seen += 1; guarding = R20_GUARD_PERSIST; }
     }
     for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
     while (cover.length < sidesNow.length) cover.push(null);
