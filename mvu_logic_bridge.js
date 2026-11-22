@@ -28530,14 +28530,19 @@ ${播报文本}
 
   function 执行副职业工坊打开路由(快照, 副职业请求) {
     const contextResult = 读取世界动作上下文_桥接(快照, 副职业请求 || {}, 'profession');
-    if (!contextResult.ok) {
-      return 构建模块路由失败结果('profession', 副职业请求, contextResult.reason || 'world_action_blocked', {
+    // 自己动手不需要当地设施（2026-11-09 玩家决定，与工坊界面 ProfessionUI 同一条）：执行者是本人时，
+    // 只保留与设施、地点解析无关的世界阻断（如环境禁止调用魂力）；委托（官方 / 私人）仍检查设施
+    const 本人执行 = toText(副职业请求?.执行者类型, toText(副职业请求?.对象, '') ? 'private' : 'self') === 'self';
+    const 原阻断 = contextResult.ok ? [] : Array.isArray(contextResult.context?.blockers) ? contextResult.context.blockers : [contextResult.reason || 'world_action_blocked'];
+    const 有效阻断 = 原阻断.filter(text => !本人执行 || !/设施|地点未解析|没有可解析的地点|地点资源不可用/.test(String(text || '')));
+    if (有效阻断.length) {
+      return 构建模块路由失败结果('profession', 副职业请求, 有效阻断.join('；'), {
         worldContextProjection: 读取世界动作投影_桥接(contextResult.context),
       });
     }
     const 待确认请求 = {
       ...cloneJsonValue(副职业请求, {}),
-      动作上下文: contextResult.context,
+      动作上下文: contextResult.context && 原阻断.length ? { ...contextResult.context, blockers: 有效阻断 } : contextResult.context,
       状态: 'pending',
       自动执行: false,
     };
