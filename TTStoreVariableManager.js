@@ -180,6 +180,9 @@
     drafts: {},
     expanded: new Set(['$']),
     currentPath: [],
+    floorPath: [],
+    databasePath: [],
+    draftsOpen: false,
     focusPathKey: '$',
     searchInput: '',
     searchQuery: '',
@@ -257,7 +260,6 @@
   const draftList = computed(() => Object.values(state.drafts));
   const isDirty = computed(() => draftList.value.length > 0);
   const isMobile = computed(() => state.viewportWidth < 600);
-  const floorRowHeight = computed(() => isMobile.value ? 48 : 32);
   const effectiveStatData = computed(() => {
     let result = cloneJson(state.snapshot?.stat_data || {});
     for (const entry of [...draftList.value].sort((left, right) => left.path.length - right.path.length)) {
@@ -493,20 +495,6 @@
     }
   }
 
-  function beginInlineEdit(path, value) {
-    if (value === null || isContainer(value) || (typeof value === 'string' && value.length > 120)) {
-      openDetail(path, value);
-      return;
-    }
-    state.editingPathKey = pathKey(path);
-    state.editingPath = [...path];
-    state.editingType = valueKind(value);
-    state.editingText = value === null ? 'null' : String(value);
-    state.editingError = '';
-    state.saveState = 'editing';
-    nextTick(() => rootElement?.querySelector('.lwcs-tvm-inline-input')?.focus());
-  }
-
   function cancelInlineEdit() {
     state.editingPathKey = '';
     state.editingPath = [];
@@ -592,55 +580,6 @@
     };
   }
 
-  const visibleRows = computed(() => {
-    if (!state.snapshot || isMobile.value || state.searchQuery) return [];
-    const rows = [];
-    const stack = Object.entries(effectiveStatData.value).reverse().map(([key, value]) => ({ key, value, path: [key], depth: 0 }));
-    while (stack.length) {
-      const item = stack.pop();
-      const row = makeRow(item.key, item.value, item.path, item.depth);
-      rows.push(row);
-      if (row.container && row.expanded) {
-        const children = Object.entries(row.displayValue);
-        for (let index = children.length - 1; index >= 0; index -= 1) {
-          const [key, value] = children[index];
-          stack.push({ key, value, path: [...item.path, Array.isArray(row.displayValue) ? Number(key) : key], depth: item.depth + 1 });
-        }
-      }
-    }
-    return rows;
-  });
-
-  const mobileRows = computed(() => {
-    const container = getAtPath(effectiveStatData.value, state.currentPath);
-    if (!isContainer(container)) return [];
-    return Object.entries(container).map(([key, value]) => {
-      const part = Array.isArray(container) ? Number(key) : key;
-      return makeRow(key, value, [...state.currentPath, part], 0);
-    });
-  });
-
-  const floorRows = computed(() => {
-    if (state.floorSearchQuery) return state.floorSearchResults;
-    const root = state.floorDetail?.status === 'ready' ? state.floorDetail.hotState?.stat_data : null;
-    if (!root || typeof root !== 'object') return [];
-    const rows = [];
-    const stack = Object.entries(root).reverse().map(([key, value]) => ({ key, value, path: [key], depth: 0 }));
-    while (stack.length) {
-      const item = stack.pop();
-      const row = makeReadonlyRow(item.key, item.value, item.path, item.depth);
-      rows.push(row);
-      if (isContainer(row.value) && row.expanded) {
-        const children = Object.entries(row.value);
-        for (let index = children.length - 1; index >= 0; index -= 1) {
-          const [key, value] = children[index];
-          stack.push({ key, value, path: [...item.path, Array.isArray(row.value) ? Number(key) : key], depth: item.depth + 1 });
-        }
-      }
-    }
-    return rows;
-  });
-
   function scheduleSearch() {
     hostWindow.clearTimeout(searchTimer);
     searchGeneration += 1;
@@ -653,12 +592,6 @@
     floorSearchGeneration += 1;
     const generation = floorSearchGeneration;
     floorSearchTimer = hostWindow.setTimeout(() => runFloorSearch(generation), 80);
-  }
-
-  function toggleFloorExpanded(row) {
-    if (!row.container) return;
-    if (state.floorExpanded.has(row.key)) state.floorExpanded.delete(row.key);
-    else state.floorExpanded.add(row.key);
   }
 
   async function runFloorSearch(generation) {
@@ -710,46 +643,6 @@
     state.floorSearchBusy = false;
   }
 
-  function focusFloorRow(index) {
-    const rows = floorRows.value;
-    const targetIndex = Math.max(0, Math.min(rows.length - 1, index));
-    const row = rows[targetIndex];
-    if (!row) return;
-    state.floorFocusPathKey = row.key;
-    const viewport = rootElement?.querySelector('.lwcs-tvm-floor-tree-viewport');
-    if (rows.length > 400 && viewport) {
-      const top = targetIndex * floorRowHeight.value;
-      if (top < viewport.scrollTop) viewport.scrollTop = top;
-      else if (top + floorRowHeight.value > viewport.scrollTop + viewport.clientHeight) {
-        viewport.scrollTop = top - viewport.clientHeight + floorRowHeight.value;
-      }
-      state.floorTreeScrollTop = viewport.scrollTop;
-    }
-    nextTick(() => rootElement?.querySelector('.lwcs-tvm-floor-tree-viewport [data-path-key="'
-      + String(row.key).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]')?.focus());
-  }
-
-  function handleFloorRowKeydown(event, row, index) {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      focusFloorRow(index + (event.key === 'ArrowDown' ? 1 : -1));
-    } else if (event.key === 'ArrowRight' && row.container) {
-      event.preventDefault();
-      if (!row.expanded) toggleFloorExpanded(row);
-      nextTick(() => focusFloorRow(floorRows.value.findIndex(item => item.key === row.key)));
-    } else if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      if (row.container && row.expanded) {
-        toggleFloorExpanded(row);
-        nextTick(() => focusFloorRow(floorRows.value.findIndex(item => item.key === row.key)));
-      } else if (row.path.length > 1) {
-        const parentKey = pathKey(row.path.slice(0, -1));
-        const parentIndex = floorRows.value.findIndex(item => item.key === parentKey);
-        if (parentIndex >= 0) focusFloorRow(parentIndex);
-      }
-    }
-  }
-
   async function runSearch(generation) {
     const query = state.searchInput.trim().toLocaleLowerCase('zh-CN');
     state.searchQuery = query;
@@ -791,55 +684,6 @@
     state.searchResults = results;
     state.searchCapped = stack.length > 0;
     state.searchBusy = false;
-  }
-
-  function locateRow(path) {
-    for (let depth = 1; depth < path.length; depth += 1) state.expanded.add(pathKey(path.slice(0, depth)));
-    state.focusPathKey = pathKey(path);
-    if (isMobile.value) state.currentPath = isContainer(getAtPath(effectiveStatData.value, path)) ? [...path] : path.slice(0, -1);
-    state.searchInput = '';
-    state.searchQuery = '';
-    state.searchResults = [];
-    nextTick(() => rootElement?.querySelector('[data-path-key="' + String(pathKey(path)).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]')?.focus());
-  }
-
-  function toggleExpanded(row, expanded) {
-    if (!row.container) return;
-    if (expanded ?? !state.expanded.has(row.key)) state.expanded.add(row.key);
-    else state.expanded.delete(row.key);
-  }
-
-  function focusRow(index) {
-    const rows = state.searchQuery ? state.searchResults : visibleRows.value;
-    const targetIndex = Math.max(0, Math.min(rows.length - 1, index));
-    const row = rows[targetIndex];
-    if (!row) return;
-    state.focusPathKey = row.key;
-    const viewport = rootElement?.querySelector('.lwcs-tvm-tree-viewport');
-    if (!state.searchQuery && rows.length > 400 && viewport) {
-      const top = targetIndex * 32;
-      if (top < viewport.scrollTop) viewport.scrollTop = top;
-      else if (top + 32 > viewport.scrollTop + viewport.clientHeight) viewport.scrollTop = top - viewport.clientHeight + 32;
-      state.scrollTop = viewport.scrollTop;
-    }
-    nextTick(() => rootElement?.querySelector('[data-path-key="' + String(row.key).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"]')?.focus());
-  }
-
-  function handleRowKeydown(event, row, index) {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      focusRow(index + (event.key === 'ArrowDown' ? 1 : -1));
-    } else if (event.key === 'ArrowRight' && row.container) {
-      event.preventDefault(); toggleExpanded(row, true);
-    } else if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      if (row.container && row.expanded) toggleExpanded(row, false);
-      else if (row.path.length > 1) locateRow(row.path.slice(0, -1));
-    } else if (event.key === 'Enter') {
-      event.preventDefault(); beginInlineEdit(row.path, row.displayValue);
-    } else if (event.key === ' ' && typeof row.displayValue === 'boolean') {
-      event.preventDefault(); setDraft(row.path, !row.displayValue);
-    }
   }
 
   function currentChatId() {
@@ -1304,309 +1148,402 @@
     hostWindow.document.documentElement.style.setProperty('--lwcs-tvm-visual-height', (hostWindow.visualViewport?.height || hostWindow.innerHeight) + 'px');
   }
 
-  const DataRow = defineComponent({
-    name: 'LwcsTvmDataRow',
-    props: {
-      row: { type: Object, required: true },
-      index: { type: Number, required: true },
-      searchMode: { type: Boolean, default: false },
-      readonly: { type: Boolean, default: false },
-    },
+  // ================= 界面 =================
+  // 版式：顶部铭牌（标题 / 页签 / 状态 / 关闭）+ 各页工作区。变量页 = 左目录（只列分组）+ 右属性表（字段原地改、子分组成卡片可进入）；
+  // 楼层记录与剧情资料用同一套只读属性表浏览。说明文字只放悬停（title）。类名统一 lwcs-tvm- 前缀，样式注入宿主文档也不串。
+  const ROOT_CAPTION = { char: '角色', org: '组织', sys: '系统', world: '世界' };
+  const TABS = [
+    { id: 'mvu', label: '变量', icon: 'sliders', hint: '查看和修改当前聊天的变量' },
+    { id: 'floors', label: '楼层记录', icon: 'layer-group', hint: '查看各楼层保存下来的变量（只读）' },
+    { id: 'database', label: '剧情资料', icon: 'book-open', hint: '查看数据库里已保存的资料（只读，修改请用数据库编辑器）' },
+    { id: 'diagnostics', label: '运行检查', icon: 'stethoscope', hint: '变量、楼层记录与剧情资料是否可以正常使用' },
+  ];
+  // 一个分组里一次最多列出的字段 / 子分组数，超出用「显示更多」追加
+  const SHEET_PAGE = 240;
+  const fieldErrors = reactive({});
+  const icon = (name, extra = '') => h('i', { class: 'fa-solid fa-' + name + (extra ? ' ' + extra : ''), 'aria-hidden': 'true' });
+  const samePrefix = (prefix, path) => prefix.length <= path.length && prefix.every((part, index) => part === path[index]);
+  const cssPathKey = key => String(key).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+  // 私密档案（char/<名字>/私密档案）：目录里一律不列；属性表与搜索只对女性且年满 18 岁的角色显示，未成年或年龄不明不给入口
+  const privateGateOk = (root, name) => {
+    const attrs = root?.char?.[name]?.属性 || {};
+    const age = Number(attrs.年龄);
+    return attrs.性别 === '女' && Number.isFinite(age) && age >= 18;
+  };
+  const isPrivatePath = path => path.length >= 3 && path[0] === 'char' && path[2] === '私密档案';
+  const privateHidden = (root, path, inNavigation = false) => isPrivatePath(path) && (inNavigation || !privateGateOk(root, path[1]));
+  function childEntries(container, path, root, inNavigation = false) {
+    const isList = Array.isArray(container);
+    return Object.entries(container).map(([key, value]) => ({ key, value, path: [...path, isList ? Number(key) : key] }))
+      .filter(entry => !privateHidden(root, entry.path, inNavigation));
+  }
+  // 子分组卡片上的预览：前三个标量字段；没有标量时列前几个子项名
+  function previewOf(value) {
+    const parts = [];
+    // 子项全是分组（角色表、物品表等）时列子项名
+    if (!Array.isArray(value) && Object.values(value).every(isContainer)) return Object.keys(value).filter(key => key !== '私密档案').slice(0, 4).join(' · ');
+    for (const [key, child] of Object.entries(value)) {
+      if (isContainer(child)) continue;
+      parts.push(Array.isArray(value) ? compactValue(child) : key + ' ' + compactValue(child));
+      if (parts.length >= 3) break;
+    }
+    return parts.join(' · ');
+  }
+  // 草稿落在这个分组内或它的上级时，卡片 / 目录标为已改
+  const containerChanged = path => draftList.value.some(entry => samePrefix(entry.path, path) || samePrefix(path, entry.path));
+
+  function navigateMvu(path, focusKey = '') {
+    state.currentPath = [...path];
+    const next = new Set(state.expanded);
+    for (let depth = 1; depth <= path.length; depth += 1) next.add(pathKey(path.slice(0, depth)));
+    state.expanded = next;
+    state.focusPathKey = focusKey || '$';
+    if (focusKey) nextTick(() => rootElement?.querySelector('.lwcs-tvm-mvu [data-path-key="' + cssPathKey(focusKey) + '"]')?.scrollIntoView({ block: 'nearest' }));
+  }
+  function commitField(path, kind, raw) {
+    const key = pathKey(path);
+    try {
+      if (kind === 'number' && !String(raw).trim()) throw new Error('请输入数字');
+      setDraft(path, parseEditedValue(kind, raw));
+      delete fieldErrors[key];
+    } catch (error) {
+      fieldErrors[key] = errorText(error);
+    }
+  }
+
+  // 字段：标签 + 按类型的控件（开关 / 数字 / 短文本 / 长文本）；改过的标琥珀色并给原值与撤销
+  function renderField(entry, editable) {
+    const { key: name, value, path } = entry;
+    const key = pathKey(path);
+    const original = editable ? getAtPath(state.snapshot?.stat_data, path) : value;
+    const changed = editable && canonicalJson(original) !== canonicalJson(value);
+    const kind = valueKind(value);
+    const long = kind === 'string' && (value.length > 42 || value.includes('\n'));
+    let control;
+    if (!editable) {
+      control = h('div', { class: ['lwcs-tvm-read', 'is-' + kind], title: compactValue(value) }, compactValue(value));
+    } else if (kind === 'boolean') {
+      control = h('button', { type: 'button', role: 'switch', class: 'lwcs-tvm-switch', 'aria-checked': String(value), 'aria-label': name, onClick: () => setDraft(path, !value) },
+        [h('span', { class: 'lwcs-tvm-knob' }), h('b', null, value ? '开启' : '关闭')]);
+    } else if (kind === 'null') {
+      control = h('button', { type: 'button', class: 'lwcs-tvm-null', title: '空值：点开按类型填写', onClick: () => openDetail(path, value) }, '空值');
+    } else if (long) {
+      control = h('textarea', { class: 'lwcs-tvm-input', rows: Math.min(6, Math.max(2, Math.ceil(value.length / 46) + (value.match(/\n/g) || []).length)), value, spellcheck: 'false', 'aria-label': name,
+        onChange: event => commitField(path, 'string', event.target.value) });
+    } else {
+      control = h('input', { class: ['lwcs-tvm-input', kind === 'number' ? 'is-number' : ''], type: kind === 'number' ? 'number' : 'text', step: 'any', value: String(value), 'aria-label': name,
+        onChange: event => commitField(path, kind, event.target.value),
+        onKeydown: event => { if (event.key === 'Enter') event.target.blur(); } });
+    }
+    return h('div', { key, class: ['lwcs-tvm-field', long || (!editable && kind === 'string' && value.length > 42) ? 'is-wide' : '', changed ? 'is-changed' : '',
+      state.verifiedPaths.has(key) ? 'is-verified' : '', state.focusPathKey === key || state.floorFocusPathKey === key ? 'is-focus' : ''], 'data-path-key': key }, [
+      h('div', { class: 'lwcs-tvm-field-head' }, [
+        h('span', { class: 'lwcs-tvm-field-name', title: name }, name),
+        editable && changed && original !== undefined ? h('button', { type: 'button', class: 'lwcs-tvm-mini', title: '撤销这一项', 'aria-label': '撤销 ' + name, onClick: () => { delete fieldErrors[key]; setDraft(path, cloneJson(original)); } }, icon('rotate-left')) : null,
+        editable ? h('button', { type: 'button', class: 'lwcs-tvm-mini', title: '按类型或 JSON 编辑', 'aria-label': '详细编辑 ' + name, onClick: () => openDetail(path, value) }, icon('ellipsis')) : null,
+      ]),
+      control,
+      changed ? h('div', { class: 'lwcs-tvm-was', title: compactValue(original) }, original === undefined ? '新增' : '原值 ' + compactValue(original)) : null,
+      fieldErrors[key] ? h('div', { class: 'lwcs-tvm-field-error', role: 'alert' }, fieldErrors[key]) : null,
+    ]);
+  }
+
+  function renderTile(entry, navigate, editable) {
+    const count = Object.keys(entry.value).length;
+    const preview = previewOf(entry.value);
+    return h('button', { key: pathKey(entry.path), type: 'button', class: ['lwcs-tvm-tile', editable && containerChanged(entry.path) ? 'is-changed' : ''], 'data-path-key': pathKey(entry.path), onClick: () => navigate(entry.path) }, [
+      h('span', { class: 'lwcs-tvm-sock' }, icon(Array.isArray(entry.value) ? 'list-ul' : 'folder')),
+      h('span', { class: 'lwcs-tvm-tile-body' }, [h('strong', { title: entry.key }, entry.key), h('small', { title: preview }, preview || (count ? (Array.isArray(entry.value) ? '列表' : '分组') : '空'))]),
+      h('span', { class: 'lwcs-tvm-count' }, String(count)),
+      icon('chevron-right', 'lwcs-tvm-go'),
+    ]);
+  }
+
+  function renderCrumbs(path, navigate, rootLabel) {
+    const crumbs = [{ label: rootLabel, path: [] }, ...path.map((part, index) => ({ label: String(part), path: path.slice(0, index + 1) }))];
+    return h('nav', { class: 'lwcs-tvm-crumbs', 'aria-label': '当前位置' }, crumbs.map((crumb, index) => h('button', {
+      type: 'button', class: index === crumbs.length - 1 ? 'is-current' : '', 'aria-current': index === crumbs.length - 1 ? 'location' : undefined, onClick: () => navigate(crumb.path),
+    }, crumb.label)));
+  }
+
+  // 属性表：一个分组的内容 = 字段区 + 子分组卡片区
+  const Sheet = defineComponent({
+    name: 'LwcsTvmSheet',
+    props: { root: { default: undefined }, path: { type: Array, required: true }, editable: { type: Boolean, default: false }, navigate: { type: Function, required: true } },
     setup(props) {
+      const limit = Vue.ref(SHEET_PAGE);
+      watch(() => pathKey(props.path), () => { limit.value = SHEET_PAGE; });
       return () => {
-        const row = props.row;
-        const draft = row.draft;
-        const value = row.displayValue;
-        const editing = !props.readonly && state.editingPathKey === row.key;
-        let valueNode;
-        if (editing) {
-          const input = state.editingType === 'boolean'
-            ? h('select', { class: 'lwcs-tvm-inline-input', value: state.editingText, onChange: event => { state.editingText = event.target.value; }, onKeydown: event => {
-              if (event.key === 'Enter') commitInlineEdit(row.path);
-              if (event.key === 'Escape') cancelInlineEdit();
-            } }, [h('option', { value: 'true' }, '开启'), h('option', { value: 'false' }, '关闭')])
-            : h('input', { class: 'lwcs-tvm-inline-input', type: state.editingType === 'number' ? 'number' : 'text', value: state.editingText,
-              onInput: event => { state.editingText = event.target.value; }, onKeydown: event => {
-                if (event.key === 'Enter') commitInlineEdit(row.path);
-                if (event.key === 'Escape') cancelInlineEdit();
-              } });
-          valueNode = h('div', { class: 'lwcs-tvm-inline-editor' }, [
-            input,
-            h('button', { type: 'button', onClick: () => commitInlineEdit(row.path) }, '确认'),
-            h('button', { type: 'button', onClick: cancelInlineEdit }, '取消'),
-          ]);
-        } else if (draft) {
-          valueNode = h('div', { class: 'lwcs-tvm-diff' }, [
-            h('span', { class: 'lwcs-tvm-old' }, compactValue(draft.original)),
-            h('span', { class: 'lwcs-tvm-arrow', 'aria-hidden': 'true' }, '→'),
-            h('span', { class: 'lwcs-tvm-new' }, compactValue(draft.nextValue)),
-          ]);
-        } else {
-          valueNode = h('span', { class: 'lwcs-tvm-cell-value', title: compactValue(value) }, compactValue(value));
-        }
-        const actions = [
-          h('button', { type: 'button', class: 'lwcs-tvm-row-action', onClick: () => hostWindow.navigator?.clipboard?.writeText(pathLabel(row.path)) }, '复制'),
-        ];
-        if (!props.readonly) actions.push(h('button', { type: 'button', class: 'lwcs-tvm-row-action', onClick: () => openDetail(row.path, value) }, '详情'));
-        if (!props.readonly && draft) actions.push(h('button', { type: 'button', class: 'lwcs-tvm-row-action lwcs-tvm-undo', onClick: () => discardPath(row.path) }, '撤销'));
-        return h('div', {
-          class: ['lwcs-tvm-row', props.readonly ? 'is-readonly' : '', draft ? 'is-draft' : '', !props.readonly && state.verifiedPaths.has(row.key) ? 'is-verified' : ''],
-          role: 'treeitem', tabindex: props.readonly
-            ? (state.floorFocusPathKey === row.key || (state.floorFocusPathKey === '$' && props.index === 0) ? 0 : -1)
-            : state.focusPathKey === row.key || (state.focusPathKey === '$' && props.index === 0) ? 0 : -1,
-          'aria-level': row.depth + 1, 'aria-expanded': row.container ? String(row.expanded) : undefined,
-          'aria-posinset': props.index + 1, 'data-path-key': row.key, style: { '--lwcs-tvm-depth': String(row.depth) },
-          onFocus: () => {
-            if (props.readonly) state.floorFocusPathKey = row.key;
-            else state.focusPathKey = row.key;
-          },
-          onKeydown: event => {
-            if (props.readonly) {
-              handleFloorRowKeydown(event, row, props.index);
-              return;
-            }
-            handleRowKeydown(event, row, props.index);
-          },
-          onDblclick: () => { if (!props.readonly) beginInlineEdit(row.path, value); },
-        }, [
-          h('div', { class: 'lwcs-tvm-cell-key' }, [
-            row.container ? h('button', { type: 'button', class: 'lwcs-tvm-disclosure',
-              'aria-label': props.readonly
-                ? (row.expanded ? '折叠 ' : '展开 ') + row.name
-                : isMobile.value ? '进入 ' + row.name : (row.expanded ? '折叠 ' : '展开 ') + row.name,
-              onClick: () => {
-                if (props.readonly) {
-                  state.floorFocusPathKey = row.key;
-                  toggleFloorExpanded(row);
-                }
-                else if (isMobile.value) state.currentPath = [...row.path];
-                else toggleExpanded(row);
-              } }, props.readonly ? (row.expanded ? '−' : '+') : isMobile.value ? '›' : row.expanded ? '−' : '+') : h('span', { class: 'lwcs-tvm-scalar-space' }),
-            h('span', { class: 'lwcs-tvm-key-text', title: row.name }, row.name),
-          ]),
-          props.searchMode ? (props.readonly
-            ? h('span', { class: 'lwcs-tvm-breadcrumb-value' }, pathLabel(row.path))
-            : h('button', { type: 'button', class: 'lwcs-tvm-breadcrumb-value', onClick: () => locateRow(row.path) }, pathLabel(row.path)))
-            : h('span', { class: 'lwcs-tvm-type' }, typeTag(value)),
-          h('div', { class: 'lwcs-tvm-value-wrap', onClick: () => {
-            if (props.readonly || !isMobile.value) return;
-            if (row.container) state.currentPath = [...row.path];
-            else openDetail(row.path, value);
-          } }, valueNode),
-          h('div', { class: 'lwcs-tvm-row-actions' }, actions),
+        const node = getAtPath(props.root, props.path);
+        if (!isContainer(node)) return h('div', { class: 'lwcs-tvm-empty' }, '这里没有内容。');
+        if (privateHidden(props.root, props.path)) return h('div', { class: 'lwcs-tvm-empty' }, '这里没有内容。');
+        const entries = childEntries(node, props.path, props.root);
+        const fields = entries.filter(entry => !isContainer(entry.value));
+        const groups = entries.filter(entry => isContainer(entry.value));
+        const more = Math.max(0, fields.length - limit.value) + Math.max(0, groups.length - limit.value);
+        return h('div', { class: 'lwcs-tvm-sheet' }, [
+          fields.length ? h('section', { class: 'lwcs-tvm-sec' }, [
+            h('h3', { class: 'lwcs-tvm-sec-title' }, [icon('pen-to-square'), '字段', h('em', null, String(fields.length))]),
+            h('div', { class: 'lwcs-tvm-fields' }, fields.slice(0, limit.value).map(entry => renderField(entry, props.editable))),
+          ]) : null,
+          groups.length ? h('section', { class: 'lwcs-tvm-sec' }, [
+            h('h3', { class: 'lwcs-tvm-sec-title' }, [icon('folder-tree'), Array.isArray(node) ? '条目' : '分组', h('em', null, String(groups.length))]),
+            h('div', { class: 'lwcs-tvm-tiles' }, groups.slice(0, limit.value).map(entry => renderTile(entry, props.navigate, props.editable))),
+          ]) : null,
+          more ? h('button', { type: 'button', class: 'lwcs-tvm-more', onClick: () => { limit.value += SHEET_PAGE; } }, '显示更多（还有 ' + more + ' 项）') : null,
+          entries.length ? null : h('div', { class: 'lwcs-tvm-empty' }, Array.isArray(node) ? '空列表' : '空分组'),
         ]);
       };
     },
   });
 
+  // 属性表上方：返回上一级 + 路径 + 标题（顶层分组带中文副标题）+ 操作
+  function renderPaneHead(path, node, navigate, rootLabel, actions = []) {
+    const title = path.length ? String(path[path.length - 1]) : rootLabel;
+    const caption = path.length === 1 ? ROOT_CAPTION[path[0]] : '';
+    return h('div', { class: 'lwcs-tvm-pane-head' }, [
+      h('div', { class: 'lwcs-tvm-pane-row' }, [
+        path.length ? h('button', { type: 'button', class: 'lwcs-tvm-up', title: '上一级', 'aria-label': '返回上一级', onClick: () => navigate(path.slice(0, -1)) }, icon('arrow-turn-up')) : null,
+        renderCrumbs(path, navigate, rootLabel),
+      ]),
+      h('div', { class: 'lwcs-tvm-pane-row' }, [
+        h('h2', { class: 'lwcs-tvm-pane-title', title }, [title, caption ? h('small', null, caption) : null]),
+        isContainer(node) ? h('span', { class: 'lwcs-tvm-chip' }, (Array.isArray(node) ? '列表 · ' : '分组 · ') + Object.keys(node).length + ' 项') : null,
+        h('div', { class: 'lwcs-tvm-pane-actions' }, actions),
+      ]),
+    ]);
+  }
+
+  function renderSearchResults(results, onPick, emptyText, root) {
+    results = results.filter(row => !privateHidden(root, row.path));
+    if (!results.length) return h('div', { class: 'lwcs-tvm-empty' }, emptyText);
+    return h('div', { class: 'lwcs-tvm-results', role: 'list' }, results.map(row => h('button', {
+      key: row.key, type: 'button', role: 'listitem', class: 'lwcs-tvm-result', onClick: () => onPick(row),
+    }, [
+      h('span', { class: 'lwcs-tvm-sock' }, icon(row.container ? (Array.isArray(row.value) ? 'list-ul' : 'folder') : 'pen-to-square')),
+      h('span', { class: 'lwcs-tvm-result-body' }, [
+        h('strong', null, row.name),
+        h('small', { title: pathLabel(row.path) }, row.path.slice(0, -1).join(' › ') || '顶层'),
+      ]),
+      h('span', { class: 'lwcs-tvm-result-value', title: compactValue(row.displayValue) }, compactValue(row.displayValue)),
+    ])));
+  }
+
+  function renderMessages(list) {
+    const shown = list.filter(Boolean);
+    return shown.length ? h('div', { class: 'lwcs-tvm-messages' }, shown.map(([text, kind]) => h('p', { class: ['lwcs-tvm-message', kind === 'error' ? 'is-error' : ''], role: kind === 'error' ? 'alert' : 'status' }, text))) : null;
+  }
+
+  // 变量页左栏目录：只列分组，按 state.expanded 展开；当前所在路径高亮
+  const Navigator = defineComponent({
+    name: 'LwcsTvmNavigator',
+    setup() {
+      return () => {
+        const rows = [];
+        const walk = (container, path, depth) => {
+          for (const entry of childEntries(container, path, effectiveStatData.value, true)) {
+            if (!isContainer(entry.value) || rows.length >= 800) continue;
+            const key = pathKey(entry.path);
+            const nested = Object.values(entry.value).some(isContainer);
+            const open = nested && state.expanded.has(key);
+            rows.push({ ...entry, keyId: key, depth, nested, open });
+            if (open) walk(entry.value, entry.path, depth + 1);
+          }
+        };
+        if (state.snapshot) walk(effectiveStatData.value, [], 0);
+        const currentKey = pathKey(state.currentPath);
+        return h('nav', { class: 'lwcs-tvm-tree', 'aria-label': '变量目录' }, [
+          h('button', { type: 'button', class: ['lwcs-tvm-tree-row', 'is-root', state.currentPath.length ? '' : 'is-current'], onClick: () => navigateMvu([]) }, [icon('database'), h('span', null, '全部变量')]),
+          ...rows.map(row => h('div', { key: row.keyId, class: ['lwcs-tvm-tree-row', row.keyId === currentKey ? 'is-current' : '', samePrefix(row.path, state.currentPath) && row.keyId !== currentKey ? 'is-trail' : '', containerChanged(row.path) ? 'is-changed' : ''], style: { '--lwcs-tvm-depth': String(row.depth) } }, [
+            row.nested ? h('button', { type: 'button', class: 'lwcs-tvm-twist', 'aria-label': (row.open ? '收起 ' : '展开 ') + row.key, 'aria-expanded': String(row.open), onClick: () => {
+              const next = new Set(state.expanded);
+              if (row.open) next.delete(row.keyId); else next.add(row.keyId);
+              state.expanded = next;
+            } }, icon(row.open ? 'caret-down' : 'caret-right')) : h('span', { class: 'lwcs-tvm-twist' }),
+            h('button', { type: 'button', class: 'lwcs-tvm-tree-name', title: pathLabel(row.path), onClick: () => navigateMvu(row.path) }, [
+              h('span', null, row.key), row.depth === 0 && ROOT_CAPTION[row.key] ? h('small', null, ROOT_CAPTION[row.key]) : null,
+            ]),
+            h('span', { class: 'lwcs-tvm-count' }, String(Object.keys(row.value).length)),
+          ])),
+        ]);
+      };
+    },
+  });
+
+  function detailSheet() {
+    if (!state.detailOpen) return null;
+    const original = getAtPath(state.snapshot?.stat_data, state.detailPath);
+    return h('div', { class: 'lwcs-tvm-sheet-backdrop', onMousedown: event => { if (event.target === event.currentTarget) closeDetail(); } }, [
+      h('section', { class: 'lwcs-tvm-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'lwcs-tvm-detail-title' }, [
+        h('header', { class: 'lwcs-tvm-dialog-head' }, [
+          h('div', null, [
+            h('h3', { id: 'lwcs-tvm-detail-title' }, state.detailPath.length ? String(state.detailPath.at(-1)) : '全部变量'),
+            h('p', { title: pathLabel(state.detailPath) }, pathLabel(state.detailPath)),
+          ]),
+          h('button', { type: 'button', class: 'lwcs-tvm-icon', 'aria-label': '关闭详细编辑', onClick: closeDetail }, icon('xmark')),
+        ]),
+        h('div', { class: 'lwcs-tvm-dialog-body' }, [
+          h('div', { class: 'lwcs-tvm-kinds', role: 'radiogroup', 'aria-label': '值类型' }, [
+            ['string', '文本'], ['number', '数字'], ['boolean', '开关'], ['null', '空值'], ['object', '分组'], ['array', '列表'],
+          ].map(([kind, label]) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(state.detailType === kind), class: state.detailType === kind ? 'is-on' : '', onClick: () => {
+            state.detailType = kind;
+            if (kind === 'boolean') state.detailText = ['true', 'false'].includes(state.detailText) ? state.detailText : 'false';
+            if (kind === 'null') state.detailText = 'null';
+          } }, label))),
+          state.detailType === 'boolean'
+            ? h('button', { type: 'button', role: 'switch', class: 'lwcs-tvm-switch is-large', 'aria-checked': String(state.detailText === 'true'), onClick: () => { state.detailText = state.detailText === 'true' ? 'false' : 'true'; } },
+              [h('span', { class: 'lwcs-tvm-knob' }), h('b', null, state.detailText === 'true' ? '开启' : '关闭')])
+            : state.detailType === 'null'
+              ? h('div', { class: 'lwcs-tvm-empty' }, '空值')
+              : h('textarea', { class: 'lwcs-tvm-detail-input', rows: 12, value: state.detailText, spellcheck: 'false', 'aria-label': '编辑值', onInput: event => { state.detailText = event.target.value; } }),
+          h('details', { class: 'lwcs-tvm-original' }, [h('summary', null, '保存前的值'), h('pre', null, isContainer(original) ? JSON.stringify(original, null, 2) : compactValue(original))]),
+          state.detailError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.detailError) : null,
+        ]),
+        h('footer', { class: 'lwcs-tvm-dialog-foot' }, [
+          h('button', { type: 'button', class: 'lwcs-tvm-btn', onClick: () => {
+            state.detailType = valueKind(original);
+            state.detailText = isContainer(original) ? JSON.stringify(original, null, 2) : original === null ? 'null' : String(original);
+          } }, [icon('rotate-left'), '恢复原值']),
+          h('button', { type: 'button', class: 'lwcs-tvm-btn', onClick: closeDetail }, '取消'),
+          h('button', { type: 'button', class: 'lwcs-tvm-btn is-primary', onClick: commitDetail }, [icon('check'), '加入待保存']),
+        ]),
+      ]),
+    ]);
+  }
+
   const MvuPage = defineComponent({
     name: 'LwcsTvmMvuPage',
     setup() {
-      const rows = computed(() => state.searchQuery ? state.searchResults : isMobile.value ? mobileRows.value : visibleRows.value);
-      const virtual = computed(() => !isMobile.value && !state.searchQuery && rows.value.length > 400);
-      const start = computed(() => virtual.value ? Math.max(0, Math.floor(state.scrollTop / 32) - 10) : 0);
-      const end = computed(() => virtual.value ? Math.min(rows.value.length, start.value + Math.ceil(state.viewportHeight / 32) + 20) : rows.value.length);
-      function detailSheet() {
-        if (!state.detailOpen) return null;
-        const original = getAtPath(state.snapshot?.stat_data, state.detailPath);
-        return h('div', { class: 'lwcs-tvm-sheet-backdrop', onMousedown: event => { if (event.target === event.currentTarget) closeDetail(); } }, [
-          h('section', { class: 'lwcs-tvm-detail-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'lwcs-tvm-detail-title' }, [
-            h('header', null, [h('div', null, [
-              h('span', { class: 'lwcs-tvm-kicker' }, typeTag(getAtPath(effectiveStatData.value, state.detailPath))),
-              h('h3', { id: 'lwcs-tvm-detail-title' }, state.detailPath.length ? String(state.detailPath.at(-1)) : '全部变量'),
-              h('p', null, pathLabel(state.detailPath)),
-            ]), h('button', { type: 'button', class: 'lwcs-tvm-icon-button', 'aria-label': '关闭详情', onClick: closeDetail }, '×')]),
-            h('div', { class: 'lwcs-tvm-detail-body' }, [
-              h('select', { value: state.detailType, 'aria-label': '值类型', onChange: event => {
-                state.detailType = event.target.value;
-                if (event.target.value === 'boolean') state.detailText = ['true', 'false'].includes(state.detailText) ? state.detailText : 'false';
-                if (event.target.value === 'null') state.detailText = 'null';
-              } }, [
-                ['string', '文本'], ['number', '数字'], ['boolean', '开关'], ['null', '空值'], ['object', '分组'], ['array', '列表'],
-              ].map(([kind, label]) => h('option', { value: kind }, label))),
-              state.detailType === 'boolean'
-                ? h('button', { type: 'button', class: 'lwcs-tvm-boolean-toggle', onClick: () => { state.detailText = state.detailText === 'true' ? 'false' : 'true'; } }, (state.detailText === 'true' ? '开启' : '关闭') + ' · 点击切换')
-                : state.detailType === 'null'
-                  ? h('div', { class: 'lwcs-tvm-state' }, '空值')
-                : h('textarea', { class: 'lwcs-tvm-detail-input', rows: 12, value: state.detailText, spellcheck: 'false', 'aria-label': '编辑值',
-                  onInput: event => { state.detailText = event.target.value; } }),
-              h('div', { class: 'lwcs-tvm-original-block' }, [h('span', null, '保存前的值'), h('pre', null, isContainer(original) ? JSON.stringify(original, null, 2) : compactValue(original))]),
-              state.detailError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.detailError) : null,
-            ]),
-            h('footer', null, [
-              h('button', { type: 'button', onClick: () => {
-                state.detailType = valueKind(original);
-                state.detailText = isContainer(original) ? JSON.stringify(original, null, 2) : original === null ? 'null' : String(original);
-              } }, '恢复原值'),
-              h('button', { type: 'button', onClick: closeDetail }, '取消'),
-              h('button', { type: 'button', class: 'lwcs-tvm-primary', onClick: commitDetail }, '加入待保存'),
-            ]),
-          ]),
-        ]);
-      }
       return () => {
-        const shown = rows.value.slice(start.value, end.value);
-        const crumbs = [{ label: '变量', path: [] }, ...state.currentPath.map((part, index) => ({ label: String(part), path: state.currentPath.slice(0, index + 1) }))];
-        return h('section', { class: 'lwcs-tvm-mvu-page' }, [
-          h('div', { class: 'lwcs-tvm-context-bar' }, [
-            h('div', { class: 'lwcs-tvm-context' }, [
-              h('strong', null, '当前聊天 · 变量'),
-              h('span', { class: 'lwcs-tvm-badge', 'data-state': state.saveState }, saveStatusText.value),
-            ]),
-            h('label', { class: 'lwcs-tvm-search' }, [h('span', { class: 'lwcs-tvm-sr-only' }, '搜索变量'), h('input', {
-              type: 'search', value: state.searchInput, placeholder: '搜索名称或内容  Ctrl+P',
+        const data = effectiveStatData.value;
+        const node = getAtPath(data, state.currentPath);
+        const searching = !!state.searchQuery;
+        return h('section', { class: 'lwcs-tvm-mvu' }, [
+          h('div', { class: 'lwcs-tvm-toolbar' }, [
+            h('label', { class: 'lwcs-tvm-search' }, [icon('magnifying-glass'), h('span', { class: 'lwcs-tvm-sr-only' }, '搜索变量'), h('input', {
+              type: 'search', value: state.searchInput, placeholder: '搜索名称或内容', title: 'Ctrl+P',
               onInput: event => { state.searchInput = event.target.value; scheduleSearch(); },
             })]),
-            h('div', { class: 'lwcs-tvm-tree-tools' }, [
-              !isMobile.value ? h('button', { type: 'button', onClick: () => {
-                const next = new Set(state.expanded);
-                visibleRows.value.filter(row => row.container && row.depth < 1).forEach(row => next.add(row.key));
-                state.expanded = next;
-              } }, '展开一级') : null,
-              h('button', { type: 'button', onClick: () => { state.expanded = new Set(['$']); } }, '全部折叠'),
-              h('button', { type: 'button', onClick: () => openDetail([], effectiveStatData.value) }, '查看全部'),
-              h('button', { type: 'button', disabled: state.mvuLoading || state.mvuSaving, onClick: () => refreshMvu() }, '重新读取'),
+            h('button', { type: 'button', class: 'lwcs-tvm-btn', disabled: state.mvuLoading || state.mvuSaving, title: '重新读取当前聊天的变量（有未保存修改时不会覆盖）', onClick: () => refreshMvu() }, [icon('arrows-rotate'), isMobile.value ? null : '重新读取']),
+          ]),
+          renderMessages([
+            state.editingError && [state.editingError, 'error'],
+            state.mvuError && [state.saveState === 'conflict' ? '检测到其他更新，当前修改尚未保存。请保留修改并重试。' : '操作没有完成：' + state.mvuError, 'error'],
+            state.mvuNotice && [state.mvuNotice],
+            state.searchBusy && ['正在检索…'],
+            state.searchCapped && ['仅显示前 150 条匹配结果。'],
+          ]),
+          h('div', { class: 'lwcs-tvm-split' }, [
+            isMobile.value ? null : h('aside', { class: 'lwcs-tvm-aside' }, [h(Navigator)]),
+            h('main', { class: 'lwcs-tvm-pane' }, searching
+              ? [h('div', { class: 'lwcs-tvm-pane-head' }, [h('div', { class: 'lwcs-tvm-pane-row' }, [h('h2', { class: 'lwcs-tvm-pane-title' }, ['搜索结果', h('small', null, state.searchInput.trim())]), h('span', { class: 'lwcs-tvm-chip' }, state.searchResults.length + ' 项')])]),
+                h('div', { class: 'lwcs-tvm-scroll' }, [renderSearchResults(state.searchResults, row => {
+                  state.searchInput = ''; state.searchQuery = ''; state.searchResults = [];
+                  if (row.container) navigateMvu(row.path); else navigateMvu(row.path.slice(0, -1), row.key);
+                }, state.searchBusy ? '' : '没有找到匹配的变量。', data)])]
+              : !state.snapshot
+                ? [h('div', { class: 'lwcs-tvm-empty is-big' }, state.mvuLoading ? '正在读取变量…' : [h('p', null, '当前聊天暂时没有可显示的变量。'), h('button', { type: 'button', class: 'lwcs-tvm-btn', onClick: () => refreshMvu() }, [icon('arrows-rotate'), '重新读取'])])]
+                : [
+                  renderPaneHead(state.currentPath, node, path => navigateMvu(path), '全部变量', [
+                    h('button', { type: 'button', class: 'lwcs-tvm-btn', title: '把这个分组按 JSON 整体编辑', onClick: () => openDetail(state.currentPath, node) }, [icon('code'), isMobile.value ? null : 'JSON']),
+                    h('button', { type: 'button', class: 'lwcs-tvm-btn', title: '复制路径：' + pathLabel(state.currentPath), onClick: () => hostWindow.navigator?.clipboard?.writeText(pathLabel(state.currentPath)) }, [icon('copy'), isMobile.value ? null : '复制路径']),
+                  ]),
+                  h('div', { class: 'lwcs-tvm-scroll' }, [h(Sheet, { root: data, path: state.currentPath, editable: true, navigate: path => navigateMvu(path) })]),
+                ]),
+          ]),
+          state.draftsOpen && isDirty.value ? h('div', { class: 'lwcs-tvm-drafts', role: 'list', 'aria-label': '待保存的修改' }, draftList.value.map(entry => h('div', { key: pathKey(entry.path), class: 'lwcs-tvm-draft', role: 'listitem' }, [
+            h('button', { type: 'button', class: 'lwcs-tvm-draft-path', title: '定位到这一项', onClick: () => navigateMvu(isContainer(entry.nextValue) ? entry.path : entry.path.slice(0, -1), isContainer(entry.nextValue) ? '' : pathKey(entry.path)) }, entry.path.join(' › ')),
+            h('span', { class: 'lwcs-tvm-draft-old', title: compactValue(entry.original) }, compactValue(entry.original)),
+            icon('arrow-right', 'lwcs-tvm-draft-arrow'),
+            h('span', { class: 'lwcs-tvm-draft-new', title: compactValue(entry.nextValue) }, compactValue(entry.nextValue)),
+            h('button', { type: 'button', class: 'lwcs-tvm-mini', title: '撤销这一项', 'aria-label': '撤销 ' + entry.path.join(' › '), onClick: () => discardPath(entry.path) }, icon('rotate-left')),
+          ]))) : null,
+          h('footer', { class: 'lwcs-tvm-savebar' }, [
+            h('button', { type: 'button', class: ['lwcs-tvm-save-state', isDirty.value ? 'is-dirty' : ''], 'data-state': state.saveState, disabled: !isDirty.value, 'aria-expanded': String(!!state.draftsOpen && isDirty.value),
+              title: isDirty.value ? '展开 / 收起待保存清单' : '只保存改动的部分，保存后会重新读回确认', onClick: () => { state.draftsOpen = !state.draftsOpen; } }, [
+              icon(isDirty.value ? 'pen-ruler' : state.saveState === 'verified' ? 'circle-check' : 'floppy-disk'),
+              h('span', null, saveStatusText.value),
+              isDirty.value ? icon(state.draftsOpen ? 'chevron-down' : 'chevron-up') : null,
             ]),
-          ]),
-          h('div', { class: 'lwcs-tvm-status-stack' }, [
-            isMobile.value && !state.searchQuery ? h('nav', { class: 'lwcs-tvm-mobile-crumbs', 'aria-label': '当前位置' }, crumbs.map((crumb, index) => h('button', {
-              type: 'button', class: index === crumbs.length - 1 ? 'is-current' : '', onClick: () => { state.currentPath = [...crumb.path]; },
-            }, crumb.label))) : null,
-            state.editingError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.editingError) : null,
-            state.mvuError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, state.saveState === 'conflict'
-                ? '检测到其他更新，当前修改尚未保存。请保留修改并重试。'
-                : '操作没有完成。请重试；如需重新读取，请先保存或丢弃当前修改。') : null,
-            state.mvuNotice ? h('p', { class: 'lwcs-tvm-message', role: 'status' }, state.mvuNotice) : null,
-            state.searchBusy ? h('p', { class: 'lwcs-tvm-message', role: 'status' }, '正在检索…') : null,
-            state.searchCapped ? h('p', { class: 'lwcs-tvm-message' }, '仅显示前 150 条匹配结果。') : null,
-          ]),
-          h('div', { class: 'lwcs-tvm-grid-head' }, [h('span', null, '名称'), h('span', null, '类型'), h('span', null, '当前值与修改'), h('span', null, '操作')]),
-          h('div', { class: 'lwcs-tvm-tree-viewport', role: 'tree', 'aria-label': '当前聊天变量', 'aria-rowcount': rows.value.length,
-            onScroll: event => { state.scrollTop = event.currentTarget.scrollTop; state.viewportHeight = event.currentTarget.clientHeight; } }, [
-            start.value ? h('div', { style: { height: start.value * 32 + 'px' } }) : null,
-            ...shown.map((row, index) => h(DataRow, { key: row.key, row, index: start.value + index, searchMode: !!state.searchQuery })),
-            virtual.value && end.value < rows.value.length ? h('div', { style: { height: (rows.value.length - end.value) * 32 + 'px' } }) : null,
-            !state.mvuLoading && !rows.value.length ? h('div', { class: 'lwcs-tvm-empty' }, state.searchQuery
-              ? '没有找到匹配的变量。'
-              : [h('p', null, '当前聊天暂时没有可显示的变量。'), h('button', { type: 'button', onClick: () => refreshMvu() }, '重新读取')]) : null,
-          ]),
-          h('footer', { class: 'lwcs-tvm-draft-bar' }, [
-            h('div', null, [h('strong', null, saveStatusText.value),
-              h('span', null, state.saveState === 'conflict' ? '检测到其他更新，当前修改仍保留。' : '只保存当前修改；完成后会重新确认结果。')]),
-            h('button', { type: 'button', disabled: !isDirty.value || state.mvuSaving, onClick: confirmDiscardDraft }, '丢弃全部'),
-            h('button', { type: 'button', class: 'lwcs-tvm-primary lwcs-tvm-save', disabled: !isDirty.value || state.mvuSaving || state.mvuLoading, onClick: saveMvu },
-              state.mvuSaving ? '正在保存…' : '保存修改'),
+            h('button', { type: 'button', class: 'lwcs-tvm-btn is-ghost', disabled: !isDirty.value || state.mvuSaving, onClick: confirmDiscardDraft }, '丢弃全部'),
+            h('button', { type: 'button', class: 'lwcs-tvm-btn is-primary lwcs-tvm-save', disabled: !isDirty.value || state.mvuSaving || state.mvuLoading, title: 'Ctrl+S', onClick: saveMvu },
+              [icon('floppy-disk'), state.mvuSaving ? '正在保存…' : '保存修改']),
           ]),
           detailSheet(),
         ]);
       };
     },
   });
+
   const FloorPage = defineComponent({
     name: 'LwcsTvmFloorPage',
     setup() {
+      // 楼层列表行高固定 56px（syncFloorListScroll 按此换算），超长聊天只渲染可视区
       const listStart = computed(() => Math.max(0, Math.floor(state.floorListScrollTop / 56) - 6));
       const listEnd = computed(() => Math.min(state.floorMessages.length, listStart.value + Math.ceil(state.floorListHeight / 56) + 12));
-      const treeVirtual = computed(() => floorRows.value.length > 400);
-      const treeStart = computed(() => treeVirtual.value ? Math.max(0, Math.floor(state.floorTreeScrollTop / floorRowHeight.value) - 10) : 0);
-      const treeEnd = computed(() => treeVirtual.value
-        ? Math.min(floorRows.value.length, treeStart.value + Math.ceil(state.floorTreeHeight / floorRowHeight.value) + 20)
-        : floorRows.value.length);
+      const navigate = path => { state.floorPath = [...path]; state.floorFocusPathKey = '$'; };
 
       function renderList() {
         const shown = state.floorMessages.slice(listStart.value, listEnd.value);
-        return h('div', {
-          class: 'lwcs-tvm-floor-list',
-          'aria-label': '聊天楼层',
-          onScroll: event => {
-            state.floorListScrollTop = event.currentTarget.scrollTop;
-            state.floorListHeight = event.currentTarget.clientHeight;
-          },
-        }, [
+        return h('div', { class: 'lwcs-tvm-floor-list', 'aria-label': '聊天楼层', onScroll: event => {
+          state.floorListScrollTop = event.currentTarget.scrollTop;
+          state.floorListHeight = event.currentTarget.clientHeight;
+        } }, [
           listStart.value ? h('div', { style: { height: listStart.value * 56 + 'px' }, 'aria-hidden': 'true' }) : null,
           ...shown.map(item => h('button', {
-            type: 'button',
-            class: ['lwcs-tvm-floor-item', state.floorSelectedIndex === item.absoluteIndex ? 'is-selected' : ''],
-            'aria-current': state.floorSelectedIndex === item.absoluteIndex ? 'true' : undefined,
-            onClick: () => selectFloor(item.absoluteIndex),
+            key: item.absoluteIndex, type: 'button', class: ['lwcs-tvm-floor', 'is-' + (item.role === '玩家' ? 'user' : item.role === '系统' ? 'system' : 'char'), state.floorSelectedIndex === item.absoluteIndex ? 'is-on' : ''],
+            'aria-current': state.floorSelectedIndex === item.absoluteIndex ? 'true' : undefined, title: item.summary, onClick: () => selectFloor(item.absoluteIndex),
           }, [
-            h('span', { class: 'lwcs-tvm-floor-number' }, '第 ' + item.absoluteIndex + ' 楼'),
+            h('span', { class: 'lwcs-tvm-floor-no' }, '#' + item.absoluteIndex),
             h('span', { class: 'lwcs-tvm-floor-role' }, item.role),
-            h('span', { class: 'lwcs-tvm-floor-summary' }, item.summary),
+            h('span', { class: 'lwcs-tvm-floor-text' }, item.summary),
           ])),
-          listEnd.value < state.floorMessages.length
-            ? h('div', { style: { height: (state.floorMessages.length - listEnd.value) * 56 + 'px' }, 'aria-hidden': 'true' })
-            : null,
-          !state.floorListLoading && !state.floorMessages.length ? h('div', { class: 'lwcs-tvm-empty' }, '当前聊天暂时没有可显示的楼层记录。') : null,
+          listEnd.value < state.floorMessages.length ? h('div', { style: { height: (state.floorMessages.length - listEnd.value) * 56 + 'px' }, 'aria-hidden': 'true' }) : null,
+          !state.floorListLoading && !state.floorMessages.length ? h('div', { class: 'lwcs-tvm-empty' }, '当前聊天暂时没有楼层。') : null,
         ]);
       }
 
       function renderDetail() {
-        if (state.floorDetailLoading) return h('div', { class: 'lwcs-tvm-state', role: 'status' }, '正在读取该楼变量…');
-        if (!state.floorDetail) return h('div', { class: 'lwcs-tvm-state' }, '选择一个楼层后查看当时的变量记录。');
+        const back = isMobile.value ? h('button', { type: 'button', class: 'lwcs-tvm-btn', onClick: () => { state.floorMobileDetail = false; } }, [icon('chevron-left'), '楼层']) : null;
+        if (state.floorDetailLoading) return h('div', { class: 'lwcs-tvm-empty is-big', role: 'status' }, '正在读取该楼的变量…');
+        if (!state.floorDetail) return h('div', { class: 'lwcs-tvm-empty is-big' }, [icon('hand-pointer'), h('p', null, '选择左侧一个楼层')]);
         if (state.floorDetail.status === 'none') {
-          return h('div', { class: 'lwcs-tvm-floor-none' }, [
-            h('strong', null, '该楼没有可显示的变量记录'),
-            h('p', null, '可以选择其他楼层，或点击“重新读取”后再试。'),
-          ]);
+          return h('div', { class: 'lwcs-tvm-floor-detail' }, [h('div', { class: 'lwcs-tvm-pane-head' }, [h('div', { class: 'lwcs-tvm-pane-row' }, [back, h('h2', { class: 'lwcs-tvm-pane-title' }, '#' + state.floorDetail.pointer.absoluteIndex)])]),
+            h('div', { class: 'lwcs-tvm-empty is-big' }, '该楼没有变量记录')]);
         }
         const detail = state.floorDetail;
-        const sourceIndex = detail.sourceFloor?.absoluteIndex;
-        const rows = floorRows.value.slice(treeStart.value, treeEnd.value);
-        const top = treeVirtual.value ? treeStart.value * floorRowHeight.value : 0;
-        const bottom = treeVirtual.value ? (floorRows.value.length - treeEnd.value) * floorRowHeight.value : 0;
-        return h('div', { class: 'lwcs-tvm-floor-detail-inner' }, [
-          h('div', { class: 'lwcs-tvm-floor-detail-head' }, [
-            isMobile.value ? h('button', { type: 'button', onClick: () => { state.floorMobileDetail = false; } }, '返回楼层') : null,
-            h('div', null, [
-              h('strong', null, '第 ' + detail.pointer.absoluteIndex + ' 楼'),
-              detail.inherited ? h('span', { class: 'lwcs-tvm-inherited' }, '沿用第 ' + sourceIndex + ' 楼的变量记录') : h('span', null, '本楼变量记录'),
-            ]),
-            h('button', { type: 'button', class: 'lwcs-tvm-primary', onClick: () => { state.activeTab = 'mvu'; } }, '编辑当前变量'),
+        const root = detail.hotState?.stat_data;
+        const node = getAtPath(root, state.floorPath);
+        return h('div', { class: 'lwcs-tvm-floor-detail' }, [
+          h('div', { class: 'lwcs-tvm-floor-head' }, [
+            back,
+            h('strong', { class: 'lwcs-tvm-floor-title' }, '第 ' + detail.pointer.absoluteIndex + ' 楼'),
+            h('span', { class: ['lwcs-tvm-chip', detail.inherited ? 'is-amber' : ''], title: detail.inherited ? '这一楼没有新的变量记录，显示的是它之前最近一次的记录' : '这一楼自己的变量记录' },
+              detail.inherited ? '沿用 #' + detail.sourceFloor?.absoluteIndex : '本楼记录'),
+            h('label', { class: 'lwcs-tvm-search is-small' }, [icon('magnifying-glass'), h('span', { class: 'lwcs-tvm-sr-only' }, '搜索该楼变量'),
+              h('input', { type: 'search', value: state.floorSearchInput, placeholder: '搜索该楼', onInput: event => { state.floorSearchInput = event.target.value; scheduleFloorSearch(); } })]),
+            h('button', { type: 'button', class: 'lwcs-tvm-btn', title: '去「变量」页编辑当前变量', onClick: () => { state.activeTab = 'mvu'; } }, [icon('pen'), isMobile.value ? null : '编辑当前变量']),
           ]),
-          h('div', { class: 'lwcs-tvm-floor-tree-tools' }, [
-            h('label', { class: 'lwcs-tvm-search' }, [
-              h('span', { class: 'lwcs-tvm-sr-only' }, '搜索楼层变量'),
-              h('input', { type: 'search', value: state.floorSearchInput, placeholder: '搜索该楼的名称或内容',
-                onInput: event => { state.floorSearchInput = event.target.value; scheduleFloorSearch(); } }),
-            ]),
-            state.floorSearchBusy ? h('span', { class: 'lwcs-tvm-floor-search-state', role: 'status' }, '搜索中…') : null,
-            state.floorSearchCapped ? h('span', { class: 'lwcs-tvm-floor-search-state' }, '仅显示前 150 条') : null,
-            h('button', { type: 'button', onClick: () => {
-              state.floorExpanded = new Set(['$']);
-              state.floorFocusPathKey = '$';
-              state.floorTreeScrollTop = 0;
-              nextTick(() => {
-                const viewport = rootElement?.querySelector('.lwcs-tvm-floor-tree-viewport');
-                if (viewport) viewport.scrollTop = 0;
-              });
-            } }, '全部折叠'),
-          ]),
-          h('div', { class: 'lwcs-tvm-grid-head' }, [h('span', null, '名称'), h('span', null, '类型'), h('span', null, '当时的值'), h('span', null, '操作')]),
-          h('div', { class: 'lwcs-tvm-tree-viewport lwcs-tvm-floor-tree-viewport', role: 'tree', 'aria-label': '楼层变量记录',
-            'aria-rowcount': floorRows.value.length, 'aria-busy': String(state.floorSearchBusy),
-            onScroll: event => { state.floorTreeScrollTop = event.currentTarget.scrollTop; state.floorTreeHeight = event.currentTarget.clientHeight; } }, [
-            top ? h('div', { style: { height: top + 'px' }, 'aria-hidden': 'true' }) : null,
-            ...rows.map((row, index) => h(DataRow, { key: row.key, row, index: treeStart.value + index, readonly: true, searchMode: !!state.floorSearchQuery })),
-            bottom ? h('div', { style: { height: bottom + 'px' }, 'aria-hidden': 'true' }) : null,
-            !state.floorSearchBusy && !floorRows.value.length
-              ? h('div', { class: 'lwcs-tvm-empty' }, state.floorSearchQuery ? '没有找到匹配的变量。' : '该楼暂时没有可显示的变量。')
-              : null,
-          ]),
+          state.floorSearchQuery
+            ? h('div', { class: 'lwcs-tvm-scroll' }, [state.floorSearchCapped ? renderMessages([['仅显示前 150 条匹配结果。']]) : null, renderSearchResults(state.floorSearchResults, row => {
+              state.floorSearchInput = ''; state.floorSearchQuery = ''; state.floorSearchResults = [];
+              state.floorPath = row.container ? [...row.path] : row.path.slice(0, -1);
+              state.floorFocusPathKey = row.container ? '$' : row.key;
+            }, state.floorSearchBusy ? '正在检索…' : '没有找到匹配的变量。', detail.hotState?.stat_data)])
+            : [renderPaneHead(state.floorPath, node, navigate, '该楼变量'), h('div', { class: 'lwcs-tvm-scroll' }, [h(Sheet, { root, path: state.floorPath, editable: false, navigate })])],
         ]);
       }
 
-      return () => h('section', { class: ['lwcs-tvm-floor-page', state.floorMobileDetail ? 'is-mobile-detail' : ''] }, [
-        h('header', { class: 'lwcs-tvm-floor-toolbar' }, [
-          h('div', null, [h('strong', null, '楼层记录'), h('span', null, '查看各楼层保存下来的变量；这里不会修改内容。')]),
-          h('button', { type: 'button', disabled: state.floorListLoading, onClick: refreshFloorList }, state.floorListLoading ? '读取中…' : '重新读取'),
-        ]),
-        h('div', { class: 'lwcs-tvm-floor-status' }, [
-          state.floorError ? h('p', { class: 'lwcs-tvm-message is-error', role: 'alert' }, '楼层记录暂时无法读取。请点击“重新读取”再试。') : null,
-        ]),
-        h('div', { class: 'lwcs-tvm-floor-workspace' }, [
-          h('aside', { class: 'lwcs-tvm-floor-list-pane' }, [renderList()]),
-          h('main', { class: 'lwcs-tvm-floor-detail' }, [renderDetail()]),
+      return () => h('section', { class: ['lwcs-tvm-floors', state.floorMobileDetail ? 'is-mobile-detail' : ''] }, [
+        renderMessages([state.floorError && ['楼层记录暂时无法读取：' + state.floorError, 'error']]),
+        h('div', { class: 'lwcs-tvm-split' }, [
+          h('aside', { class: 'lwcs-tvm-aside lwcs-tvm-floor-aside' }, [
+            h('div', { class: 'lwcs-tvm-aside-head' }, [h('strong', null, '楼层'), h('span', { class: 'lwcs-tvm-count' }, String(state.floorMessages.length)),
+              h('button', { type: 'button', class: 'lwcs-tvm-icon', disabled: state.floorListLoading, title: '重新读取楼层', 'aria-label': '重新读取楼层', onClick: refreshFloorList }, icon('arrows-rotate', state.floorListLoading ? 'fa-spin' : ''))]),
+            renderList(),
+          ]),
+          h('main', { class: 'lwcs-tvm-pane' }, [renderDetail()]),
         ]),
       ]);
     },
@@ -1615,40 +1552,32 @@
   const DatabasePage = defineComponent({
     name: 'LwcsTvmDatabasePage',
     setup() {
+      const navigate = path => { state.databasePath = [...path]; };
       return () => {
         const selectedIndex = state.databaseKeys.indexOf(state.databaseSelectedKey);
-        return h('section', { class: 'lwcs-tvm-page', 'aria-labelledby': 'lwcs-tvm-db-title' }, [
-        h('div', { class: 'lwcs-tvm-page-heading' }, [
-          h('div', null, [
-            h('h2', { id: 'lwcs-tvm-db-title' }, '剧情资料 / 数据库'),
-            h('p', null, '这里用于查看已保存的资料；修改内容请使用数据库编辑器。'),
+        const value = state.databaseSelectedValue;
+        return h('section', { class: 'lwcs-tvm-db' }, [
+          renderMessages([state.databaseError && ['剧情资料暂时无法读取：' + state.databaseError, 'error']]),
+          h('div', { class: 'lwcs-tvm-split' }, [
+            h('aside', { class: 'lwcs-tvm-aside' }, [
+              h('div', { class: 'lwcs-tvm-aside-head' }, [h('strong', null, '剧情资料'), h('span', { class: 'lwcs-tvm-count' }, String(state.databaseKeys.length)),
+                h('button', { type: 'button', class: 'lwcs-tvm-icon', disabled: state.databaseLoading, title: '重新读取', 'aria-label': '重新读取剧情资料', onClick: refreshDatabase }, icon('arrows-rotate', state.databaseLoading ? 'fa-spin' : ''))]),
+              h('div', { class: 'lwcs-tvm-key-list' }, [
+                state.databaseLoading ? h('div', { class: 'lwcs-tvm-empty' }, '正在读取…') : null,
+                !state.databaseLoading && !state.databaseKeys.length ? h('div', { class: 'lwcs-tvm-empty' }, '当前聊天还没有剧情资料。') : null,
+                ...state.databaseKeys.map((key, index) => h('button', { key, type: 'button', class: ['lwcs-tvm-key', state.databaseSelectedKey === key ? 'is-on' : ''], 'aria-pressed': String(state.databaseSelectedKey === key), onClick: () => selectDatabaseKey(key) },
+                  [h('span', { class: 'lwcs-tvm-sock' }, icon('book')), h('span', null, '剧情资料 ' + (index + 1))])),
+              ]),
+              h('button', { type: 'button', class: 'lwcs-tvm-btn is-primary lwcs-tvm-db-open', title: '修改剧情资料请在数据库编辑器里进行', onClick: openDatabaseEditor }, [icon('table'), '打开数据库编辑器']),
+            ]),
+            h('main', { class: 'lwcs-tvm-pane' }, state.databaseValueLoading
+              ? [h('div', { class: 'lwcs-tvm-empty is-big' }, '读取中…')]
+              : !state.databaseSelectedKey
+                ? [h('div', { class: 'lwcs-tvm-empty is-big' }, [icon('hand-pointer'), h('p', null, '选择左侧一项资料')])]
+                : isContainer(value)
+                  ? [renderPaneHead(state.databasePath, getAtPath(value, state.databasePath), navigate, '剧情资料 ' + (selectedIndex + 1)), h('div', { class: 'lwcs-tvm-scroll' }, [h(Sheet, { root: value, path: state.databasePath, editable: false, navigate })])]
+                  : [h('div', { class: 'lwcs-tvm-scroll' }, [h('pre', { class: 'lwcs-tvm-pre', tabindex: '0' }, value === undefined ? '（无内容）' : JSON.stringify(value, null, 2))])]),
           ]),
-          h('div', { class: 'lwcs-tvm-actions' }, [
-            h('button', { type: 'button', disabled: state.databaseLoading, onClick: refreshDatabase }, state.databaseLoading ? '读取中…' : '重新读取'),
-            h('button', { class: 'lwcs-tvm-primary', type: 'button', onClick: openDatabaseEditor }, '打开数据库编辑器'),
-          ]),
-        ]),
-        state.databaseError ? h('div', { class: 'lwcs-tvm-alert lwcs-tvm-alert-error', role: 'alert' }, '剧情资料暂时无法读取。请点击“重新读取”或打开数据库编辑器。') : null,
-        h('div', { class: 'lwcs-tvm-db-layout' }, [
-          h('div', { class: 'lwcs-tvm-key-list', 'aria-label': '剧情资料项目' }, [
-            state.databaseLoading ? h('div', { class: 'lwcs-tvm-state' }, '正在读取资料…') : null,
-            !state.databaseLoading && state.databaseKeys.length === 0 ? h('div', { class: 'lwcs-tvm-state' }, '当前聊天暂时没有可显示的剧情资料。') : null,
-            ...state.databaseKeys.map((key, index) => h('button', {
-              key,
-              type: 'button',
-              'aria-pressed': String(state.databaseSelectedKey === key),
-              class: state.databaseSelectedKey === key ? 'is-selected' : '',
-              onClick: () => selectDatabaseKey(key),
-            }, '剧情资料 ' + (index + 1))),
-          ]),
-          h('div', { class: 'lwcs-tvm-value-view' }, [
-            h('div', { class: 'lwcs-tvm-value-title' }, selectedIndex >= 0 ? '剧情资料 ' + (selectedIndex + 1) : '选择一项查看内容'),
-            state.databaseValueLoading ? h('div', { class: 'lwcs-tvm-state' }, '读取中…') : null,
-            !state.databaseValueLoading && state.databaseSelectedKey
-              ? h('pre', { tabindex: '0' }, JSON.stringify(state.databaseSelectedValue, null, 2) ?? '（无内容）')
-              : null,
-          ]),
-        ]),
         ]);
       };
     },
@@ -1658,25 +1587,26 @@
     name: 'LwcsTvmDiagnosticsPage',
     setup() {
       return () => {
-        const checks = [
-          ['变量', state.mvuLoading || state.mvuSaving ? '处理中' : state.mvuError ? '需要重试' : '正常'],
-          ['楼层记录', state.floorListLoading || state.floorDetailLoading ? '读取中' : state.floorError ? '需要重试' : '正常'],
-          ['剧情资料', state.databaseLoading || state.databaseValueLoading ? '读取中' : state.databaseError ? '需要重试' : '正常'],
-          ['当前聊天', state.baselineChatId ? '已识别' : '等待载入'],
+        const light = (busy, error) => busy ? 'busy' : error ? 'error' : 'ok';
+        const cards = [
+          { title: '变量', icon: 'sliders', state: light(state.mvuLoading || state.mvuSaving, state.mvuError), text: state.mvuLoading || state.mvuSaving ? '处理中' : state.mvuError ? '需要重试' : '正常',
+            rows: [['存储', backendLabel.value], ['版本', revisionLabel.value], ['待保存', String(draftList.value.length)]], error: state.mvuError },
+          { title: '楼层记录', icon: 'layer-group', state: light(state.floorListLoading || state.floorDetailLoading, state.floorError), text: state.floorListLoading || state.floorDetailLoading ? '读取中' : state.floorError ? '需要重试' : '正常',
+            rows: [['楼层', state.floorMessages.length ? String(state.floorMessages.length) : '—'], ['已缓存', String(floorCache.size)]], error: state.floorError },
+          { title: '剧情资料', icon: 'book-open', state: light(state.databaseLoading || state.databaseValueLoading, state.databaseError), text: state.databaseLoading || state.databaseValueLoading ? '读取中' : state.databaseError ? '需要重试' : '正常',
+            rows: [['存储', state.databaseBackend || '—'], ['条目', String(state.databaseKeys.length)]], error: state.databaseError },
+          { title: '当前聊天', icon: 'comments', state: state.baselineChatId ? 'ok' : 'busy', text: state.baselineChatId ? '已识别' : '等待载入',
+            rows: [['聊天', state.baselineChatId || '—']], error: '' },
         ];
-        return h('section', { class: 'lwcs-tvm-page', 'aria-labelledby': 'lwcs-tvm-diag-title' }, [
-        h('div', { class: 'lwcs-tvm-page-heading' }, [
-          h('div', null, [
-            h('h2', { id: 'lwcs-tvm-diag-title' }, '运行检查'),
-            h('p', null, '查看变量、楼层记录和剧情资料是否可以正常使用。'),
+        return h('section', { class: 'lwcs-tvm-diag' }, [
+          h('div', { class: 'lwcs-tvm-diag-head' }, [
+            renderMessages([state.diagnosticError && ['运行检查暂时无法完成：' + state.diagnosticError, 'error']]),
+            h('button', { type: 'button', class: 'lwcs-tvm-btn', disabled: state.diagnosticLoading, onClick: refreshDiagnostics }, [icon('stethoscope', state.diagnosticLoading ? 'fa-beat-fade' : ''), state.diagnosticLoading ? '检查中…' : '重新检查']),
           ]),
-          h('button', { type: 'button', disabled: state.diagnosticLoading, onClick: refreshDiagnostics }, state.diagnosticLoading ? '检查中…' : '重新检查'),
-        ]),
-        state.diagnosticError ? h('div', { class: 'lwcs-tvm-alert lwcs-tvm-alert-error', role: 'alert' }, '运行检查暂时无法完成，请稍后重试。') : null,
-        h('div', { class: 'lwcs-tvm-diagnostic-grid' }, checks.map(([title, value]) => h('article', { class: 'lwcs-tvm-diagnostic-card', key: title }, [
-          h('h3', null, title),
-          h('p', { class: value === '需要重试' ? 'lwcs-tvm-message is-error' : 'lwcs-tvm-message' }, value),
-        ]))),
+          h('div', { class: 'lwcs-tvm-diag-grid' }, cards.map(card => h('article', { key: card.title, class: ['lwcs-tvm-diag-card', 'is-' + card.state] }, [
+            h('header', null, [h('span', { class: 'lwcs-tvm-sock' }, icon(card.icon)), h('strong', null, card.title), h('span', { class: 'lwcs-tvm-light', title: card.error || card.text }, [h('i'), card.text])]),
+            h('dl', null, card.rows.flatMap(([key, value]) => [h('dt', null, key), h('dd', { title: value }, value)])),
+          ]))),
         ]);
       };
     },
@@ -1685,18 +1615,15 @@
   const Root = defineComponent({
     name: 'LwcsTvmRoot',
     setup() {
-      const tabs = [
-        { id: 'mvu', label: '变量', detail: '查看和修改当前变量' },
-        { id: 'floors', label: '楼层记录', detail: '查看过去楼层的变量' },
-        { id: 'database', label: '剧情资料', detail: '查看数据库内容' },
-        { id: 'diagnostics', label: '运行检查', detail: '查看各项功能是否正常' },
-      ];
       watch(() => state.activeTab, async tab => {
         invalidateFloorReads(false);
         if (tab === 'floors') await refreshFloorList();
         if (tab === 'database') await refreshDatabase();
         if (tab === 'diagnostics') await refreshDiagnostics();
       });
+      // 换楼层 / 换资料时回到顶层
+      watch(() => state.floorDetail, () => { state.floorPath = []; });
+      watch(() => state.databaseSelectedKey, () => { state.databasePath = []; });
       return () => state.visible ? h('div', {
         class: 'lwcs-tvm-overlay',
         role: 'presentation',
@@ -1709,30 +1636,19 @@
           'aria-labelledby': 'lwcs-tvm-title',
           'aria-busy': String(state.mvuSaving || state.mvuLoading || state.databaseLoading || state.diagnosticLoading),
         }, [
-          h('header', { class: 'lwcs-tvm-header' }, [
-            h('div', { class: 'lwcs-tvm-title-group' }, [
-              h('h1', { id: 'lwcs-tvm-title' }, '变量管理器'),
-              h('span', { class: 'lwcs-tvm-context' }, '变量与剧情资料'),
-            ]),
-            h('div', { class: 'lwcs-tvm-header-status', 'aria-live': 'polite' }, [
-              h('span', { class: `lwcs-tvm-badge ${isDirty.value ? 'is-dirty' : ''}` }, saveStatusText.value),
-              h('button', { class: 'lwcs-tvm-close', type: 'button', 'aria-label': '关闭变量管理器', onClick: closeManager }, '×'),
-            ]),
+          h('header', { class: 'lwcs-tvm-head' }, [
+            h('div', { class: 'lwcs-tvm-brand' }, [h('span', { class: 'lwcs-tvm-sock is-brand' }, icon('sliders')), h('h1', { id: 'lwcs-tvm-title' }, '变量管理器')]),
+            h('nav', { class: 'lwcs-tvm-tabs', 'aria-label': '变量管理器页面' }, TABS.map(tab => h('button', {
+              key: tab.id, type: 'button', class: state.activeTab === tab.id ? 'is-on' : '', title: tab.hint,
+              'aria-current': state.activeTab === tab.id ? 'page' : undefined, onClick: () => { state.activeTab = tab.id; },
+            }, [icon(tab.icon), h('span', null, tab.label), tab.id === 'mvu' && isDirty.value ? h('em', { class: 'lwcs-tvm-dot', title: '有未保存的修改' }, String(draftList.value.length)) : null]))),
+            h('button', { class: 'lwcs-tvm-close', type: 'button', 'aria-label': '关闭变量管理器', title: '关闭（Esc）', onClick: closeManager }, icon('xmark')),
           ]),
-          h('div', { class: 'lwcs-tvm-workspace' }, [
-            h('nav', { class: 'lwcs-tvm-nav', 'aria-label': '变量管理器页面' }, tabs.map(tab => h('button', {
-              key: tab.id,
-              type: 'button',
-              class: state.activeTab === tab.id ? 'is-active' : '',
-              'aria-current': state.activeTab === tab.id ? 'page' : undefined,
-              onClick: () => { state.activeTab = tab.id; },
-            }, [h('strong', null, tab.label), h('span', null, tab.detail)]))),
-            h('main', { class: 'lwcs-tvm-main' }, [
-              state.activeTab === 'mvu' ? h(MvuPage) : null,
-              state.activeTab === 'floors' ? h(FloorPage) : null,
-              state.activeTab === 'database' ? h(DatabasePage) : null,
-              state.activeTab === 'diagnostics' ? h(DiagnosticsPage) : null,
-            ]),
+          h('div', { class: 'lwcs-tvm-body' }, [
+            state.activeTab === 'mvu' ? h(MvuPage) : null,
+            state.activeTab === 'floors' ? h(FloorPage) : null,
+            state.activeTab === 'database' ? h(DatabasePage) : null,
+            state.activeTab === 'diagnostics' ? h(DiagnosticsPage) : null,
           ]),
         ]),
       ]) : null;
@@ -1744,32 +1660,236 @@
     if (styleElement) styleElement.remove();
     styleElement = hostWindow.document.createElement('style');
     styleElement.id = STYLE_ID;
-    styleElement.textContent = [
-'.lwcs-tvm-overlay,.lwcs-tvm-overlay *{box-sizing:border-box}',
-'.lwcs-tvm-overlay{--bg:#141516;--panel:#1b1d1f;--panel2:#222426;--line:#34373a;--soft:#282a2c;--text:#ece9e4;--muted:#9c9994;--orange:#f39a32;--cyan:#56d8d0;--danger:#ff838d;position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;padding:12px;color:var(--text);background:rgba(5,6,7,.8);color-scheme:dark;font:13px/1.35 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;overscroll-behavior:contain}',
-'.lwcs-tvm-shell{width:min(1240px,100%);height:min(820px,calc(100dvh - 24px));min-height:420px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line);border-radius:4px;background:var(--bg);box-shadow:0 18px 58px rgba(0,0,0,.5)}',
-'.lwcs-tvm-header{height:48px;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 6px 0 14px;border-bottom:1px solid var(--line);background:#1b1d1e}',
-'.lwcs-tvm-title-group,.lwcs-tvm-header-status,.lwcs-tvm-actions,.lwcs-tvm-context{display:flex;align-items:center;gap:8px;min-width:0}.lwcs-tvm-title-group h1{margin:0;font-size:15px}.lwcs-tvm-title-group .lwcs-tvm-context{color:var(--muted);font-size:11px}',
-'.lwcs-tvm-badge{display:inline-flex;align-items:center;min-height:24px;padding:2px 7px;border:1px solid var(--line);border-radius:2px;color:var(--muted);background:#171819;font:11px/1.2 ui-monospace,Consolas,monospace;white-space:nowrap}.lwcs-tvm-badge.is-dirty,.lwcs-tvm-badge[data-state="draft"],.lwcs-tvm-badge[data-state="editing"]{color:#ffc47a;border-color:rgba(243,154,50,.5)}.lwcs-tvm-badge[data-state="conflict"],.lwcs-tvm-badge[data-state="error"]{color:#ffc4ca;border-color:rgba(255,131,141,.55)}',
-'.lwcs-tvm-overlay button,.lwcs-tvm-overlay input,.lwcs-tvm-overlay textarea,.lwcs-tvm-overlay select{font:inherit;color:inherit}.lwcs-tvm-overlay button{min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:3px;background:var(--panel2);cursor:pointer;touch-action:manipulation}.lwcs-tvm-overlay button:hover{border-color:#5a5d60;background:#292b2d}.lwcs-tvm-overlay button:disabled{opacity:.44;cursor:not-allowed}.lwcs-tvm-overlay button:focus-visible,.lwcs-tvm-overlay input:focus-visible,.lwcs-tvm-overlay textarea:focus-visible,.lwcs-tvm-overlay select:focus-visible,.lwcs-tvm-row:focus-visible{outline:2px solid var(--orange);outline-offset:-2px}.lwcs-tvm-primary{color:#21160b;border-color:var(--orange);background:var(--orange);font-weight:750}.lwcs-tvm-close,.lwcs-tvm-icon-button{width:44px;min-width:44px;padding:0;background:transparent;font-size:21px}',
-'.lwcs-tvm-workspace{min-height:0;flex:1;display:grid;grid-template-rows:42px minmax(0,1fr)}.lwcs-tvm-nav{display:flex;align-items:stretch;padding:0 10px;border-bottom:1px solid var(--line);background:#18191a}.lwcs-tvm-nav button{position:relative;min-height:42px;padding:4px 16px;border:0;border-radius:0;background:transparent}.lwcs-tvm-nav button span{display:none}.lwcs-tvm-nav button.is-active{color:#fff1df}.lwcs-tvm-nav button.is-active:after{content:"";position:absolute;inset:auto 10px 0;height:2px;background:var(--orange)}',
-'.lwcs-tvm-main{min-width:0;min-height:0;overflow:hidden}.lwcs-tvm-page{height:100%;padding:12px 14px;overflow:auto}.lwcs-tvm-mvu-page{height:100%;min-height:0;display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;overflow:hidden}.lwcs-tvm-status-stack{min-height:0;overflow:auto}',
-'.lwcs-tvm-context-bar{display:grid;grid-template-columns:minmax(260px,auto) minmax(220px,1fr) auto;align-items:center;gap:8px;padding:8px 10px;border-bottom:2px solid var(--orange);background:#1a1c1d}.lwcs-tvm-context{flex-wrap:wrap}.lwcs-tvm-context strong{font-size:12px}.lwcs-tvm-search{min-width:0}.lwcs-tvm-search input{width:100%;height:36px;padding:6px 9px;border:1px solid var(--line);border-radius:2px;background:#111213}.lwcs-tvm-tree-tools{display:flex;gap:5px}.lwcs-tvm-tree-tools button{min-height:36px;padding:4px 8px;font-size:12px}',
-'.lwcs-tvm-message{margin:0;padding:6px 10px;border-bottom:1px solid var(--soft);color:#dccdbb;background:#211e19;overflow-wrap:anywhere}.lwcs-tvm-message.is-error{color:#ffd0d5;background:#24191b}',
-'.lwcs-tvm-grid-head,.lwcs-tvm-row{display:grid;grid-template-columns:minmax(180px,30%) 86px minmax(220px,1fr) 150px;align-items:center}.lwcs-tvm-grid-head{height:29px;padding:0 8px;border-bottom:1px solid var(--line);color:#85827e;background:#171819;font-size:10px;text-transform:uppercase;letter-spacing:.06em}.lwcs-tvm-tree-viewport{min-height:0;overflow:auto;background:#151617;scrollbar-gutter:stable}.lwcs-tvm-row{height:32px;padding:0 8px;border-bottom:1px solid #242628;background:#171819;outline:none}.lwcs-tvm-row:nth-child(even){background:#191a1b}.lwcs-tvm-row:hover,.lwcs-tvm-row:focus{background:#222426}.lwcs-tvm-row.is-draft{box-shadow:inset 2px 0 var(--orange)}.lwcs-tvm-row.is-verified{background:#18231e}',
-'.lwcs-tvm-cell-key{min-width:0;height:100%;display:flex;align-items:center;padding-left:calc(var(--lwcs-tvm-depth) * 14px);background-image:repeating-linear-gradient(90deg,transparent 0,transparent 13px,rgba(255,255,255,.055) 13px,rgba(255,255,255,.055) 14px);background-size:calc(var(--lwcs-tvm-depth) * 14px) 100%;background-repeat:no-repeat}.lwcs-tvm-disclosure{width:28px;min-width:28px;min-height:28px;padding:0;border:0;background:transparent;color:var(--orange)}.lwcs-tvm-scalar-space{width:28px;min-width:28px}.lwcs-tvm-key-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12px/1.2 ui-monospace,Consolas,monospace}.lwcs-tvm-type{color:#777a7c;font:10px/1 ui-monospace,Consolas,monospace}.lwcs-tvm-value-wrap{min-width:0;overflow:hidden}.lwcs-tvm-cell-value,.lwcs-tvm-old,.lwcs-tvm-new{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12px/1.25 ui-monospace,Consolas,monospace}.lwcs-tvm-diff{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);align-items:center}.lwcs-tvm-old{color:#777;text-decoration:line-through}.lwcs-tvm-arrow{text-align:center;color:#806947}.lwcs-tvm-new{color:#ffc16b}.lwcs-tvm-breadcrumb-value{min-width:0;min-height:28px;padding:2px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:0;background:transparent;color:#9b9690}',
-'.lwcs-tvm-row-actions{display:flex;justify-content:flex-end;gap:3px}.lwcs-tvm-row-action{min-height:26px;padding:2px 6px;opacity:0;border-color:transparent;background:transparent;font-size:10px}.lwcs-tvm-row:hover .lwcs-tvm-row-action,.lwcs-tvm-row:focus-within .lwcs-tvm-row-action,.lwcs-tvm-row-action.lwcs-tvm-undo{opacity:1}.lwcs-tvm-undo{color:#ffc16b}.lwcs-tvm-inline-editor{display:flex;align-items:center;gap:4px}.lwcs-tvm-inline-input{min-width:0;width:100%;height:27px;padding:3px 6px;border:1px solid var(--orange);background:#101112}.lwcs-tvm-inline-editor button{min-height:27px;padding:2px 6px;font-size:10px}',
-'.lwcs-tvm-draft-bar{min-height:54px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:7px 10px;border-top:1px solid var(--line);background:#1b1d1e}.lwcs-tvm-draft-bar div{display:flex;flex-direction:column;min-width:0}.lwcs-tvm-draft-bar span{color:var(--muted);font-size:11px}.lwcs-tvm-save{min-width:138px}.lwcs-tvm-empty{padding:28px;color:var(--muted);text-align:center}',
-'.lwcs-tvm-floor-page{height:100%;min-height:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);overflow:hidden}.lwcs-tvm-floor-toolbar{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:2px solid var(--orange);background:#1a1c1d}.lwcs-tvm-floor-toolbar div{display:flex;flex-direction:column;min-width:0}.lwcs-tvm-floor-toolbar span{color:var(--muted);font-size:11px}.lwcs-tvm-floor-status{min-height:0}.lwcs-tvm-floor-workspace{min-height:0;display:grid;grid-template-columns:280px minmax(0,1fr)}.lwcs-tvm-floor-list-pane{min-height:0;border-right:1px solid var(--line);background:#171819}.lwcs-tvm-floor-list{height:100%;overflow:auto}.lwcs-tvm-floor-item{width:100%;height:56px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;gap:2px 7px;padding:6px 9px;border:0;border-bottom:1px solid var(--soft);border-radius:0;text-align:left;background:transparent}.lwcs-tvm-floor-item.is-selected{box-shadow:inset 3px 0 var(--orange);background:#24211d}.lwcs-tvm-floor-number{font-weight:700}.lwcs-tvm-floor-role{color:var(--muted);font-size:10px;text-align:right}.lwcs-tvm-floor-summary{grid-column:1/-1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c5c0ba}.lwcs-tvm-floor-detail{min-width:0;min-height:0;overflow:hidden}.lwcs-tvm-floor-detail-inner{height:100%;min-height:0;display:grid;grid-template-rows:auto auto auto minmax(0,1fr)}.lwcs-tvm-floor-detail-head{min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line)}.lwcs-tvm-floor-detail-head>div{display:flex;flex-direction:column;min-width:0}.lwcs-tvm-floor-detail-head span{color:var(--muted);font-size:11px}.lwcs-tvm-floor-detail-head .lwcs-tvm-inherited{color:#ffc16b}.lwcs-tvm-floor-tree-tools{display:flex;align-items:center;gap:7px;padding:6px 9px;border-bottom:1px solid var(--line)}.lwcs-tvm-floor-search-state{color:var(--muted);font-size:11px;white-space:nowrap}.lwcs-tvm-floor-none{padding:24px}.lwcs-tvm-floor-none p{color:var(--muted)}',
-'.lwcs-tvm-mobile-crumbs{display:flex;gap:2px;overflow:auto;padding:5px 8px;border-bottom:1px solid var(--line);background:#18191a}.lwcs-tvm-mobile-crumbs button{min-height:34px;padding:3px 8px;white-space:nowrap;background:transparent}.lwcs-tvm-mobile-crumbs button:after{content:"›";margin-left:8px;color:#6d6964}.lwcs-tvm-mobile-crumbs button.is-current{color:#ffc16b}.lwcs-tvm-mobile-crumbs button.is-current:after{content:""}',
-'.lwcs-tvm-sheet-backdrop{position:fixed;inset:0;z-index:3;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.58)}.lwcs-tvm-detail-sheet{width:min(720px,100%);max-height:min(82dvh,var(--lwcs-tvm-visual-height,82dvh));display:grid;grid-template-rows:auto minmax(0,1fr) auto;border:1px solid var(--line);border-bottom:0;background:#1a1c1d;animation:lwcs-tvm-sheet-in .2s ease-out}.lwcs-tvm-detail-sheet header,.lwcs-tvm-detail-sheet footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}.lwcs-tvm-detail-sheet footer{justify-content:flex-end;border-top:1px solid var(--line);border-bottom:0;padding-bottom:calc(9px + env(safe-area-inset-bottom))}.lwcs-tvm-detail-sheet h3,.lwcs-tvm-detail-sheet p{margin:0}.lwcs-tvm-detail-sheet p{max-width:560px;color:var(--muted);overflow-wrap:anywhere}.lwcs-tvm-kicker{color:#8d8984;font:10px/1 monospace}.lwcs-tvm-detail-body{min-height:0;display:flex;flex-direction:column;gap:8px;overflow:auto;padding:12px}.lwcs-tvm-detail-body select{width:140px;height:40px;padding:6px;border:1px solid var(--line);background:#111213}.lwcs-tvm-detail-input{width:100%;min-height:180px;resize:vertical;padding:9px;border:1px solid var(--line);background:#111213;font:12px/1.45 ui-monospace,Consolas,monospace;overflow-wrap:anywhere}.lwcs-tvm-boolean-toggle{min-height:48px;color:#ffc16b}.lwcs-tvm-original-block{min-width:0;color:var(--muted)}.lwcs-tvm-original-block pre{max-height:180px;margin:5px 0 0;padding:8px;overflow:auto;border:1px solid var(--soft);background:#121314;color:#aaa;white-space:pre-wrap;overflow-wrap:anywhere}',
-'.lwcs-tvm-page-heading{display:flex;justify-content:space-between;gap:12px;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--soft)}.lwcs-tvm-page-heading h2{margin:0;font-size:16px}.lwcs-tvm-page-heading p{margin:2px 0;color:var(--muted)}.lwcs-tvm-alert,.lwcs-tvm-field-error{margin:7px 0;padding:7px 9px;border-left:2px solid var(--orange);background:#211e19;overflow-wrap:anywhere}.lwcs-tvm-alert-error,.lwcs-tvm-field-error{border-color:var(--danger);color:#ffd0d5}.lwcs-tvm-state{padding:18px;color:var(--muted)}',
-'.lwcs-tvm-db-layout{min-height:400px;display:grid;grid-template-columns:minmax(190px,28%) minmax(0,1fr);border:1px solid var(--line)}.lwcs-tvm-key-list{overflow:auto;padding:5px;border-right:1px solid var(--line)}.lwcs-tvm-key-list button{width:100%;display:block;margin-bottom:3px;text-align:left;overflow-wrap:anywhere}.lwcs-tvm-key-list button.is-selected{border-color:var(--orange)}.lwcs-tvm-value-view{min-width:0;overflow:auto;padding:9px}.lwcs-tvm-value-view pre,.lwcs-tvm-diagnostic-card pre{margin:0;padding:8px;overflow:auto;border:1px solid var(--soft);background:#111213;white-space:pre-wrap;overflow-wrap:anywhere}.lwcs-tvm-diagnostic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.lwcs-tvm-diagnostic-card{min-width:0;padding:8px;border:1px solid var(--line);background:var(--panel)}.lwcs-tvm-diagnostic-card h3{margin:0 0 6px}.lwcs-tvm-diagnostic-errors{margin-top:8px}.lwcs-tvm-diagnostic-errors summary{min-height:40px;padding:6px;cursor:pointer}.lwcs-tvm-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}',
-'@keyframes lwcs-tvm-sheet-in{from{transform:translateY(18px);opacity:.7}to{transform:none;opacity:1}}',
-'@media(max-width:899px){.lwcs-tvm-overlay{padding:0}.lwcs-tvm-shell{width:100%;height:100dvh;border-radius:0;border-inline:0}.lwcs-tvm-context-bar{grid-template-columns:minmax(180px,1fr) minmax(180px,1fr);}.lwcs-tvm-tree-tools{grid-column:1/-1}.lwcs-tvm-grid-head,.lwcs-tvm-row{grid-template-columns:minmax(140px,30%) 64px minmax(160px,1fr) 118px}.lwcs-tvm-floor-workspace{grid-template-columns:240px minmax(0,1fr)}.lwcs-tvm-page{padding:10px}.lwcs-tvm-header-status .lwcs-tvm-badge:nth-child(2){display:none}}',
-'@media(max-width:599px){.lwcs-tvm-header{height:48px;min-height:48px;padding-left:10px}.lwcs-tvm-title-group{min-width:0;overflow:hidden}.lwcs-tvm-title-group h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lwcs-tvm-title-group .lwcs-tvm-context,.lwcs-tvm-header-status .lwcs-tvm-badge{display:none}.lwcs-tvm-header-status{display:flex;flex:0 0 44px}.lwcs-tvm-close{display:block}.lwcs-tvm-workspace{grid-template-rows:44px minmax(0,1fr)}.lwcs-tvm-nav{padding:0}.lwcs-tvm-nav button{flex:1;min-height:44px;padding:4px}.lwcs-tvm-main{overflow:hidden}.lwcs-tvm-context-bar{grid-template-columns:1fr;padding:7px 8px}.lwcs-tvm-context{overflow:auto;flex-wrap:nowrap}.lwcs-tvm-tree-tools{display:grid;grid-template-columns:repeat(3,1fr)}.lwcs-tvm-tree-tools button{min-height:44px}.lwcs-tvm-grid-head{display:none}.lwcs-tvm-tree-viewport{padding-bottom:0}.lwcs-tvm-row{height:auto;min-height:48px;grid-template-columns:minmax(90px,34%) 48px minmax(0,1fr);padding:0 7px}.lwcs-tvm-row.is-readonly{height:48px;min-height:48px;max-height:48px;overflow:hidden}.lwcs-tvm-row-actions{display:none}.lwcs-tvm-cell-key{padding-left:0;background:none}.lwcs-tvm-disclosure{width:44px;min-width:44px;min-height:44px}.lwcs-tvm-scalar-space{display:none}.lwcs-tvm-cell-value,.lwcs-tvm-old,.lwcs-tvm-new{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.lwcs-tvm-row.is-readonly .lwcs-tvm-cell-value{line-height:16px;max-height:32px}.lwcs-tvm-breadcrumb-value{min-height:44px}.lwcs-tvm-draft-bar{grid-template-columns:1fr auto;padding-bottom:calc(7px + env(safe-area-inset-bottom));background:#1a1c1d}.lwcs-tvm-draft-bar div{grid-column:1/-1}.lwcs-tvm-save{min-width:0}.lwcs-tvm-floor-toolbar span{display:none}.lwcs-tvm-floor-workspace{display:block}.lwcs-tvm-floor-list-pane,.lwcs-tvm-floor-detail{height:100%}.lwcs-tvm-floor-list-pane{border-right:0}.lwcs-tvm-floor-page.is-mobile-detail .lwcs-tvm-floor-list-pane{display:none}.lwcs-tvm-floor-page:not(.is-mobile-detail) .lwcs-tvm-floor-detail{display:none}.lwcs-tvm-floor-detail-head{align-items:flex-start;flex-wrap:wrap}.lwcs-tvm-floor-detail-head>div{flex:1}.lwcs-tvm-floor-tree-tools{flex-wrap:wrap}.lwcs-tvm-floor-tree-tools .lwcs-tvm-search{flex:1 1 100%}.lwcs-tvm-floor-detail-inner{grid-template-rows:auto auto minmax(0,1fr)}.lwcs-tvm-floor-detail-inner>.lwcs-tvm-grid-head{display:none}.lwcs-tvm-diagnostic-grid{grid-template-columns:1fr}.lwcs-tvm-db-layout{grid-template-columns:1fr;grid-template-rows:minmax(150px,34%) minmax(200px,1fr)}.lwcs-tvm-key-list{border-right:0;border-bottom:1px solid var(--line)}}',
-'@media(prefers-reduced-motion:reduce){.lwcs-tvm-overlay *{scroll-behavior:auto;transition:none;animation:none}}'
-].join('\n');
+    styleElement.textContent = `
+.lwcs-tvm-overlay,.lwcs-tvm-overlay *{box-sizing:border-box}
+.lwcs-tvm-overlay{--ink:#16223d;--ink2:#465572;--ink3:#76839a;--line:rgba(30,48,80,.16);--blue:#2f7cf6;--navy:#1a2640;--amber:#b86e08;--amber-bg:rgba(255,186,80,.16);--ok:#1f9d63;--err:#c8392f;position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;padding:14px;color:var(--ink);background:radial-gradient(70% 60% at 50% 40%,rgba(30,60,120,.35),transparent 70%),rgba(6,10,18,.78);color-scheme:light;font:14px/1.4 "HarmonyOS Sans SC","Microsoft YaHei UI","Microsoft YaHei","PingFang SC",system-ui,sans-serif;overscroll-behavior:contain}
+.lwcs-tvm-overlay button,.lwcs-tvm-overlay input,.lwcs-tvm-overlay textarea{font:inherit;color:inherit;margin:0}
+.lwcs-tvm-overlay button{cursor:pointer;touch-action:manipulation}
+.lwcs-tvm-overlay button:disabled{opacity:.45;cursor:not-allowed}
+.lwcs-tvm-overlay :focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.lwcs-tvm-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+/* 外壳：银色金属外框（切角）+ 浅色屏面 */
+.lwcs-tvm-shell{width:min(1280px,100%);height:min(860px,calc(100dvh - 28px));min-height:420px;display:flex;flex-direction:column;overflow:hidden;padding:5px;background:linear-gradient(160deg,#eef2f7,#b3bdcc 45%,#dfe5ee);clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);filter:drop-shadow(0 18px 40px rgba(0,0,0,.55))}
+.lwcs-tvm-shell>*{flex:none}
+.lwcs-tvm-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;background:repeating-linear-gradient(180deg,rgba(255,255,255,0) 0 3px,rgba(255,255,255,.35) 3px 4px),linear-gradient(180deg,#f3f6fa,#e2e8f1);clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)}
+.lwcs-tvm-body>section{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+/* 顶部铭牌：深蓝金属条，标题 + 页签 + 关闭 */
+.lwcs-tvm-head{display:flex;align-items:center;gap:14px;padding:7px 8px 7px 12px;margin-bottom:5px;color:#e6edf9;background:linear-gradient(180deg,#2c3a56,#151e33);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(120,150,200,.35);clip-path:polygon(12px 0,100% 0,100% 100%,0 100%,0 12px)}
+.lwcs-tvm-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.lwcs-tvm-brand h1{margin:0;font-size:17px;font-weight:900;letter-spacing:.12em;white-space:nowrap}
+.lwcs-tvm-tabs{flex:1 1 auto;min-width:0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.lwcs-tvm-tabs button{position:relative;flex:none;display:flex;align-items:center;gap:7px;min-height:38px;padding:0 18px;border:0;color:#9db0cf;font-weight:800;letter-spacing:.06em;background:none;clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%)}
+.lwcs-tvm-tabs button:hover{color:#fff;background:rgba(120,170,255,.12)}
+.lwcs-tvm-tabs button.is-on{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6 60%,#1446b0);box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}
+.lwcs-tvm-dot{min-width:18px;height:18px;padding:0 5px;display:inline-grid;place-items:center;border-radius:9px;font:800 11px/1 Bahnschrift,sans-serif;font-style:normal;color:#3a2300;background:#ffc46b}
+.lwcs-tvm-close,.lwcs-tvm-icon{flex:none;width:36px;height:36px;display:grid;place-items:center;padding:0;border:0;border-radius:2px;background:none;font-size:17px}
+.lwcs-tvm-close{color:#cfe0ff}.lwcs-tvm-close:hover{color:#fff;background:rgba(255,90,90,.25)}
+.lwcs-tvm-icon{color:var(--ink2)}.lwcs-tvm-icon:hover{color:var(--blue);background:rgba(47,124,246,.1)}
+/* 八角图标座 */
+.lwcs-tvm-sock{flex:none;width:30px;height:30px;display:grid;place-items:center;color:#cfe3ff;font-size:13px;background:radial-gradient(circle at 40% 25%,#3d5f9e,#0f1a33 75%);clip-path:polygon(28% 0,72% 0,100% 28%,100% 72%,72% 100%,28% 100%,0 72%,0 28%)}
+.lwcs-tvm-sock.is-brand{width:32px;height:32px;color:#ffd36b;background:radial-gradient(circle at 40% 25%,#5a6f96,#141d33 75%)}
+/* 通用按钮 */
+.lwcs-tvm-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:0 14px;border:0;font-weight:800;color:var(--ink);background:linear-gradient(180deg,#fff,#e6ebf2);box-shadow:inset 0 0 0 1px rgba(30,48,80,.2),0 1px 2px rgba(20,40,80,.12);clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);white-space:nowrap}
+.lwcs-tvm-btn:hover:not(:disabled){color:var(--blue);box-shadow:inset 0 0 0 1px rgba(47,124,246,.55)}
+.lwcs-tvm-btn.is-primary{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6 60%,#1446b0);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -2px 0 rgba(0,0,0,.18)}
+.lwcs-tvm-btn.is-primary:hover:not(:disabled){color:#fff;filter:brightness(1.08)}
+.lwcs-tvm-btn.is-ghost{background:none;box-shadow:inset 0 0 0 1px rgba(200,215,240,.35);color:#cfe0ff}
+.lwcs-tvm-mini{flex:none;width:24px;height:24px;display:grid;place-items:center;padding:0;border:0;border-radius:2px;color:var(--ink3);background:none;font-size:12px}
+.lwcs-tvm-mini:hover{color:var(--blue);background:rgba(47,124,246,.1)}
+/* 工具条：搜索 + 操作 */
+.lwcs-tvm-toolbar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.lwcs-tvm-search{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;color:var(--ink3);background:#fff;box-shadow:inset 0 0 0 1px rgba(30,48,80,.22),inset 0 2px 3px rgba(20,40,80,.06);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.lwcs-tvm-search:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
+.lwcs-tvm-search input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;font-weight:700;color:var(--ink)}
+.lwcs-tvm-search.is-small{flex:0 1 220px;height:34px}
+.lwcs-tvm-messages{padding:6px 12px 0}
+.lwcs-tvm-message{margin:0 0 6px;padding:7px 12px;font-size:13px;font-weight:700;color:#5b4a2c;background:rgba(255,200,110,.18);box-shadow:inset 3px 0 0 #e0a23a;overflow-wrap:anywhere}
+.lwcs-tvm-message.is-error{color:#8a1f18;background:rgba(230,80,70,.12);box-shadow:inset 3px 0 0 var(--err)}
+/* 左栏 + 右栏 */
+.lwcs-tvm-split{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(230px,280px) minmax(0,1fr)}
+.lwcs-tvm-aside{min-height:0;display:flex;flex-direction:column;border-right:1px solid var(--line);background:rgba(255,255,255,.4)}
+.lwcs-tvm-aside-head{display:flex;align-items:center;gap:8px;padding:10px 8px 8px 14px;border-bottom:1px solid var(--line)}
+.lwcs-tvm-aside-head strong{font-weight:900;letter-spacing:.08em}
+.lwcs-tvm-aside-head .lwcs-tvm-icon{margin-left:auto}
+.lwcs-tvm-pane{min-width:0;min-height:0;display:flex;flex-direction:column}
+.lwcs-tvm-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:12px 14px 16px;scrollbar-width:thin;scrollbar-color:#9aa7ba transparent}
+/* 目录 */
+.lwcs-tvm-tree{flex:1 1 auto;min-height:0;overflow:auto;padding:8px 6px 12px;scrollbar-width:thin;scrollbar-color:#9aa7ba transparent}
+.lwcs-tvm-tree-row{position:relative;display:flex;align-items:center;gap:2px;min-height:32px;padding-left:calc(var(--lwcs-tvm-depth,0) * 16px);border-radius:2px}
+.lwcs-tvm-tree-row.is-root{width:100%;gap:9px;padding:0 10px;border:0;font-weight:900;color:var(--ink2);background:none;text-align:left}
+.lwcs-tvm-tree-row:hover{background:rgba(47,124,246,.07)}
+.lwcs-tvm-tree-row.is-current{background:linear-gradient(90deg,rgba(47,124,246,.2),rgba(47,124,246,.04));box-shadow:inset 3px 0 0 var(--blue)}
+.lwcs-tvm-tree-row.is-current .lwcs-tvm-tree-name,.lwcs-tvm-tree-row.is-root.is-current{color:#0f4fc4}
+.lwcs-tvm-tree-row.is-trail .lwcs-tvm-tree-name{color:var(--ink)}
+.lwcs-tvm-tree-row.is-changed::after{content:"";position:absolute;right:6px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:#f0a53a;box-shadow:0 0 5px #f0a53a}
+.lwcs-tvm-twist{flex:none;width:24px;height:28px;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink3);font-size:12px}
+.lwcs-tvm-tree-name{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:6px;min-height:30px;padding:0 4px;border:0;background:none;text-align:left;font-weight:700;color:var(--ink2)}
+.lwcs-tvm-tree-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-tree-name small{flex:none;font-size:11px;font-weight:800;color:var(--ink3)}
+.lwcs-tvm-count{flex:none;min-width:24px;padding:0 6px;font:700 12px/20px Bahnschrift,sans-serif;text-align:center;color:var(--ink3)}
+.lwcs-tvm-tree-row .lwcs-tvm-count{margin-right:14px}
+/* 属性表头 */
+.lwcs-tvm-pane-head{display:flex;flex-direction:column;gap:6px;padding:10px 14px 10px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.35)}
+.lwcs-tvm-pane-row{display:flex;align-items:center;gap:10px;min-width:0}
+.lwcs-tvm-up{flex:none;width:30px;height:30px;display:grid;place-items:center;padding:0;border:0;color:var(--ink2);background:rgba(30,48,80,.07);clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.lwcs-tvm-up:hover{color:var(--blue)}
+.lwcs-tvm-crumbs{min-width:0;display:flex;align-items:center;overflow-x:auto;scrollbar-width:none}
+.lwcs-tvm-crumbs button{flex:none;min-height:28px;padding:0 4px;border:0;background:none;font-size:12px;font-weight:700;color:var(--ink3);white-space:nowrap}
+.lwcs-tvm-crumbs button:not(:last-child)::after{content:"›";margin-left:8px;color:#a4afc0}
+.lwcs-tvm-crumbs button:hover{color:var(--blue)}
+.lwcs-tvm-crumbs button.is-current{color:var(--ink2)}
+.lwcs-tvm-pane-title{margin:0;min-width:0;display:flex;align-items:baseline;gap:10px;font-size:21px;font-weight:900;letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-pane-title small{font-size:13px;font-weight:800;letter-spacing:.1em;color:var(--ink3)}
+.lwcs-tvm-chip{flex:none;padding:3px 10px;font-size:12px;font-weight:800;color:#e6edf9;background:linear-gradient(180deg,#2c3a56,#151e33);clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.lwcs-tvm-chip.is-amber{color:#3a2300;background:linear-gradient(180deg,#ffd58a,#f0a53a)}
+.lwcs-tvm-pane-actions{margin-left:auto;display:flex;gap:6px}
+/* 属性表：字段网格 + 分组卡片 */
+.lwcs-tvm-sheet{display:flex;flex-direction:column;gap:16px}
+.lwcs-tvm-sec-title{margin:0 0 8px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:900;letter-spacing:.16em;color:var(--ink3)}
+.lwcs-tvm-sec-title i{color:var(--blue)}
+.lwcs-tvm-sec-title em{font:700 12px Bahnschrift,sans-serif;letter-spacing:0;color:var(--ink3)}
+.lwcs-tvm-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.lwcs-tvm-field{position:relative;min-width:0;display:flex;flex-direction:column;gap:5px;padding:8px 10px 9px;background:rgba(255,255,255,.78);box-shadow:inset 0 0 0 1px var(--line),0 1px 2px rgba(20,40,80,.06);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%)}
+.lwcs-tvm-field.is-wide{grid-column:1/-1}
+.lwcs-tvm-field.is-changed{background:linear-gradient(180deg,rgba(255,236,200,.9),rgba(255,248,232,.85));box-shadow:inset 3px 0 0 #f0a53a,inset 0 0 0 1px rgba(200,130,30,.35)}
+.lwcs-tvm-field.is-verified{box-shadow:inset 3px 0 0 var(--ok),inset 0 0 0 1px rgba(30,160,100,.4)}
+.lwcs-tvm-field.is-focus{animation:lwcs-tvm-flash 1.6s ease-out}
+.lwcs-tvm-field-head{display:flex;align-items:center;gap:2px;min-height:22px}
+.lwcs-tvm-field-name{flex:1 1 auto;min-width:0;font-size:12px;font-weight:800;letter-spacing:.04em;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-field .lwcs-tvm-mini{opacity:.55}
+.lwcs-tvm-field:hover .lwcs-tvm-mini,.lwcs-tvm-field:focus-within .lwcs-tvm-mini,.lwcs-tvm-field.is-changed .lwcs-tvm-mini{opacity:1}
+.lwcs-tvm-input{width:100%;min-width:0;padding:4px 2px;border:0;border-bottom:1px solid rgba(30,48,80,.22);background:none;font-weight:800;font-size:15px;color:var(--ink);outline:0;resize:vertical}
+.lwcs-tvm-input:focus{border-bottom:2px solid var(--blue);padding-bottom:3px}
+.lwcs-tvm-input.is-number{font:700 18px Bahnschrift,"DIN Alternate",sans-serif;letter-spacing:.02em}
+textarea.lwcs-tvm-input{font-size:14px;font-weight:600;line-height:1.55;padding:6px 8px;border:1px solid rgba(30,48,80,.18);background:rgba(255,255,255,.6)}
+textarea.lwcs-tvm-input:focus{border:1px solid var(--blue);padding:6px 8px}
+.lwcs-tvm-read{min-width:0;font-weight:800;font-size:15px;color:var(--ink);overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
+.lwcs-tvm-read.is-number{font:700 18px Bahnschrift,sans-serif}
+.lwcs-tvm-read.is-boolean,.lwcs-tvm-read.is-null{color:var(--ink2)}
+.lwcs-tvm-was{font-size:12px;font-weight:700;color:#8a5a10;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-field-error{font-size:12px;font-weight:800;color:var(--err)}
+.lwcs-tvm-null{align-self:flex-start;padding:3px 12px;border:1px dashed rgba(30,48,80,.3);background:none;font-weight:800;color:var(--ink3)}
+/* 开关 */
+.lwcs-tvm-switch{align-self:flex-start;display:inline-flex;align-items:center;gap:9px;padding:2px 2px 2px 0;border:0;background:none;font-weight:800;color:var(--ink2)}
+.lwcs-tvm-knob{position:relative;width:44px;height:22px;border-radius:11px;background:#c3ccd9;box-shadow:inset 0 1px 3px rgba(0,0,0,.25);transition:background .18s}
+.lwcs-tvm-knob::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:translate .18s}
+.lwcs-tvm-switch[aria-checked="true"] .lwcs-tvm-knob{background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
+.lwcs-tvm-switch[aria-checked="true"] .lwcs-tvm-knob::after{translate:22px 0}
+.lwcs-tvm-switch[aria-checked="true"] b{color:#0f4fc4}
+.lwcs-tvm-switch.is-large{padding:8px 0}
+/* 分组卡片 */
+.lwcs-tvm-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.lwcs-tvm-tile{min-width:0;display:flex;align-items:center;gap:10px;padding:9px 10px;border:0;text-align:left;color:var(--ink);background:rgba(255,255,255,.78);box-shadow:inset 0 0 0 1px var(--line),0 1px 2px rgba(20,40,80,.06);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.lwcs-tvm-tile:hover{background:#fff;box-shadow:inset 0 0 0 1px rgba(47,124,246,.55)}
+.lwcs-tvm-tile:hover .lwcs-tvm-sock{filter:drop-shadow(0 0 5px rgba(80,160,255,.8))}
+.lwcs-tvm-tile.is-changed{box-shadow:inset 3px 0 0 #f0a53a,inset 0 0 0 1px rgba(200,130,30,.35)}
+.lwcs-tvm-tile-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px}
+.lwcs-tvm-tile-body strong{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-tile-body small{font-size:12px;font-weight:700;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-tile .lwcs-tvm-count{font-size:15px;color:var(--ink2)}
+.lwcs-tvm-go{color:#a4afc0;font-size:12px}
+.lwcs-tvm-more{align-self:center;padding:8px 18px;border:1px dashed rgba(30,48,80,.3);background:none;font-weight:800;color:var(--ink2)}
+.lwcs-tvm-empty{padding:26px 16px;text-align:center;font-weight:700;color:var(--ink3)}
+.lwcs-tvm-empty.is-big{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.lwcs-tvm-empty.is-big>i{font-size:28px;color:#a4b4cc}
+.lwcs-tvm-empty p{margin:0}
+/* 搜索结果 */
+.lwcs-tvm-results{display:flex;flex-direction:column;gap:6px}
+.lwcs-tvm-result{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,40%);align-items:center;gap:10px;padding:7px 10px;border:0;text-align:left;color:var(--ink);background:rgba(255,255,255,.78);box-shadow:inset 0 0 0 1px var(--line)}
+.lwcs-tvm-result:hover{background:#fff;box-shadow:inset 0 0 0 1px rgba(47,124,246,.55)}
+.lwcs-tvm-result-body{min-width:0;display:flex;flex-direction:column}
+.lwcs-tvm-result-body strong{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-result-body small,.lwcs-tvm-result-value{font-size:12px;font-weight:700;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-result-value{font-size:13px;color:var(--ink2);text-align:right}
+/* 待保存清单 + 保存条（深蓝铭牌） */
+.lwcs-tvm-drafts{max-height:34%;overflow:auto;padding:8px 12px;border-top:1px solid var(--line);background:rgba(255,240,214,.6)}
+.lwcs-tvm-draft{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:32px;font-size:13px}
+.lwcs-tvm-draft+.lwcs-tvm-draft{border-top:1px solid rgba(180,120,30,.18)}
+.lwcs-tvm-draft-path{min-width:0;padding:0;border:0;background:none;text-align:left;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-draft-path:hover{color:var(--blue)}
+.lwcs-tvm-draft-old{min-width:0;color:var(--ink3);text-decoration:line-through;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-draft-new{min-width:0;font-weight:800;color:#8a5a10;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-draft-arrow{color:#c98a2a;font-size:11px}
+.lwcs-tvm-savebar{display:flex;align-items:center;gap:8px;padding:8px 10px;color:#e6edf9;background:linear-gradient(180deg,#2c3a56,#151e33);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.lwcs-tvm-savebar .lwcs-tvm-save-state{margin-right:auto;display:flex;align-items:center;gap:9px;min-height:36px;padding:0 10px;border:0;background:none;font-weight:800;color:#cfe0ff}
+.lwcs-tvm-save-state:disabled{opacity:1;cursor:default}
+.lwcs-tvm-save-state.is-dirty{color:#ffc46b}
+.lwcs-tvm-save-state[data-state="verified"]{color:#7ff0bd}
+.lwcs-tvm-save-state[data-state="conflict"],.lwcs-tvm-save-state[data-state="error"]{color:#ffb3ab}
+.lwcs-tvm-save{min-width:132px}
+/* 详细编辑弹层 */
+.lwcs-tvm-sheet-backdrop{position:fixed;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(6,10,18,.6)}
+.lwcs-tvm-dialog{width:min(720px,100%);max-height:min(86dvh,var(--lwcs-tvm-visual-height,86dvh));display:flex;flex-direction:column;background:linear-gradient(180deg,#f3f6fa,#e2e8f1);box-shadow:0 0 0 5px #c3ccd9,0 20px 50px rgba(0,0,0,.5);clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);animation:lwcs-tvm-pop .18s ease-out}
+.lwcs-tvm-dialog-head{display:flex;align-items:flex-start;gap:10px;padding:12px 10px 10px 16px;color:#e6edf9;background:linear-gradient(180deg,#2c3a56,#151e33)}
+.lwcs-tvm-dialog-head>div{flex:1;min-width:0}
+.lwcs-tvm-dialog-head h3{margin:0;font-size:18px;font-weight:900;letter-spacing:.06em}
+.lwcs-tvm-dialog-head p{margin:2px 0 0;font-size:12px;color:#9db0cf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-dialog-head .lwcs-tvm-icon{color:#cfe0ff}
+.lwcs-tvm-dialog-body{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:14px 16px}
+.lwcs-tvm-kinds{display:flex;flex-wrap:wrap;gap:5px}
+.lwcs-tvm-kinds button{min-height:32px;padding:0 14px;border:0;font-weight:800;color:var(--ink2);background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px var(--line);clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.lwcs-tvm-kinds button.is-on{color:#fff;background:linear-gradient(180deg,#5aa5ff,#1a5ad6)}
+.lwcs-tvm-detail-input{width:100%;min-height:220px;padding:10px 12px;border:1px solid rgba(30,48,80,.22);background:#fff;font:13px/1.55 ui-monospace,Consolas,monospace;color:var(--ink);resize:vertical;outline:0}
+.lwcs-tvm-detail-input:focus{border-color:var(--blue)}
+.lwcs-tvm-original summary{cursor:pointer;font-size:12px;font-weight:800;color:var(--ink3)}
+.lwcs-tvm-original pre,.lwcs-tvm-pre{margin:6px 0 0;max-height:200px;overflow:auto;padding:10px;background:rgba(255,255,255,.6);box-shadow:inset 0 0 0 1px var(--line);font:12px/1.5 ui-monospace,Consolas,monospace;color:var(--ink2);white-space:pre-wrap;overflow-wrap:anywhere}
+.lwcs-tvm-pre{max-height:none;margin:0}
+.lwcs-tvm-dialog-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+/* 楼层记录 */
+.lwcs-tvm-floor-list{flex:1 1 auto;min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#9aa7ba transparent}
+.lwcs-tvm-floor{width:100%;height:56px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;align-content:center;gap:2px 8px;padding:0 12px 0 14px;border:0;border-bottom:1px solid var(--line);text-align:left;color:var(--ink);background:none}
+.lwcs-tvm-floor:hover{background:rgba(47,124,246,.06)}
+.lwcs-tvm-floor.is-on{background:linear-gradient(90deg,rgba(47,124,246,.2),rgba(47,124,246,.04));box-shadow:inset 3px 0 0 var(--blue)}
+.lwcs-tvm-floor-no{font:800 14px Bahnschrift,sans-serif;color:var(--ink)}
+.lwcs-tvm-floor-role{justify-self:end;padding:0 7px;font-size:11px;font-weight:800;color:#fff;background:#6b7a93;clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.lwcs-tvm-floor.is-user .lwcs-tvm-floor-role{background:#1a5ad6}
+.lwcs-tvm-floor.is-char .lwcs-tvm-floor-role{background:#9c6d0c}
+.lwcs-tvm-floor-text{grid-column:1/-1;font-size:12px;font-weight:600;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lwcs-tvm-floor-detail{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.lwcs-tvm-floor-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.5)}
+.lwcs-tvm-floor-title{font-size:19px;font-weight:900;letter-spacing:.04em}
+.lwcs-tvm-floor-head .lwcs-tvm-search{margin-left:auto}
+/* 剧情资料 */
+.lwcs-tvm-key-list{flex:1 1 auto;min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:5px}
+.lwcs-tvm-key{display:flex;align-items:center;gap:10px;min-height:42px;padding:6px 10px;border:0;text-align:left;font-weight:800;color:var(--ink);background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px var(--line)}
+.lwcs-tvm-key:hover{background:#fff}
+.lwcs-tvm-key.is-on{background:linear-gradient(90deg,rgba(47,124,246,.2),rgba(255,255,255,.75));box-shadow:inset 3px 0 0 var(--blue),inset 0 0 0 1px rgba(47,124,246,.35)}
+.lwcs-tvm-aside .lwcs-tvm-db-open{margin:8px}
+/* 运行检查 */
+.lwcs-tvm-diag{overflow:auto;padding:14px}
+.lwcs-tvm-diag-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.lwcs-tvm-diag-head .lwcs-tvm-messages{flex:1;padding:0}
+.lwcs-tvm-diag-head .lwcs-tvm-btn{margin-left:auto}
+.lwcs-tvm-diag-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.lwcs-tvm-diag-card{padding:12px 14px;background:rgba(255,255,255,.8);box-shadow:inset 0 0 0 1px var(--line);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.lwcs-tvm-diag-card header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.lwcs-tvm-diag-card strong{font-size:16px;font-weight:900}
+.lwcs-tvm-light{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--ink2)}
+.lwcs-tvm-light i{width:10px;height:10px;border-radius:50%;background:#9aa7ba}
+.lwcs-tvm-diag-card.is-ok .lwcs-tvm-light i{background:#2fd08a;box-shadow:0 0 8px #2fd08a}
+.lwcs-tvm-diag-card.is-busy .lwcs-tvm-light i{background:#f0a53a;box-shadow:0 0 8px #f0a53a}
+.lwcs-tvm-diag-card.is-error .lwcs-tvm-light i{background:#e5483d;box-shadow:0 0 8px #e5483d}
+.lwcs-tvm-diag-card.is-error .lwcs-tvm-light{color:var(--err)}
+.lwcs-tvm-diag-card dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;font-size:13px}
+.lwcs-tvm-diag-card dt{font-weight:800;color:var(--ink3)}
+.lwcs-tvm-diag-card dd{margin:0;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@keyframes lwcs-tvm-flash{0%,30%{box-shadow:inset 0 0 0 2px var(--blue),0 0 0 3px rgba(47,124,246,.25)}100%{box-shadow:inset 0 0 0 1px var(--line)}}
+@keyframes lwcs-tvm-pop{from{transform:translateY(10px);opacity:.6}to{transform:none;opacity:1}}
+@media(max-width:899px){.lwcs-tvm-overlay{padding:0}.lwcs-tvm-shell{width:100%;height:100dvh;clip-path:none;padding:0}.lwcs-tvm-head{clip-path:none;margin-bottom:0}.lwcs-tvm-body{clip-path:none}.lwcs-tvm-split{grid-template-columns:minmax(200px,230px) minmax(0,1fr)}.lwcs-tvm-tabs button{padding:0 12px}}
+@media(max-width:599px){.lwcs-tvm-head{flex-wrap:wrap;gap:6px;padding:6px 4px 0 10px}.lwcs-tvm-brand h1{font-size:15px}.lwcs-tvm-head .lwcs-tvm-close{margin-left:auto}.lwcs-tvm-brand{flex:1}.lwcs-tvm-tabs{order:3;flex:1 1 100%;margin:0 -4px 0 -10px;padding:0 4px}.lwcs-tvm-tabs button{flex:1;justify-content:center;padding:0 6px;min-height:40px;font-size:13px;gap:5px}
+.lwcs-tvm-split{display:flex;flex-direction:column}.lwcs-tvm-aside{border-right:0}.lwcs-tvm-pane{flex:1 1 auto}
+.lwcs-tvm-pane-head{padding:8px 10px}.lwcs-tvm-pane-title{font-size:18px}.lwcs-tvm-scroll{padding:10px}
+.lwcs-tvm-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.lwcs-tvm-tiles{grid-template-columns:1fr}
+.lwcs-tvm-result{grid-template-columns:auto minmax(0,1fr)}.lwcs-tvm-result-value{grid-column:2;text-align:left}
+.lwcs-tvm-draft{grid-template-columns:minmax(0,1fr) auto;row-gap:0;padding:4px 0}.lwcs-tvm-draft-path{grid-column:1/-1}.lwcs-tvm-draft-arrow{display:none}.lwcs-tvm-draft-old,.lwcs-tvm-draft-new{grid-column:1}.lwcs-tvm-draft .lwcs-tvm-mini{grid-column:2;grid-row:2/4}
+.lwcs-tvm-savebar{flex-wrap:wrap;padding-bottom:calc(8px + env(safe-area-inset-bottom))}.lwcs-tvm-savebar .lwcs-tvm-save-state{flex:1 1 100%;margin:0}.lwcs-tvm-savebar .lwcs-tvm-btn{flex:1}
+.lwcs-tvm-floors .lwcs-tvm-aside{flex:1 1 auto;min-height:0}
+.lwcs-tvm-floors.is-mobile-detail .lwcs-tvm-aside,.lwcs-tvm-floors:not(.is-mobile-detail) .lwcs-tvm-pane{display:none}
+.lwcs-tvm-floor-head .lwcs-tvm-search{flex:1 1 100%;margin:0}
+.lwcs-tvm-db .lwcs-tvm-aside{max-height:40%;border-bottom:1px solid var(--line)}
+.lwcs-tvm-dialog{max-height:100dvh}.lwcs-tvm-sheet-backdrop{padding:0;align-items:flex-end}.lwcs-tvm-dialog{clip-path:none}}
+@media(prefers-reduced-motion:reduce){.lwcs-tvm-overlay *{transition:none!important;animation:none!important}}
+`;
     hostWindow.document.head.appendChild(styleElement);
   }
 
