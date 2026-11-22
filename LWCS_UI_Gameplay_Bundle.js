@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:2cb550d643bd8f36c17cadbd339fc490e96440c6f5bcd3166c29b37b398f585e|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:742cf4b6b88db1b2ba7d78d3510e8e13b40a1a39bad90e68ee20f781f2fef271|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -43449,6 +43449,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (String(entry?.declaration?.actionKind || '').trim() === 'RELEASE_SKILL' && skill && typeof skill === 'object') seen.set(skillName(skill), skill);
     }
     for (const skill of known) if (skill && typeof skill === 'object' && !seen.has(skillName(skill))) seen.set(skillName(skill), skill);
+    // 正在蓄的那一招看得见（佯装没被看穿时对方也当真），同样算亮出的一招（11-22，检查目录第 36 题：对着蓄双倍大招的强攻系，系别仍按先验平均，威胁被估低）。
+    const charging = unit?.蓄力技能?.skill;
+    if (charging && typeof charging === 'object' && !seen.has(skillName(charging))) seen.set(skillName(charging), charging);
     for (const skill of seen.values()) {
       const kind = skillObservationClass(skill);
       let total = 0;
@@ -82789,7 +82792,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // A charge released: it lands if its caster still stands.
       if (strikes) for (; released < strikes.length && strikes[released].at <= time + 1e-9; released += 1) {
         const strike = strikes[released];
-        if (left[strike.from] > 1e-9 && left[strike.to] > 1e-9) left[strike.to] = Math.max(0, left[strike.to] + strike.delta);
+        // 守护挡大招（11-22，检查目录第 36 题）：敌方的蓄力一击落在被掩护的人身上时由守护者承受（struck），伤害按出手者平时打两人的输出之比换算
+        // （守护者防御更高就少掉）；此前蓄力一击直接扣在原目标头上，守护挡不了大招。自身反噬不转。
+        let to = strike.to, delta = strike.delta;
+        if (!strike.self && sides[strike.from] !== sides[strike.to]) {
+          const by = struck(strike.to);
+          if (by !== strike.to) {
+            const onWard = cells(strike.from, strike.to).out[strike.from][strike.to], onGuard = cells(strike.from, by).out[strike.from][by];
+            delta = onWard > 1e-9 && onGuard >= 0 ? delta * onGuard / onWard : delta * (Number(facts.hpMax?.[strike.to]) || 1) / Math.max(1, Number(facts.hpMax?.[by]) || 1);
+            to = by;
+          }
+        }
+        if (left[strike.from] > 1e-9 && left[to] > 1e-9) left[to] = Math.max(0, left[to] + delta);
       }
     }
     let score = 0, standing = new Set();
@@ -83010,7 +83024,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const target = table.index.get(String(id));
         if (target === undefined) continue;
         const lands = cachedBaseActionValue(units[row], units[target], 'RELEASE_SKILL', charge.skill, context, world) / 100;
-        if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * keep[target][row] });
+        // 蓄力一击按它自己的分量算目标能接下多少（11-22，检查目录第 36 题）：来招就是这一招、分量是它落下的份额（r20Meet），此前借用常规攻击的
+        // keep——目标对常规攻击能对轰或闪开（keep≈0），双倍威力的蓄力一击也被当成接得下，预计伤害成了 0，守护挡大招不值。
+        const meetCharge = sides[target] === sides[row] ? 1
+          : r20Meet(r20Stand(units[target], units[row], { actionKind: 'RELEASE_SKILL', skill: charge.skill, targetIds: [String(id)] }), r20Weight(lands)).keep;
+        if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * meetCharge });
       }
       // 放出时的自损反噬（行为检查目录第 16 题，11-17）：蓄的这一招写明的「自损反噬」（技能释放者、效果生效后/命中后必付，
       // BattlePreview 换成每回合 dot_damage_ratio × 持续回合）在放出那一刻记到蓄力者自己身上——落空也照付，所以让它落空有价值；

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:2cb550d643bd8f36c17cadbd339fc490e96440c6f5bcd3166c29b37b398f585e|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:742cf4b6b88db1b2ba7d78d3510e8e13b40a1a39bad90e68ee20f781f2fef271|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -97903,6 +97903,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (String(entry?.declaration?.actionKind || '').trim() === 'RELEASE_SKILL' && skill && typeof skill === 'object') seen.set(skillName(skill), skill);
     }
     for (const skill of known) if (skill && typeof skill === 'object' && !seen.has(skillName(skill))) seen.set(skillName(skill), skill);
+    // 正在蓄的那一招看得见（佯装没被看穿时对方也当真），同样算亮出的一招（11-22，检查目录第 36 题：对着蓄双倍大招的强攻系，系别仍按先验平均，威胁被估低）。
+    const charging = unit?.蓄力技能?.skill;
+    if (charging && typeof charging === 'object' && !seen.has(skillName(charging))) seen.set(skillName(charging), charging);
     for (const skill of seen.values()) {
       const kind = skillObservationClass(skill);
       let total = 0;
@@ -137243,7 +137246,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // A charge released: it lands if its caster still stands.
       if (strikes) for (; released < strikes.length && strikes[released].at <= time + 1e-9; released += 1) {
         const strike = strikes[released];
-        if (left[strike.from] > 1e-9 && left[strike.to] > 1e-9) left[strike.to] = Math.max(0, left[strike.to] + strike.delta);
+        // 守护挡大招（11-22，检查目录第 36 题）：敌方的蓄力一击落在被掩护的人身上时由守护者承受（struck），伤害按出手者平时打两人的输出之比换算
+        // （守护者防御更高就少掉）；此前蓄力一击直接扣在原目标头上，守护挡不了大招。自身反噬不转。
+        let to = strike.to, delta = strike.delta;
+        if (!strike.self && sides[strike.from] !== sides[strike.to]) {
+          const by = struck(strike.to);
+          if (by !== strike.to) {
+            const onWard = cells(strike.from, strike.to).out[strike.from][strike.to], onGuard = cells(strike.from, by).out[strike.from][by];
+            delta = onWard > 1e-9 && onGuard >= 0 ? delta * onGuard / onWard : delta * (Number(facts.hpMax?.[strike.to]) || 1) / Math.max(1, Number(facts.hpMax?.[by]) || 1);
+            to = by;
+          }
+        }
+        if (left[strike.from] > 1e-9 && left[to] > 1e-9) left[to] = Math.max(0, left[to] + delta);
       }
     }
     let score = 0, standing = new Set();
@@ -137464,7 +137478,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const target = table.index.get(String(id));
         if (target === undefined) continue;
         const lands = cachedBaseActionValue(units[row], units[target], 'RELEASE_SKILL', charge.skill, context, world) / 100;
-        if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * keep[target][row] });
+        // 蓄力一击按它自己的分量算目标能接下多少（11-22，检查目录第 36 题）：来招就是这一招、分量是它落下的份额（r20Meet），此前借用常规攻击的
+        // keep——目标对常规攻击能对轰或闪开（keep≈0），双倍威力的蓄力一击也被当成接得下，预计伤害成了 0，守护挡大招不值。
+        const meetCharge = sides[target] === sides[row] ? 1
+          : r20Meet(r20Stand(units[target], units[row], { actionKind: 'RELEASE_SKILL', skill: charge.skill, targetIds: [String(id)] }), r20Weight(lands)).keep;
+        if (lands > 0) (table.strikes ||= []).push({ from: row, to: target, at: turns, delta: sides[target] === sides[row] ? lands : -lands * meetCharge });
       }
       // 放出时的自损反噬（行为检查目录第 16 题，11-17）：蓄的这一招写明的「自损反噬」（技能释放者、效果生效后/命中后必付，
       // BattlePreview 换成每回合 dot_damage_ratio × 持续回合）在放出那一刻记到蓄力者自己身上——落空也照付，所以让它落空有价值；
