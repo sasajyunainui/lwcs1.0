@@ -64,13 +64,24 @@
     return `<div class="soul-card" data-scan data-float="${i % 2 ? 'r' : 'l'}">
       <div class="soul-stage">${s.rings.length ? c.ringStage(s.rings, ringAttrs) : '<div class="soul-empty"><i></i><span>尚未附环</span></div>'}</div>
       ${soulPlate(`${['第一', '第二', '第三', '第四'][i] || ''}武魂`, c.esc(s.表象名称), sub, `data-go="page-ability/martial" data-go-set="soul=${i}" role="link" tabindex="0" title="查看${c.esc(s.表象名称)}的武魂详情"`)}
-      ${s.rings.length ? c.ringPicks(s.rings, ringAttrs) : ''}
     </div>`;
+  };
+  const SOUL_NO = ['一', '二', '三', '四'];
+  const soulRows = c => {
+    const rows = c.souls.map((s, i) => {
+      const keyOf = r => { const sk = r.skills[0], sp = s.spirits.find(x => x.rings.includes(r)); return !sk ? '' : sp ? `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}` : r.independent ? `${s.slot}/${r.slot}/${sk.slot}` : ''; };
+      return `<div class="srow"><span class="srow-no" aria-hidden="true">${SOUL_NO[i] || i + 1}</span>
+        <button type="button" class="srow-name" data-go="page-ability/martial" data-go-set="soul=${i}" title="查看${c.esc(s.表象名称)}的武魂详情"><strong>${c.esc(s.表象名称)}</strong>${c.blank(s.系别) ? '' : `<span class="sys">${c.esc(s.系别)}</span>`}</button>
+        ${s.rings.length ? c.ringPicks(s.rings, r => { const key = keyOf(r); return key ? `data-inspect="sk:${c.esc(key)}"` : ''; }) : '<span class="srow-none">—</span>'}</div>`;
+    });
+    const bl = c.ch.血脉之力 || {}, blRings = c.entries(bl).filter(([k, v]) => /魂环/.test(k) && v && typeof v === 'object').map(([, v]) => v);
+    if (!c.blank(bl.血脉) && blRings.length) rows.push(`<div class="srow blood"><span class="srow-no" aria-hidden="true">血</span><div class="srow-name"><strong>${c.esc(bl.血脉)}</strong><span class="sys">血脉</span></div>${c.ringPicks(blRings, () => 'aria-disabled="true" tabindex="-1"')}</div>`);
+    return `<section class="soul-rows" aria-label="武魂">${rows.join('')}</section>`;
   };
   const bloodCard = c => {
     const bl = c.ch.血脉之力 || {}, rings = c.entries(bl).filter(([k, v]) => /魂环/.test(k) && v && typeof v === 'object').map(([, v]) => v);
     if (c.blank(bl.血脉) || !rings.length) return '';
-    return `<div class="soul-card blood"><div class="soul-stage">${c.ringStage(rings)}</div>${soulPlate('血脉', c.esc(bl.血脉), `<em>${rings.length} 环</em>`)}${c.ringPicks(rings, () => 'aria-disabled="true" tabindex="-1"')}</div>`;
+    return `<div class="soul-card blood"><div class="soul-stage">${c.ringStage(rings)}</div>${soulPlate('血脉', c.esc(bl.血脉), `<em>${rings.length} 环</em>`)}</div>`;
   };
   const genderMark = g => g === '女' ? '♀' : g === '男' ? '♂' : '';
   // 行动时长：1 tick = 10 分钟；结束时刻跨日时标「次日」
@@ -109,6 +120,7 @@
         </div>
         </div>
         <section class="soul-deck" aria-label="武魂与魂环">${c.souls.map((s, i) => soulCard(c, s, i)).join('')}${bloodCard(c)}</section>
+        ${soulRows(c)}
         ${wounds.length
           ? `<div class="sec wound-sec"><div class="strip" style="color:#a3301f;background:linear-gradient(90deg,rgba(230,60,40,.16),transparent 70%);box-shadow:inset 2px 0 0 #d6452a"><i class="fa-solid fa-kit-medical"></i><span>伤势 ${wounds.length} 处</span><button class="key-s" type="button" style="margin-left:auto" data-wound-add><i class="fa-solid fa-plus"></i> 记录</button></div>
              <div class="list">${wounds.map(([part, w]) => `<div class="row" style="cursor:default"><span class="chip">${c.ed(w.程度 || '轻', c.P('状态', '受伤部位', part, '程度'), { kind: 'enum', options: ['轻', '中', '重'] })}</span><div><strong>${c.ed(part, c.P('状态', '受伤部位', part), { renameKey: true })}</strong><small>${c.ed(w.描述 || '未描述', c.P('状态', '受伤部位', part, '描述'), { raw: w.描述 || '' })}</small></div><button class="key-s danger" type="button" data-del-path="${c.esc(JSON.stringify(c.P('状态', '受伤部位', part)))}"><i class="fa-solid fa-trash"></i></button></div>`).join('')}</div>${woundForm}</div>`

@@ -127,3 +127,31 @@
   .soul-deck .sp-sub{flex-wrap:wrap;row-gap:.1em;white-space:normal}
 }
 @container cockpit (max-width:700px){.soul-card:is(:hover,:focus-within,:has(.mvu-hover-floating-active)) .mvu-soul-ring-stage{translate:none}}
+
+/* ============ 触屏 / 窄屏（.cockpit.touch）：武魂区改为对齐的武魂行 ============ */
+/* 三列固定：序号 · 名称与系别（点进武魂详情）· 魂环牌（点看魂技）；魂环列与上方右列资源条左缘对齐。不写环数与开环等级，不显示投影台 */
+.soul-rows{display:none}
+.cockpit.touch .soul-deck{display:none}
+.cockpit.touch .soul-rows{display:flex;flex-direction:column;gap:.4em}
+.srow{display:grid;grid-template-columns:2.3em minmax(0,1fr) calc(50% - .5em);align-items:center;gap:.75em;min-height:3.4em;padding:.4em .75em;background:rgba(255,255,255,.62);box-shadow:inset 0 0 0 1px rgba(30,48,80,.15);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.srow-no{width:2.3em;height:2.3em;display:grid;place-items:center;font:900 1em 'Noto Serif SC','SimSun',serif;color:#fff;background:radial-gradient(circle at 40% 25%,#3d5f9e,#0f1a33 75%);clip-path:polygon(28% 0,72% 0,100% 28%,100% 72%,72% 100%,28% 100%,0 72%,0 28%)}
+.srow.blood .srow-no{background:radial-gradient(circle at 40% 25%,#b8475e,#3a0f1a 75%)}
+.srow-name{appearance:none;border:0;background:none;padding:0;margin:0;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:.2em;font:inherit;color:inherit;text-align:left}
+button.srow-name{cursor:pointer}
+.srow-name strong{max-width:100%;font-size:1.08em;font-weight:900;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button.srow-name:hover strong,button.srow-name:focus-visible strong{color:var(--blue-d)}
+.srow .sys{font-size:max(10.5px,.72em);font-weight:900;padding:.04em .5em;color:#fff;background:linear-gradient(180deg,#c99522,#9c6d0c);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.srow.blood .sys{background:linear-gradient(180deg,#d4566e,#9a2a42)}
+.cockpit.touch .srow .ring-picks{justify-content:flex-start;margin:0;gap:.1em}
+.srow .ring-pick{--md:2.25em;padding:2px}
+.srow-none{font-weight:800;color:var(--ink3)}
+/* 窄屏顶部：身份行与资源条一律不换行，放不下就截断（不挤到下一排） */
+@container cockpit (max-width:700px){
+  .home-top .plaques{flex-wrap:nowrap;max-width:none;min-width:0}
+  .home-top .plaques .plq{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .home-top .rel-stack{flex:none}
+  .home-top .title-line{overflow:hidden;text-overflow:ellipsis}
+  .home-top .meter .lb{white-space:nowrap;min-width:0;overflow:hidden;gap:.35em}
+  .home-top .meter .lb b{font-size:1.12em}
+  .home-top .meter .lb .num{font-size:.88em}
+}
