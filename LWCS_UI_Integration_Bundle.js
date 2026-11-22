@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:36073ce97db00e8b7d1fd317b9fed8e590ab4addc7b7a789f3d1b686bcb36461|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:18584feab871c1b0ade5bda6b49c8b12a94cce33402c3315477d1a3938de811e|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -30175,8 +30175,10 @@ ${播报文本}
     const npc = toText(req.对象, '');
     const 目标 = toText(req.目标 || req.产物 || req.物品, '');
     if (!目标) return null;
-    const 子类型 = toText(req.子类型 || req.目标类型, '').trim() || parseDirectProfessionSubtype(目标);
+    // 阶级可以直接写档次名称（一字、黄级…），斗铠 / 机甲从目标或阶级名称推出
+    const 子类型 = toText(req.子类型 || req.目标类型, '').trim() || parseDirectProfessionSubtype(`${目标} ${toText(req.阶级 || req.等级 || '', '')}`);
     const 显式阶级 = toNumber(req.阶级 || req.等级, 0);
+    const 材料来源 = toText(req.材料来源, '').trim();
     const 阶级文本 = [
       toText(req.阶级 || req.等级 || '', ''),
       目标,
@@ -30204,6 +30206,7 @@ ${播报文本}
               .map(item => item.trim())
               .filter(Boolean),
       数量: Math.max(1, toNumber(req.数量 || req.耗材数量, 1)),
+      ...(材料来源 && !/^(自备|自己|本人|无)$/.test(材料来源) ? { 材料来源 } : {}),
       阶级: 显式阶级 > 0 ? Math.max(1, Math.min(5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
       子类型,
       对象: npc,

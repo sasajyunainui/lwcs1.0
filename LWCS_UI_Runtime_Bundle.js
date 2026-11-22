@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:36073ce97db00e8b7d1fd317b9fed8e590ab4addc7b7a789f3d1b686bcb36461|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:bdc1b9a30a88255c5af9a63c520b7dce019d82599e52edbc88eca657bb2f8858|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:16ea3d3f86c1f1ce30cf5aa0db62bc1353a7e81b490a281daa3c69448281694c|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:18584feab871c1b0ade5bda6b49c8b12a94cce33402c3315477d1a3938de811e|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:3a637c22c60a4599a9890bb6bc0b4af7cecaa59b3c04d46283919ddf7794e83d|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:16ea3d3f86c1f1ce30cf5aa0db62bc1353a7e81b490a281daa3c69448281694c|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -30175,8 +30175,10 @@ ${播报文本}
     const npc = toText(req.对象, '');
     const 目标 = toText(req.目标 || req.产物 || req.物品, '');
     if (!目标) return null;
-    const 子类型 = toText(req.子类型 || req.目标类型, '').trim() || parseDirectProfessionSubtype(目标);
+    // 阶级可以直接写档次名称（一字、黄级…），斗铠 / 机甲从目标或阶级名称推出
+    const 子类型 = toText(req.子类型 || req.目标类型, '').trim() || parseDirectProfessionSubtype(`${目标} ${toText(req.阶级 || req.等级 || '', '')}`);
     const 显式阶级 = toNumber(req.阶级 || req.等级, 0);
+    const 材料来源 = toText(req.材料来源, '').trim();
     const 阶级文本 = [
       toText(req.阶级 || req.等级 || '', ''),
       目标,
@@ -30204,6 +30206,7 @@ ${播报文本}
               .map(item => item.trim())
               .filter(Boolean),
       数量: Math.max(1, toNumber(req.数量 || req.耗材数量, 1)),
+      ...(材料来源 && !/^(自备|自己|本人|无)$/.test(材料来源) ? { 材料来源 } : {}),
       阶级: 显式阶级 > 0 ? Math.max(1, Math.min(5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
       子类型,
       对象: npc,
@@ -58121,6 +58124,9 @@ const PROF_HIDDEN_ARBITRATION_NARRATION_RULES = `
 玩家应当看到的是经过修饰后的剧情文本，而不是系统裁定日志。
 `.trim();
 
+// 对方提供的材料按「这一单够用」计数量；连续模式不接受提供的材料，不会被反复刷
+const 提供材料单次数量 = 999;
+
 class ProfessionUIComponent {
   constructor(container, snapshot, options = {}) {
     this.container = container;
@@ -58317,6 +58323,9 @@ class ProfessionUIComponent {
 
   applyInitialContext() {
     const req = this.getInitialRequest();
+    const 材料来源 = String(req.材料来源 || '').trim();
+    const 提供名称 = 材料来源 ? this.parseInitialMaterials(this.options.prefillMaterials || req.材料) : [];
+    this.提供材料 = 提供名称.length ? { 提供方: 材料来源, 名称列表: 提供名称 } : null;
     const mode = this.normalizeInitialMode(this.options.prefillMode || req.模式 || req.动作 || req.副职业);
     if (mode) this.setActiveMode(mode);
 
@@ -58333,7 +58342,8 @@ class ProfessionUIComponent {
     if (预填材料列表.length) {
       const 材料集合 = new Set(预填材料列表);
       this.$$('.material-cb').forEach(勾选框 => {
-        勾选框.checked = 材料集合.has(勾选框.value) || 材料集合.has(this.取材料原名(勾选框.value));
+        const 是提供 = Boolean(this.解码材料引用(勾选框.value).提供方);
+        勾选框.checked = (!this.提供材料 || 是提供) && (材料集合.has(勾选框.value) || 材料集合.has(this.取材料原名(勾选框.value)));
         const 标签 = 勾选框.closest('.material-item');
         if (标签) 标签.classList.toggle('is-selected', 勾选框.checked);
       });
@@ -58517,8 +58527,10 @@ class ProfessionUIComponent {
   读取首个背包批次(记录 = {}) {
     return this.读取背包批次列表(记录)[0] || null;
   }
-  编码材料引用(物品名 = '', 批次索引 = -1) {
-    return JSON.stringify({ 物品名: String(物品名 || '').trim(), 批次索引: Number.isFinite(Number(批次索引)) ? Math.floor(Number(批次索引)) : -1 });
+  编码材料引用(物品名 = '', 批次索引 = -1, 提供方 = '') {
+    const 引用 = { 物品名: String(物品名 || '').trim(), 批次索引: Number.isFinite(Number(批次索引)) ? Math.floor(Number(批次索引)) : -1 };
+    if (String(提供方 || '').trim()) 引用.提供方 = String(提供方).trim();
+    return JSON.stringify(引用);
   }
   解码材料引用(引用 = '') {
     const 文本 = String(引用 || '').trim();
@@ -58529,6 +58541,7 @@ class ProfessionUIComponent {
         return {
           物品名: String(数据.物品名 || '').trim(),
           批次索引: Number.isFinite(Number(数据.批次索引)) ? Math.floor(Number(数据.批次索引)) : -1,
+          提供方: String(数据.提供方 || '').trim(),
         };
       }
     } catch (错误) {}
@@ -58542,6 +58555,10 @@ class ProfessionUIComponent {
     const 物品名 = 解析.物品名;
     if (!物品名) return null;
     const 命中 = this.查找物品定义(物品名);
+    if (解析.提供方) {
+      const 分类 = 命中?.分类 || (this.activeMode === 'forge' ? '锻造金属' : '');
+      return { 引用, 物品名, 批次索引: -1, 数量: 提供材料单次数量, 提供方: 解析.提供方, 物品: { ...(命中?.定义 || {}), 物品分类: 分类, 数量: 提供材料单次数量 } };
+    }
     const 背包记录 = this.currentInventory?.[物品名] || {};
     if (解析.批次索引 >= 0) {
       const 批次 = Array.isArray(背包记录.批次) ? 背包记录.批次[解析.批次索引] : null;
@@ -58570,7 +58587,8 @@ class ProfessionUIComponent {
     if (!名称) return '';
     const 阶位 = this.getItemTier(引用);
     const 显示名 = 阶位 > 0 && !/百锻|千锻|灵锻|魂锻|天锻/.test(名称) ? `${this.getForgeTierLabel(阶位)}${名称}` : 名称;
-    return `${Math.max(1, Number(数量 || 1))}份${显示名}`;
+    const 提供方 = this.解码材料引用(引用).提供方;
+    return `${Math.max(1, Number(数量 || 1))}份${显示名}${提供方 ? `（${提供方}提供）` : ''}`;
   }
   规范化背包批次(来源批次 = {}, 数量 = 1, fallback = {}) {
     const 来源 = 来源批次 && typeof 来源批次 === 'object' && !Array.isArray(来源批次) ? 来源批次 : {};
@@ -59884,7 +59902,7 @@ class ProfessionUIComponent {
     const filter = this.getMaterialFilter(this.activeMode);
     let count = 0;
     const 添加材料项 = (itemName, 引用, item, labelText, 选项 = {}) => {
-      if (!item || Number(item.数量 || 0) <= 0 || !filter(itemName, item)) return;
+      if (!item || Number(item.数量 || 0) <= 0 || (!选项.提供 && !filter(itemName, item))) return;
       const label = document.createElement('label');
       label.className = `material-item${选项.checked ? ' is-selected' : ''}`;
       const cb = document.createElement('input');
@@ -59896,7 +59914,7 @@ class ProfessionUIComponent {
         this.autoGenerateTargetName();
         this.updatePreview();
       });
-      const detail = [`剩${Math.max(0, Math.floor(Number(item.数量 || 0)))}`];
+      const detail = 选项.提供 ? ['对方提供'] : [`剩${Math.max(0, Math.floor(Number(item.数量 || 0)))}`];
       const qualityFactor = item?.品质系数;
       if (qualityFactor !== undefined) detail.push(`Q${Number(qualityFactor).toFixed(2)}`);
       const fusionRate = item?.副职业参数?.融合参数?.融合率;
@@ -59914,6 +59932,12 @@ class ProfessionUIComponent {
       container.appendChild(label);
       count++;
     };
+    const 提供材料 = this.提供材料 || null;
+    (提供材料?.名称列表 || []).forEach(材料名 => {
+      const 引用 = this.编码材料引用(材料名, -1, 提供材料.提供方);
+      const 上下文 = this.读取材料上下文(引用);
+      添加材料项(材料名, 引用, 上下文.物品, `${材料名}（${提供材料.提供方}提供）`, { 提供: true });
+    });
     Object.keys(this.currentInventory).forEach(itemName => {
       const 背包记录 = this.currentInventory[itemName];
       const 普通数量 = this.读取背包普通数量(背包记录);
@@ -60276,8 +60300,8 @@ class ProfessionUIComponent {
     Object.entries(plan || {})
       .filter(([_, q]) => Number(q) > 0)
       .forEach(([ref, consumeQty]) => {
-        const { 物品名, 批次索引 } = this.解码材料引用(ref);
-        if (!物品名) return;
+        const { 物品名, 批次索引, 提供方 } = this.解码材料引用(ref);
+        if (!物品名 || 提供方) return;
         const 当前记录 = 暂存[物品名] !== undefined ? 暂存[物品名] : this.currentInventory[物品名];
         暂存[物品名] = this.构建背包指定扣减值(当前记录, Number(consumeQty), 批次索引);
       });
@@ -60287,6 +60311,10 @@ class ProfessionUIComponent {
   }
   // 前置补丁：同一次提交里已经写过这个背包条目（例如单金属锻造产物与材料同名、材料刚被扣减），在那条写回的结果上追加，不能从旧库存覆盖
   buildInventoryAddPatches(itemName, itemData, amount = 1, 批次派生字段 = false, 前置补丁 = null) {
+    if (this.本次材料提供方) {
+      this.本次交付产物 = [...(this.本次交付产物 || []), itemName];
+      return [];
+    }
     const safeItem = itemData && typeof itemData === 'object' ? itemData : {};
     const 分类 = this.要求产物分类(itemName, safeItem, this.activeMode === 'forge' ? '锻造金属' : '');
     const 数量 = Math.max(1, Math.floor(Number(amount || safeItem.数量 || 1)));
@@ -60406,9 +60434,18 @@ class ProfessionUIComponent {
     if (!(base > 0)) return 0;
     return Math.max(1, Math.round(base * this.getProfessionExpGainMultiplier() * this.读取暗器百解副职业倍率(委托上下文)));
   }
+  // 材料是别人提供的：本次执行不入库产物，成品交给提供方（经验、资源、反噬照常）
+  开始提供材料结算(materialNames = []) {
+    this.本次材料提供方 = materialNames.map(名称 => this.解码材料引用(名称).提供方).find(Boolean) || '';
+    this.本次交付产物 = [];
+  }
+  读取交付提供方文本() {
+    return this.本次材料提供方 && (this.本次交付产物 || []).length ? ` 成品交给${this.本次材料提供方}。` : '';
+  }
+
   buildSystemResultPatches(resultLog, roll, successRate) {
     return [
-      { op: 'replace', path: '/sys/系统播报', value: String(resultLog || '') },
+      { op: 'replace', path: '/sys/系统播报', value: String(resultLog || '') + this.读取交付提供方文本() },
       { op: 'replace', path: '/sys/最终成功率', value: Number.isFinite(Number(successRate)) ? Number(successRate) : 0 }
     ];
   }
@@ -60507,6 +60544,11 @@ class ProfessionUIComponent {
     const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
+    this.开始提供材料结算(materialNames);
+    if (this.本次材料提供方) {
+      this.显示提示('对方提供的材料只够这一单，不能连续开工。');
+      return;
+    }
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     const effectiveRuntime = commissionCtx.validationRuntime || runtime;
@@ -60726,6 +60768,7 @@ class ProfessionUIComponent {
     const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
+    this.开始提供材料结算(materialNames);
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     const effectiveRuntime = commissionCtx.validationRuntime || runtime;
@@ -60818,6 +60861,7 @@ class ProfessionUIComponent {
     const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
+    this.开始提供材料结算(materialNames);
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     const effectiveRuntime = commissionCtx.validationRuntime || runtime;

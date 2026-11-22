@@ -1044,6 +1044,9 @@ const PROF_HIDDEN_ARBITRATION_NARRATION_RULES = `
 玩家应当看到的是经过修饰后的剧情文本，而不是系统裁定日志。
 `.trim();
 
+// 对方提供的材料按「这一单够用」计数量；连续模式不接受提供的材料，不会被反复刷
+const 提供材料单次数量 = 999;
+
 class ProfessionUIComponent {
   constructor(container, snapshot, options = {}) {
     this.container = container;
@@ -1240,6 +1243,9 @@ class ProfessionUIComponent {
 
   applyInitialContext() {
     const req = this.getInitialRequest();
+    const 材料来源 = String(req.材料来源 || '').trim();
+    const 提供名称 = 材料来源 ? this.parseInitialMaterials(this.options.prefillMaterials || req.材料) : [];
+    this.提供材料 = 提供名称.length ? { 提供方: 材料来源, 名称列表: 提供名称 } : null;
     const mode = this.normalizeInitialMode(this.options.prefillMode || req.模式 || req.动作 || req.副职业);
     if (mode) this.setActiveMode(mode);
 
@@ -1256,7 +1262,8 @@ class ProfessionUIComponent {
     if (预填材料列表.length) {
       const 材料集合 = new Set(预填材料列表);
       this.$$('.material-cb').forEach(勾选框 => {
-        勾选框.checked = 材料集合.has(勾选框.value) || 材料集合.has(this.取材料原名(勾选框.value));
+        const 是提供 = Boolean(this.解码材料引用(勾选框.value).提供方);
+        勾选框.checked = (!this.提供材料 || 是提供) && (材料集合.has(勾选框.value) || 材料集合.has(this.取材料原名(勾选框.value)));
         const 标签 = 勾选框.closest('.material-item');
         if (标签) 标签.classList.toggle('is-selected', 勾选框.checked);
       });
@@ -1440,8 +1447,10 @@ class ProfessionUIComponent {
   读取首个背包批次(记录 = {}) {
     return this.读取背包批次列表(记录)[0] || null;
   }
-  编码材料引用(物品名 = '', 批次索引 = -1) {
-    return JSON.stringify({ 物品名: String(物品名 || '').trim(), 批次索引: Number.isFinite(Number(批次索引)) ? Math.floor(Number(批次索引)) : -1 });
+  编码材料引用(物品名 = '', 批次索引 = -1, 提供方 = '') {
+    const 引用 = { 物品名: String(物品名 || '').trim(), 批次索引: Number.isFinite(Number(批次索引)) ? Math.floor(Number(批次索引)) : -1 };
+    if (String(提供方 || '').trim()) 引用.提供方 = String(提供方).trim();
+    return JSON.stringify(引用);
   }
   解码材料引用(引用 = '') {
     const 文本 = String(引用 || '').trim();
@@ -1452,6 +1461,7 @@ class ProfessionUIComponent {
         return {
           物品名: String(数据.物品名 || '').trim(),
           批次索引: Number.isFinite(Number(数据.批次索引)) ? Math.floor(Number(数据.批次索引)) : -1,
+          提供方: String(数据.提供方 || '').trim(),
         };
       }
     } catch (错误) {}
@@ -1465,6 +1475,10 @@ class ProfessionUIComponent {
     const 物品名 = 解析.物品名;
     if (!物品名) return null;
     const 命中 = this.查找物品定义(物品名);
+    if (解析.提供方) {
+      const 分类 = 命中?.分类 || (this.activeMode === 'forge' ? '锻造金属' : '');
+      return { 引用, 物品名, 批次索引: -1, 数量: 提供材料单次数量, 提供方: 解析.提供方, 物品: { ...(命中?.定义 || {}), 物品分类: 分类, 数量: 提供材料单次数量 } };
+    }
     const 背包记录 = this.currentInventory?.[物品名] || {};
     if (解析.批次索引 >= 0) {
       const 批次 = Array.isArray(背包记录.批次) ? 背包记录.批次[解析.批次索引] : null;
@@ -1493,7 +1507,8 @@ class ProfessionUIComponent {
     if (!名称) return '';
     const 阶位 = this.getItemTier(引用);
     const 显示名 = 阶位 > 0 && !/百锻|千锻|灵锻|魂锻|天锻/.test(名称) ? `${this.getForgeTierLabel(阶位)}${名称}` : 名称;
-    return `${Math.max(1, Number(数量 || 1))}份${显示名}`;
+    const 提供方 = this.解码材料引用(引用).提供方;
+    return `${Math.max(1, Number(数量 || 1))}份${显示名}${提供方 ? `（${提供方}提供）` : ''}`;
   }
   规范化背包批次(来源批次 = {}, 数量 = 1, fallback = {}) {
     const 来源 = 来源批次 && typeof 来源批次 === 'object' && !Array.isArray(来源批次) ? 来源批次 : {};
@@ -2807,7 +2822,7 @@ class ProfessionUIComponent {
     const filter = this.getMaterialFilter(this.activeMode);
     let count = 0;
     const 添加材料项 = (itemName, 引用, item, labelText, 选项 = {}) => {
-      if (!item || Number(item.数量 || 0) <= 0 || !filter(itemName, item)) return;
+      if (!item || Number(item.数量 || 0) <= 0 || (!选项.提供 && !filter(itemName, item))) return;
       const label = document.createElement('label');
       label.className = `material-item${选项.checked ? ' is-selected' : ''}`;
       const cb = document.createElement('input');
@@ -2819,7 +2834,7 @@ class ProfessionUIComponent {
         this.autoGenerateTargetName();
         this.updatePreview();
       });
-      const detail = [`剩${Math.max(0, Math.floor(Number(item.数量 || 0)))}`];
+      const detail = 选项.提供 ? ['对方提供'] : [`剩${Math.max(0, Math.floor(Number(item.数量 || 0)))}`];
       const qualityFactor = item?.品质系数;
       if (qualityFactor !== undefined) detail.push(`Q${Number(qualityFactor).toFixed(2)}`);
       const fusionRate = item?.副职业参数?.融合参数?.融合率;
@@ -2837,6 +2852,12 @@ class ProfessionUIComponent {
       container.appendChild(label);
       count++;
     };
+    const 提供材料 = this.提供材料 || null;
+    (提供材料?.名称列表 || []).forEach(材料名 => {
+      const 引用 = this.编码材料引用(材料名, -1, 提供材料.提供方);
+      const 上下文 = this.读取材料上下文(引用);
+      添加材料项(材料名, 引用, 上下文.物品, `${材料名}（${提供材料.提供方}提供）`, { 提供: true });
+    });
     Object.keys(this.currentInventory).forEach(itemName => {
       const 背包记录 = this.currentInventory[itemName];
       const 普通数量 = this.读取背包普通数量(背包记录);
@@ -3199,8 +3220,8 @@ class ProfessionUIComponent {
     Object.entries(plan || {})
       .filter(([_, q]) => Number(q) > 0)
       .forEach(([ref, consumeQty]) => {
-        const { 物品名, 批次索引 } = this.解码材料引用(ref);
-        if (!物品名) return;
+        const { 物品名, 批次索引, 提供方 } = this.解码材料引用(ref);
+        if (!物品名 || 提供方) return;
         const 当前记录 = 暂存[物品名] !== undefined ? 暂存[物品名] : this.currentInventory[物品名];
         暂存[物品名] = this.构建背包指定扣减值(当前记录, Number(consumeQty), 批次索引);
       });
@@ -3210,6 +3231,10 @@ class ProfessionUIComponent {
   }
   // 前置补丁：同一次提交里已经写过这个背包条目（例如单金属锻造产物与材料同名、材料刚被扣减），在那条写回的结果上追加，不能从旧库存覆盖
   buildInventoryAddPatches(itemName, itemData, amount = 1, 批次派生字段 = false, 前置补丁 = null) {
+    if (this.本次材料提供方) {
+      this.本次交付产物 = [...(this.本次交付产物 || []), itemName];
+      return [];
+    }
     const safeItem = itemData && typeof itemData === 'object' ? itemData : {};
     const 分类 = this.要求产物分类(itemName, safeItem, this.activeMode === 'forge' ? '锻造金属' : '');
     const 数量 = Math.max(1, Math.floor(Number(amount || safeItem.数量 || 1)));
@@ -3329,9 +3354,18 @@ class ProfessionUIComponent {
     if (!(base > 0)) return 0;
     return Math.max(1, Math.round(base * this.getProfessionExpGainMultiplier() * this.读取暗器百解副职业倍率(委托上下文)));
   }
+  // 材料是别人提供的：本次执行不入库产物，成品交给提供方（经验、资源、反噬照常）
+  开始提供材料结算(materialNames = []) {
+    this.本次材料提供方 = materialNames.map(名称 => this.解码材料引用(名称).提供方).find(Boolean) || '';
+    this.本次交付产物 = [];
+  }
+  读取交付提供方文本() {
+    return this.本次材料提供方 && (this.本次交付产物 || []).length ? ` 成品交给${this.本次材料提供方}。` : '';
+  }
+
   buildSystemResultPatches(resultLog, roll, successRate) {
     return [
-      { op: 'replace', path: '/sys/系统播报', value: String(resultLog || '') },
+      { op: 'replace', path: '/sys/系统播报', value: String(resultLog || '') + this.读取交付提供方文本() },
       { op: 'replace', path: '/sys/最终成功率', value: Number.isFinite(Number(successRate)) ? Number(successRate) : 0 }
     ];
   }
@@ -3430,6 +3464,11 @@ class ProfessionUIComponent {
     const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
+    this.开始提供材料结算(materialNames);
+    if (this.本次材料提供方) {
+      this.显示提示('对方提供的材料只够这一单，不能连续开工。');
+      return;
+    }
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     const effectiveRuntime = commissionCtx.validationRuntime || runtime;
@@ -3649,6 +3688,7 @@ class ProfessionUIComponent {
     const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
+    this.开始提供材料结算(materialNames);
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     const effectiveRuntime = commissionCtx.validationRuntime || runtime;
@@ -3741,6 +3781,7 @@ class ProfessionUIComponent {
     const qty = 当前状态.数量;
     const targetName = String(this.$('#prof-target').value || '').trim();
     const materialNames = this.getSelectedMaterialNames();
+    this.开始提供材料结算(materialNames);
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     const effectiveRuntime = commissionCtx.validationRuntime || runtime;

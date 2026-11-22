@@ -28325,8 +28325,10 @@ ${播报文本}
     const npc = toText(req.对象, '');
     const 目标 = toText(req.目标 || req.产物 || req.物品, '');
     if (!目标) return null;
-    const 子类型 = toText(req.子类型 || req.目标类型, '').trim() || parseDirectProfessionSubtype(目标);
+    // 阶级可以直接写档次名称（一字、黄级…），斗铠 / 机甲从目标或阶级名称推出
+    const 子类型 = toText(req.子类型 || req.目标类型, '').trim() || parseDirectProfessionSubtype(`${目标} ${toText(req.阶级 || req.等级 || '', '')}`);
     const 显式阶级 = toNumber(req.阶级 || req.等级, 0);
+    const 材料来源 = toText(req.材料来源, '').trim();
     const 阶级文本 = [
       toText(req.阶级 || req.等级 || '', ''),
       目标,
@@ -28354,6 +28356,7 @@ ${播报文本}
               .map(item => item.trim())
               .filter(Boolean),
       数量: Math.max(1, toNumber(req.数量 || req.耗材数量, 1)),
+      ...(材料来源 && !/^(自备|自己|本人|无)$/.test(材料来源) ? { 材料来源 } : {}),
       阶级: 显式阶级 > 0 ? Math.max(1, Math.min(5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
       子类型,
       对象: npc,
