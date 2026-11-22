@@ -28255,6 +28255,11 @@ ${播报文本}
     if (下拉匹配) return Math.max(1, Math.min(5, toNumber(下拉匹配[1], 1)));
     const 数字匹配 = 原文.match(/([1-5一二两三四五])\s*(?:阶|级)/);
     const 中文数字 = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5 };
+    if (/soul|魂导/.test(子类型)) {
+      const 魂导匹配 = 原文.match(/(?:soul-)?(10|[1-9]|十|[一二两三四五六七八九])\s*(?:级|$)/i);
+      const 魂导中文 = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+      return 魂导匹配 ? Math.max(1, Math.min(10, Number(魂导匹配[1]) || 魂导中文[魂导匹配[1]] || 1)) : 1;
+    }
     if (/mech|机甲/.test(子类型)) {
       if (/红级/.test(原文)) return 4;
       if (/黑级/.test(原文)) return 3;
@@ -28281,6 +28286,7 @@ ${播报文本}
     const 原文 = toText(文本输入, '');
     if (/\barmor-\d\b/i.test(原文) || /斗铠|一字|二字|三字|四字/.test(原文)) return 'armor';
     if (/\bmech-\d\b/i.test(原文) || /机甲|黄级|紫级|黑级|红级/.test(原文)) return 'mech';
+    if (/\bsoul-\d+\b/i.test(原文) || /魂导|奶瓶|定装|炮弹|炸弹/.test(原文)) return 'soul';
     return '';
   }
 
@@ -28357,7 +28363,7 @@ ${播报文本}
               .filter(Boolean),
       数量: Math.max(1, toNumber(req.数量 || req.耗材数量, 1)),
       ...(材料来源 && !/^(自备|自己|本人|无)$/.test(材料来源) ? { 材料来源 } : {}),
-      阶级: 显式阶级 > 0 ? Math.max(1, Math.min(5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
+      阶级: 显式阶级 > 0 ? Math.max(1, Math.min(子类型 === 'soul' ? 10 : 5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
       子类型,
       对象: npc,
       执行者类型: toText(req.执行者类型 || (npc ? 'private' : ''), ''),

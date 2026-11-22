@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:18584feab871c1b0ade5bda6b49c8b12a94cce33402c3315477d1a3938de811e|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:c5b9fcd0fdb8a24bda9d9432830a5e13b5a4eedb4fb45bdc9b2e9acf012ba147|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -30105,6 +30105,11 @@ ${播报文本}
     if (下拉匹配) return Math.max(1, Math.min(5, toNumber(下拉匹配[1], 1)));
     const 数字匹配 = 原文.match(/([1-5一二两三四五])\s*(?:阶|级)/);
     const 中文数字 = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5 };
+    if (/soul|魂导/.test(子类型)) {
+      const 魂导匹配 = 原文.match(/(?:soul-)?(10|[1-9]|十|[一二两三四五六七八九])\s*(?:级|$)/i);
+      const 魂导中文 = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+      return 魂导匹配 ? Math.max(1, Math.min(10, Number(魂导匹配[1]) || 魂导中文[魂导匹配[1]] || 1)) : 1;
+    }
     if (/mech|机甲/.test(子类型)) {
       if (/红级/.test(原文)) return 4;
       if (/黑级/.test(原文)) return 3;
@@ -30131,6 +30136,7 @@ ${播报文本}
     const 原文 = toText(文本输入, '');
     if (/\barmor-\d\b/i.test(原文) || /斗铠|一字|二字|三字|四字/.test(原文)) return 'armor';
     if (/\bmech-\d\b/i.test(原文) || /机甲|黄级|紫级|黑级|红级/.test(原文)) return 'mech';
+    if (/\bsoul-\d+\b/i.test(原文) || /魂导|奶瓶|定装|炮弹|炸弹/.test(原文)) return 'soul';
     return '';
   }
 
@@ -30207,7 +30213,7 @@ ${播报文本}
               .filter(Boolean),
       数量: Math.max(1, toNumber(req.数量 || req.耗材数量, 1)),
       ...(材料来源 && !/^(自备|自己|本人|无)$/.test(材料来源) ? { 材料来源 } : {}),
-      阶级: 显式阶级 > 0 ? Math.max(1, Math.min(5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
+      阶级: 显式阶级 > 0 ? Math.max(1, Math.min(子类型 === 'soul' ? 10 : 5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
       子类型,
       对象: npc,
       执行者类型: toText(req.执行者类型 || (npc ? 'private' : ''), ''),

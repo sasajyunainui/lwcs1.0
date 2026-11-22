@@ -1111,7 +1111,10 @@ class ProfessionUIComponent {
       this.updatePreview();
     });
     this.$('#prof-cost').addEventListener('input', () => this.updatePreview());
-    this.$('#prof-target').addEventListener('input', () => this.updatePreview());
+    this.$('#prof-target').addEventListener('input', () => {
+      this.同步魂导器档位(this.$('#prof-target').value);
+      this.updatePreview();
+    });
     this.$('#prof-loop-enabled').addEventListener('change', () => this.updatePreview());
     this.$('#prof-loop-days').addEventListener('input', () => this.updatePreview());
     this.$('#prof-submit').addEventListener('click', () => this.executeProfessionAction());
@@ -1121,14 +1124,17 @@ class ProfessionUIComponent {
     const 阶级值 = this.$('#prof-tier')?.value || '1';
     let 解析阶级 = Number(阶级值);
     let 子类型 = '';
+    let 魂导等级 = 0;
     if (阶级值.startsWith('mech-')) { 解析阶级 = Number(阶级值.split('-')[1]); 子类型 = 'mech'; }
     else if (阶级值.startsWith('armor-')) { 解析阶级 = Number(阶级值.split('-')[1]); 子类型 = 'armor'; }
+    else if (阶级值.startsWith('soul-')) { 魂导等级 = Number(阶级值.split('-')[1]) || 1; 解析阶级 = this.读取魂导器金属阶位(魂导等级); 子类型 = 'soul'; }
     const 数量原文 = this.$('#prof-cost')?.value || '1';
     const 数量数值 = Number(数量原文);
     return {
       activeMode: this.activeMode,
       tier: 解析阶级 || 1,
       subtype: 子类型,
+      魂导等级,
       cost: 数量原文,
       数量: Number.isFinite(数量数值) && 数量数值 > 0 ? Math.max(1, Math.floor(数量数值)) : 1,
       target: this.$('#prof-target')?.value || '',
@@ -1162,7 +1168,8 @@ class ProfessionUIComponent {
 
     if (this.$('#prof-tier')) {
       if (this.activeMode !== 'forge') {
-        if (state.subtype && state.tier) {
+        if (state.subtype === 'soul' && state.魂导等级) this.$('#prof-tier').value = `soul-${state.魂导等级}`;
+        else if (state.subtype && state.tier) {
           this.$('#prof-tier').value = `${state.subtype}-${state.tier}`;
         }
       } else {
@@ -1226,8 +1233,12 @@ class ProfessionUIComponent {
     if (!tierSel) return;
     const subtype = String(req.子类型 || req.目标类型 || '').trim().toLowerCase();
     const tier = Number(req.阶级 || req.等级 || 0);
+    const 目标魂导等级 = this.activeMode === 'manufacture' ? this.读取名称魂导等级(String(req.目标 || req.物品 || req.产物 || '')) : 0;
     let value = '';
-    if (this.activeMode !== 'forge') {
+    if (this.activeMode === 'manufacture' && (目标魂导等级 > 0 || /soul|魂导/.test(subtype))) {
+      const 等级 = Math.min(10, 目标魂导等级 || tier);
+      if (等级 > 0) value = `soul-${等级}`;
+    } else if (this.activeMode !== 'forge') {
       if (/armor|斗铠/.test(subtype) && tier) value = `armor-${tier}`;
       else if (/mech|机甲/.test(subtype) && tier) value = `mech-${tier}`;
     } else if (tier) {
@@ -1794,6 +1805,7 @@ class ProfessionUIComponent {
         <option value="armor-4">三字斗铠${suffix}</option>
         <option value="mech-4">红级机甲${suffix}</option>
         <option value="armor-5">四字斗铠${suffix}</option>
+        ${this.activeMode === 'manufacture' ? Array.from({ length: 10 }, (_, i) => `<option value="soul-${i + 1}">${i + 1}级魂导器${suffix}</option>`).join('') : ''}
       `;
     } else {
       for (let i = 1; i <= 5; i++) {
@@ -2045,6 +2057,24 @@ class ProfessionUIComponent {
   }
 
   读取目标魂导等级(targetName = '', materialNames = []) {
+    const 名称等级 = this.读取名称魂导等级(targetName, materialNames);
+    if (名称等级 > 0 || this.activeMode !== 'manufacture') return 名称等级;
+    const 状态 = this.getCurrentUiState();
+    return 状态.subtype === 'soul' ? Math.max(1, Math.min(10, 状态.魂导等级)) : 0;
+  }
+
+  同步魂导器档位(targetName = '') {
+    if (this.activeMode !== 'manufacture') return;
+    const 等级 = Math.min(10, this.读取名称魂导等级(targetName));
+    const 下拉 = this.$('#prof-tier');
+    if (!(等级 > 0) || !下拉 || 下拉.value === `soul-${等级}`) return;
+    if (Array.from(下拉.options || []).some(选项 => 选项.value === `soul-${等级}`)) {
+      下拉.value = `soul-${等级}`;
+      this.syncCostInputState();
+    }
+  }
+
+  读取名称魂导等级(targetName = '', materialNames = []) {
     const 名称 = String(targetName || '').trim();
     const 定义 = this.查找物品定义(名称)?.定义 || {};
     const 判定文本 = `${名称} ${定义.描述 || ''}`;
@@ -2897,7 +2927,9 @@ class ProfessionUIComponent {
       return;
     }
     if (this.activeMode === 'manufacture') {
-      this.$('#prof-target').value = this.getManufactureOutputMeta(this.$('#prof-target').value.trim() || rawNames[0] || '标准制件', materials, tier).name;
+      const 状态 = this.getCurrentUiState();
+      const 默认目标 = 状态.subtype === 'soul' ? `${状态.魂导等级}级魂导器` : rawNames[0] || '标准制件';
+      this.$('#prof-target').value = this.getManufactureOutputMeta(this.$('#prof-target').value.trim() || 默认目标, materials, tier).name;
       this.更新蓝图状态(this.$('#prof-target').value);
       return;
     }
@@ -2978,6 +3010,8 @@ class ProfessionUIComponent {
         const 魂导师等级 = this.读取运行时魂导师等级(runtime);
         if (recipe.魂导等级 >= 10 && 魂导师等级 < 10) return '10级魂导器必须由10级魂导师独立制造。';
         if (魂导师等级 < recipe.魂导等级 && recipe.魂导等级 !== 魂导师等级 + 1) return `${recipe.魂导等级}级魂导器需要 Lv.${recipe.魂导等级} 魂导师。`;
+        const 档位 = this.getCurrentUiState();
+        if (档位.subtype !== 'soul' || 档位.魂导等级 !== Math.min(10, recipe.魂导等级)) return `目标是${recipe.魂导等级}级魂导器，档位请选「${recipe.魂导等级}级魂导器制造」（用${this.getTierMetalLabel(recipe.expectedTier)}）。`;
         if (tier !== recipe.expectedTier) return `${recipe.魂导等级}级魂导器需要${this.getTierMetalLabel(recipe.expectedTier)}。`;
         const 金属材料 = materialNames.filter(name => !/设计图|蓝图|模板/.test(this.取材料原名(name)));
         if (!金属材料.length) return `${recipe.魂导等级}级魂导器至少需要${this.getTierMetalLabel(recipe.expectedTier)}。`;

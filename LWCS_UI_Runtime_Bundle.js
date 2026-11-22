@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:18584feab871c1b0ade5bda6b49c8b12a94cce33402c3315477d1a3938de811e|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:3a637c22c60a4599a9890bb6bc0b4af7cecaa59b3c04d46283919ddf7794e83d|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:c5b9fcd0fdb8a24bda9d9432830a5e13b5a4eedb4fb45bdc9b2e9acf012ba147|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:55a0535a2ae4a9d49b8c7d6bd0a130c64e16c279b1c9885a7a885582cf6acc28|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -30105,6 +30105,11 @@ ${播报文本}
     if (下拉匹配) return Math.max(1, Math.min(5, toNumber(下拉匹配[1], 1)));
     const 数字匹配 = 原文.match(/([1-5一二两三四五])\s*(?:阶|级)/);
     const 中文数字 = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5 };
+    if (/soul|魂导/.test(子类型)) {
+      const 魂导匹配 = 原文.match(/(?:soul-)?(10|[1-9]|十|[一二两三四五六七八九])\s*(?:级|$)/i);
+      const 魂导中文 = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+      return 魂导匹配 ? Math.max(1, Math.min(10, Number(魂导匹配[1]) || 魂导中文[魂导匹配[1]] || 1)) : 1;
+    }
     if (/mech|机甲/.test(子类型)) {
       if (/红级/.test(原文)) return 4;
       if (/黑级/.test(原文)) return 3;
@@ -30131,6 +30136,7 @@ ${播报文本}
     const 原文 = toText(文本输入, '');
     if (/\barmor-\d\b/i.test(原文) || /斗铠|一字|二字|三字|四字/.test(原文)) return 'armor';
     if (/\bmech-\d\b/i.test(原文) || /机甲|黄级|紫级|黑级|红级/.test(原文)) return 'mech';
+    if (/\bsoul-\d+\b/i.test(原文) || /魂导|奶瓶|定装|炮弹|炸弹/.test(原文)) return 'soul';
     return '';
   }
 
@@ -30207,7 +30213,7 @@ ${播报文本}
               .filter(Boolean),
       数量: Math.max(1, toNumber(req.数量 || req.耗材数量, 1)),
       ...(材料来源 && !/^(自备|自己|本人|无)$/.test(材料来源) ? { 材料来源 } : {}),
-      阶级: 显式阶级 > 0 ? Math.max(1, Math.min(5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
+      阶级: 显式阶级 > 0 ? Math.max(1, Math.min(子类型 === 'soul' ? 10 : 5, Math.floor(显式阶级))) : parseDirectProfessionTier(阶级文本, 子类型),
       子类型,
       对象: npc,
       执行者类型: toText(req.执行者类型 || (npc ? 'private' : ''), ''),
@@ -58207,7 +58213,10 @@ class ProfessionUIComponent {
       this.updatePreview();
     });
     this.$('#prof-cost').addEventListener('input', () => this.updatePreview());
-    this.$('#prof-target').addEventListener('input', () => this.updatePreview());
+    this.$('#prof-target').addEventListener('input', () => {
+      this.同步魂导器档位(this.$('#prof-target').value);
+      this.updatePreview();
+    });
     this.$('#prof-loop-enabled').addEventListener('change', () => this.updatePreview());
     this.$('#prof-loop-days').addEventListener('input', () => this.updatePreview());
     this.$('#prof-submit').addEventListener('click', () => this.executeProfessionAction());
@@ -58217,14 +58226,17 @@ class ProfessionUIComponent {
     const 阶级值 = this.$('#prof-tier')?.value || '1';
     let 解析阶级 = Number(阶级值);
     let 子类型 = '';
+    let 魂导等级 = 0;
     if (阶级值.startsWith('mech-')) { 解析阶级 = Number(阶级值.split('-')[1]); 子类型 = 'mech'; }
     else if (阶级值.startsWith('armor-')) { 解析阶级 = Number(阶级值.split('-')[1]); 子类型 = 'armor'; }
+    else if (阶级值.startsWith('soul-')) { 魂导等级 = Number(阶级值.split('-')[1]) || 1; 解析阶级 = this.读取魂导器金属阶位(魂导等级); 子类型 = 'soul'; }
     const 数量原文 = this.$('#prof-cost')?.value || '1';
     const 数量数值 = Number(数量原文);
     return {
       activeMode: this.activeMode,
       tier: 解析阶级 || 1,
       subtype: 子类型,
+      魂导等级,
       cost: 数量原文,
       数量: Number.isFinite(数量数值) && 数量数值 > 0 ? Math.max(1, Math.floor(数量数值)) : 1,
       target: this.$('#prof-target')?.value || '',
@@ -58258,7 +58270,8 @@ class ProfessionUIComponent {
 
     if (this.$('#prof-tier')) {
       if (this.activeMode !== 'forge') {
-        if (state.subtype && state.tier) {
+        if (state.subtype === 'soul' && state.魂导等级) this.$('#prof-tier').value = `soul-${state.魂导等级}`;
+        else if (state.subtype && state.tier) {
           this.$('#prof-tier').value = `${state.subtype}-${state.tier}`;
         }
       } else {
@@ -58322,8 +58335,12 @@ class ProfessionUIComponent {
     if (!tierSel) return;
     const subtype = String(req.子类型 || req.目标类型 || '').trim().toLowerCase();
     const tier = Number(req.阶级 || req.等级 || 0);
+    const 目标魂导等级 = this.activeMode === 'manufacture' ? this.读取名称魂导等级(String(req.目标 || req.物品 || req.产物 || '')) : 0;
     let value = '';
-    if (this.activeMode !== 'forge') {
+    if (this.activeMode === 'manufacture' && (目标魂导等级 > 0 || /soul|魂导/.test(subtype))) {
+      const 等级 = Math.min(10, 目标魂导等级 || tier);
+      if (等级 > 0) value = `soul-${等级}`;
+    } else if (this.activeMode !== 'forge') {
       if (/armor|斗铠/.test(subtype) && tier) value = `armor-${tier}`;
       else if (/mech|机甲/.test(subtype) && tier) value = `mech-${tier}`;
     } else if (tier) {
@@ -58890,6 +58907,7 @@ class ProfessionUIComponent {
         <option value="armor-4">三字斗铠${suffix}</option>
         <option value="mech-4">红级机甲${suffix}</option>
         <option value="armor-5">四字斗铠${suffix}</option>
+        ${this.activeMode === 'manufacture' ? Array.from({ length: 10 }, (_, i) => `<option value="soul-${i + 1}">${i + 1}级魂导器${suffix}</option>`).join('') : ''}
       `;
     } else {
       for (let i = 1; i <= 5; i++) {
@@ -59141,6 +59159,24 @@ class ProfessionUIComponent {
   }
 
   读取目标魂导等级(targetName = '', materialNames = []) {
+    const 名称等级 = this.读取名称魂导等级(targetName, materialNames);
+    if (名称等级 > 0 || this.activeMode !== 'manufacture') return 名称等级;
+    const 状态 = this.getCurrentUiState();
+    return 状态.subtype === 'soul' ? Math.max(1, Math.min(10, 状态.魂导等级)) : 0;
+  }
+
+  同步魂导器档位(targetName = '') {
+    if (this.activeMode !== 'manufacture') return;
+    const 等级 = Math.min(10, this.读取名称魂导等级(targetName));
+    const 下拉 = this.$('#prof-tier');
+    if (!(等级 > 0) || !下拉 || 下拉.value === `soul-${等级}`) return;
+    if (Array.from(下拉.options || []).some(选项 => 选项.value === `soul-${等级}`)) {
+      下拉.value = `soul-${等级}`;
+      this.syncCostInputState();
+    }
+  }
+
+  读取名称魂导等级(targetName = '', materialNames = []) {
     const 名称 = String(targetName || '').trim();
     const 定义 = this.查找物品定义(名称)?.定义 || {};
     const 判定文本 = `${名称} ${定义.描述 || ''}`;
@@ -59993,7 +60029,9 @@ class ProfessionUIComponent {
       return;
     }
     if (this.activeMode === 'manufacture') {
-      this.$('#prof-target').value = this.getManufactureOutputMeta(this.$('#prof-target').value.trim() || rawNames[0] || '标准制件', materials, tier).name;
+      const 状态 = this.getCurrentUiState();
+      const 默认目标 = 状态.subtype === 'soul' ? `${状态.魂导等级}级魂导器` : rawNames[0] || '标准制件';
+      this.$('#prof-target').value = this.getManufactureOutputMeta(this.$('#prof-target').value.trim() || 默认目标, materials, tier).name;
       this.更新蓝图状态(this.$('#prof-target').value);
       return;
     }
@@ -60074,6 +60112,8 @@ class ProfessionUIComponent {
         const 魂导师等级 = this.读取运行时魂导师等级(runtime);
         if (recipe.魂导等级 >= 10 && 魂导师等级 < 10) return '10级魂导器必须由10级魂导师独立制造。';
         if (魂导师等级 < recipe.魂导等级 && recipe.魂导等级 !== 魂导师等级 + 1) return `${recipe.魂导等级}级魂导器需要 Lv.${recipe.魂导等级} 魂导师。`;
+        const 档位 = this.getCurrentUiState();
+        if (档位.subtype !== 'soul' || 档位.魂导等级 !== Math.min(10, recipe.魂导等级)) return `目标是${recipe.魂导等级}级魂导器，档位请选「${recipe.魂导等级}级魂导器制造」（用${this.getTierMetalLabel(recipe.expectedTier)}）。`;
         if (tier !== recipe.expectedTier) return `${recipe.魂导等级}级魂导器需要${this.getTierMetalLabel(recipe.expectedTier)}。`;
         const 金属材料 = materialNames.filter(name => !/设计图|蓝图|模板/.test(this.取材料原名(name)));
         if (!金属材料.length) return `${recipe.魂导等级}级魂导器至少需要${this.getTierMetalLabel(recipe.expectedTier)}。`;
