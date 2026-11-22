@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:e1115fa844e83f680738ff10194b69c68fb4121de7d0d036103fe52cb3c37527|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:e2e0cb315fa3ea64e20e5e7b85db90de876ce2c032a7e35521968f55fe62dc0a|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:e1115fa844e83f680738ff10194b69c68fb4121de7d0d036103fe52cb3c37527|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:16ea3d3f86c1f1ce30cf5aa0db62bc1353a7e81b490a281daa3c69448281694c|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -136933,6 +136933,94 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     plan.given = Object.freeze(assist.map(entry => entry ? Object.freeze(entry) : null));
     r20AssistPlans.set(request, plan);
   }
+  /* 分工选目标（用户 11-22：「不应该根据自身拥有的技能，自身的系别，去大概决定吗」「不一定是打得到谁，而是，自己在这个团队应该起什么作用」；
+     分工表用户确认；召唤系「根据召唤物的属性技能来分」；开局「随机选人就行吧？不用计算」——只随机打谁、招式照常估值）：主动出手时，单体敌对候选只对
+     自己分工里的目标做完整估值，其余记为保留者最低分以下。各系分工：
+       强攻：敌方前排、敌方强攻与防御；敏攻：敌方后排、敌方辅助治疗控制食物、血最少的；控制：威胁我方最大的两个、正在蓄力的；
+       防御：正在打我方最危险队友的、敌方前排的近身系；远程（元素、精神）：优先级最高的、威胁我方最大的；支援（辅助、治疗、食物）：前排最近的。
+     各系恒留：缠斗对手、优先级最高的、威胁自己最大的。召唤物、召唤师与系别不明的按技能与属性推定（r20UnitRole）。敌人的系别取估值表里信念最可能的。
+     开局（第 1 回合、场上没有缠斗、敌人都在后排）：每一招只在分工里随机留一个目标。开关 LWCS_TUNE.ROLE_TARGETS（false 关）。 */
+  const R20_ROLE_TARGETS_ON = root.__LWCS_TUNE__?.ROLE_TARGETS !== false;
+  const R20_CONTROL_STATE = /眩晕|束缚|冰冻|冻结|石化|定身|沉默|麻痹|睡眠|混乱|恐惧|击倒|缠绕|禁锢|迟缓|减速|封印|致盲/;
+  function r20UnitRole(unit = {}) {
+    const system = String(unit?.属性?.系别 || unit?.系别 || '').trim();
+    if (/强攻/.test(system)) return '强攻';
+    if (/敏攻/.test(system)) return '敏攻';
+    if (/控制/.test(system)) return '控制';
+    if (/防御/.test(system)) return '防御';
+    if (/元素|精神/.test(system)) return '远程';
+    if (/辅助|治疗|食物/.test(system)) return '支援';
+    // 召唤系、召唤物、系别不明：控制技能为主→控制；远程伤害为主→远程；否则力量、防御、敏捷最突出的。
+    let control = 0, ranged = 0, melee = 0;
+    for (const { skill } of affordablePreparedSkills(unit)) {
+      const effects = preview.collectEffects(skill);
+      if (effects.some(effect => String(effect?.原型 || '').trim() === '状态施加' && !/自身|己方|友方/.test(String(effect?.目标 || '')) && R20_CONTROL_STATE.test(String(effect?.状态 || '')))) control += 1;
+      if (effects.some(effect => String(effect?.原型 || '').trim() === '伤害结算')) {
+        if (preview.declarationDamageClass({ actionKind: 'RELEASE_SKILL', skill }) === 'MELEE') melee += 1; else ranged += 1;
+      }
+    }
+    if (control > 0 && control >= melee + ranged) return '控制';
+    if (ranged > melee) return '远程';
+    const stat = key => Number(preview.readCombatStat(unit, key)) || 0;
+    const str = stat('str'), def = stat('def'), agi = stat('agi');
+    return def >= str && def >= agi ? '防御' : agi > str ? '敏攻' : '强攻';
+  }
+  function r20RoleTargets(table, request) {
+    const actorRow = table.index.get(String(request.actorId || ''));
+    if (actorRow === undefined) return null;
+    const enemies = table.sides.map((side, row) => row).filter(row => table.sides[row] !== table.sides[actorRow] && table.remaining[row] > 0);
+    if (enemies.length <= 1) return null;
+    const allies = table.sides.map((side, row) => row).filter(row => table.sides[row] === table.sides[actorRow] && table.remaining[row] > 0);
+    const back = row => table.units[row]?.__battleRuntime?.position === '后';
+    const believed = row => String(table.units[row]?.系别 || table.units[row]?.属性?.系别 || '').trim();
+    const threatAllies = row => allies.reduce((sum, ally) => sum + (Number(table.out[row]?.[ally]) || 0), 0);
+    const byScore = (score, n = 1) => [...enemies].sort((a, b) => score(b) - score(a)).slice(0, n);
+    const allowed = new Set();
+    const add = rows => rows.forEach(row => { if (row >= 0) allowed.add(row); });
+    // 恒留：缠斗对手、优先级最高的、威胁自己最大的。
+    add([...(table.locked?.[actorRow] || [])].filter(row => enemies.includes(row)));
+    add(byScore(row => Number(table.priority?.[row]) || 0));
+    add(byScore(row => Number(table.out[row]?.[actorRow]) || 0));
+    const role = r20UnitRole(table.units[actorRow]);
+    if (role === '强攻') add(enemies.filter(row => !back(row) || /强攻|防御/.test(believed(row))));
+    else if (role === '敏攻') { add(enemies.filter(row => back(row) || /辅助|治疗|控制|食物/.test(believed(row)))); add(byScore(row => -table.remaining[row])); }
+    else if (role === '控制') { add(byScore(threatAllies, 2)); add(enemies.filter(row => table.units[row]?.蓄力技能)); }
+    else if (role === '防御') {
+      const danger = allies.filter(row => row !== actorRow).reduce((best, row) => { const net = (Number(table.pressure?.[row]) || 0) - (Number(table.mend?.[row]) || 0);
+        const rounds = net > 1e-9 ? table.remaining[row] / net : Infinity; return !best || rounds < best.rounds ? { row, rounds } : best; }, null);
+      if (danger) add(byScore(row => Number(table.out[row]?.[danger.row]) || 0));
+      add(enemies.filter(row => !back(row) && /强攻|敏攻|防御/.test(believed(row))));
+    } else if (role === '远程') add(byScore(threatAllies));
+    else if (role === '支援') add(enemies.filter(row => !back(row)).slice(0, 1));
+    return allowed.size && allowed.size < enemies.length ? { allowed, enemies, opening: Number(request.visibleWorld?.回合 || 0) <= 1 &&
+      !table.sides.some((side, row) => table.locked?.[row]) && enemies.every(back) } : (allowed.size ? { allowed, enemies, opening: false, all: true } : null);
+  }
+  function r20RolePrune(request, candidateIds, frozenById) {
+    if (!R20_ROLE_TARGETS_ON || !isPreparedDecisionRequest(request) || String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() !== 'ACTIVE') return null;
+    const table = r20Facts(request), plan = r20RoleTargets(table, request);
+    if (!plan || plan.all && !plan.opening) return null;
+    const actorRow = table.index.get(String(request.actorId || ''));
+    const out = new Set(), groups = new Map();
+    for (const candidateId of candidateIds) {
+      const declaration = frozenById.get(candidateId)?.declaration || {}, targets = Array.isArray(declaration.targetIds) ? declaration.targetIds : [];
+      if (targets.length !== 1 || !['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaration.actionKind || '').toUpperCase())) continue;
+      const row = table.index.get(String(targets[0]));
+      if (row === undefined || table.sides[row] === table.sides[actorRow]) continue;
+      if (!plan.allowed.has(row)) { out.add(candidateId); continue; }
+      if (plan.opening) {
+        const key = [declaration.actionKind, declaration.skill?.魂技名 || declaration.skill?.name || '', !!declaration.feintStrike, !!declaration.flank, !!declaration.bait].join('|');
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(candidateId);
+      }
+    }
+    // 开局：每一招在分工里随机留一个目标。
+    // 开局随机（ROLE_OPENING）默认关（11-22 实测摊薄伤害、7v7 一局 12→18 回合；用户同意先关，等牵制配对做好再看）。
+    if (root.__LWCS_TUNE__?.ROLE_OPENING === true) for (const list of groups.values()) if (list.length > 1) { const keep = list[Math.floor(Math.random() * list.length)]; for (const id of list) if (id !== keep) out.add(id); }
+    root.__LWCS_DECISION_DEBUG__?.onRolePrune?.({ request, table, allowed: plan.allowed, opening: plan.opening, candidates: candidateIds.length, pruned: out.size, prunedIds: out });
+    // 试运行（LWCS_TUNE.ROLE_TARGETS_DRY）：只算、只报，不剪——用来量「现在的选择有多少落在分工外」。
+    if (root.__LWCS_TUNE__?.ROLE_TARGETS_DRY === true) return null;
+    return out.size ? out : null;
+  }
   // 简化演算开关（座舱设置「战斗演算」写 __LWCS_BATTLE_SIMPLE__）。
   const r20Simple = () => { try { return root.__LWCS_BATTLE_SIMPLE__ === true || root.parent?.__LWCS_BATTLE_SIMPLE__ === true; } catch (error) { return root.__LWCS_BATTLE_SIMPLE__ === true; } };
   const R20_SIMPLE_KEEP = 4;
@@ -140314,7 +140402,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 简化演算（用户 11-21，设置「战斗演算：简化」，默认完整）：同一招打多个敌方单体目标时，只把粗估（表里这一招对目标的输出 ×
     // 目标优先级）前 R20_SIMPLE_KEEP 名和必留目标（缠斗对手、残血最低、优先级最高、对自己输出最高）送去完整估值；其余不估，
     // 分数记为保留者最低分以下（不会被选中）。粗估实测只中 65%～74%（11-21 测量 B），所以只在用户选了简化时用。
-    const pruned = r20SimplePrune(request, candidateIds, frozenById);
+    const simplePruned = r20SimplePrune(request, candidateIds, frozenById), rolePruned = r20RolePrune(request, candidateIds, frozenById);
+    const pruned = simplePruned && rolePruned ? new Set([...simplePruned, ...rolePruned]) : simplePruned || rolePruned;
     const valueOf = candidateId => {
       if (pruned?.has(candidateId)) return null;
       const candidate = frozenById.get(candidateId);
