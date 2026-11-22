@@ -60,9 +60,11 @@
   const soulCard = (c, s, i) => {
     const keyOf = r => { const sk = r.skills[0], sp = s.spirits.find(x => x.rings.includes(r)); return !sk ? '' : sp ? `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}` : r.independent ? `${s.slot}/${r.slot}/${sk.slot}` : ''; };
     const sub = `${!c.blank(s.系别) ? `<span class="sys">${c.esc(s.系别)}</span>` : ''}${s.rings.length ? `<em>${s.rings.length} 环</em>` : ringHint(c, s).includes('nx ok') ? '' : '<em>未附环</em>'}${ringHint(c, s)}`;
+    const ringAttrs = r => { const key = keyOf(r); return key ? `data-inspect="sk:${c.esc(key)}"` : ''; };
     return `<div class="soul-card" data-scan data-float="${i % 2 ? 'r' : 'l'}">
-      <div class="soul-stage">${s.rings.length ? c.ringStage(s.rings, r => { const key = keyOf(r); return key ? `data-inspect="sk:${c.esc(key)}"` : ''; }) : '<div class="soul-empty"><i></i><span>尚未附环</span></div>'}</div>
+      <div class="soul-stage">${s.rings.length ? c.ringStage(s.rings, ringAttrs) : '<div class="soul-empty"><i></i><span>尚未附环</span></div>'}</div>
       ${soulPlate(`${['第一', '第二', '第三', '第四'][i] || ''}武魂`, c.esc(s.表象名称), sub, `data-go="page-ability/martial" data-go-set="soul=${i}" role="link" tabindex="0" title="查看${c.esc(s.表象名称)}的武魂详情"`)}
+      ${s.rings.length ? c.ringPicks(s.rings, ringAttrs) : ''}
     </div>`;
   };
   const bloodCard = c => {

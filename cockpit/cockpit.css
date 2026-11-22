@@ -205,10 +205,21 @@ body{margin:0;padding:28px 16px;min-height:100vh;background:#12151b;font-family:
 .minigrid small{font-size:max(10.5px,.7em);color:#9db0cf;font-weight:700}
 .skill{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.8em;padding:.6em .7em;background:rgba(255,255,255,.55);box-shadow:inset 0 0 0 1px rgba(30,48,80,.18);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
 /* 行内魂环徽章（技能卡 / 列表行 / 浮窗标题）：魂环缩到徽章尺寸，环序号压在环心；不设尺寸时魂环按展台原尺寸撑开，把名字挤成一字一行 */
-.skill .medal,.row .medal,.insp-head .medal{position:relative;flex:none;width:var(--md,3.1em);height:var(--md,3.1em)}
-.skill .medal .mvu-soul-ring-showcase,.row .medal .mvu-soul-ring-showcase,.insp-head .medal .mvu-soul-ring-showcase{--ring-size:var(--md,3.1em);--ring-stage-width:var(--md,3.1em);--ring-stage-height:var(--md,3.1em);min-height:var(--md,3.1em);width:var(--md,3.1em)}
-.skill .medal b,.row .medal b,.insp-head .medal b{position:absolute;inset:0;display:grid;place-items:center;font-family:Bahnschrift,sans-serif;font-size:1.05em;color:#6b4800;text-shadow:0 0 4px #fff}
-.row .medal{--md:2.6em}.insp-head .medal{--md:3.4em}
+.skill .medal,.row .medal,.insp-head .medal,.ring-pick .medal{position:relative;flex:none;width:var(--md,3.1em);height:var(--md,3.1em)}
+.skill .medal .mvu-soul-ring-showcase,.row .medal .mvu-soul-ring-showcase,.insp-head .medal .mvu-soul-ring-showcase,.ring-pick .medal .mvu-soul-ring-showcase{--ring-size:var(--md,3.1em);--ring-stage-width:var(--md,3.1em);--ring-stage-height:var(--md,3.1em);min-height:var(--md,3.1em);width:var(--md,3.1em)}
+.skill .medal b,.row .medal b,.insp-head .medal b,.ring-pick .medal b{position:absolute;inset:0;display:grid;place-items:center;font-family:Bahnschrift,sans-serif;font-size:1.05em;color:#6b4800;text-shadow:0 0 4px #fff}
+.row .medal{--md:2.6em}
+/* 魂环牌（触屏选环）：武魂台下一排徽章，点牌看这一环的魂技；徽章本身不接收指针，免得点按时引擎把单环翻成塔 */
+.ring-picks{display:none}
+.cockpit.touch .ring-picks{display:flex;flex-wrap:wrap;justify-content:center;gap:.25em;margin-top:.45em}
+.ring-pick{appearance:none;border:0;background:none;padding:4px;border-radius:50%;cursor:pointer;--md:2.5em;-webkit-tap-highlight-color:transparent}
+.ring-pick .mvu-soul-ring-showcase{pointer-events:none}
+.ring-pick.on{background:radial-gradient(circle,rgba(90,165,255,.38),transparent 70%)}
+.ring-pick.on .medal{filter:drop-shadow(0 0 6px rgba(80,160,255,.95))}
+.ring-pick:disabled{opacity:.4;cursor:default}
+/* 触屏：魂环舞台只作展示，不接收点按（不出魂环塔） */
+.cockpit.touch .soul-stage .mvu-soul-ring-showcase{pointer-events:none}
+.cockpit.touch .soul-deck{align-items:start}.insp-head .medal{--md:3.4em}
 .holo .medal b{color:#ffe7a6;text-shadow:0 0 5px rgba(0,0,0,.85)}
 .insp-head>div:not(.medal){flex:1;min-width:0}
 .skill .top{display:flex;align-items:baseline;gap:.55em;flex-wrap:wrap}
@@ -326,10 +337,11 @@ button.tile{appearance:none;border:0;font:inherit;color:inherit;text-align:left;
 }
 
 /* ============ 手机：上下排（试行，cockpit.js 的 MOBILE_STACK）============ */
-/* 左翼名单压成横向选择条放在主屏上方（点选即换下方详情），其余侧屏收成主屏下方的折叠栏，座舱不再整屏横移 */
-.wing-toggle{display:none}
+/* 座舱定高（约六成屏高），三块内容在窗口里上下滚：展开详情、换页都不改变座舱外高，聊天区不跟着重排；不整屏横移，两翼全部直接展开。
+   顺序：名单型左翼（横向选择条）→ 主屏 → 其余左翼 → 右翼；滚到窗口尽头后接着滚聊天区 */
 .cockpit.stack .dots{display:none}
-.cockpit.stack .screens{display:flex;flex-direction:column;gap:8px;height:auto;transform:none!important;transition:none}
+.cockpit.stack .screens{display:flex;flex-direction:column;gap:8px;height:62vh;height:clamp(380px,62svh,660px);overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:auto;scrollbar-width:thin;scrollbar-color:#9aa7ba transparent;transform:none!important;transition:none;padding:2px 0 10px}
+.cockpit.stack .screens>*{flex:none}
 .cockpit.stack .screens>.wing,.cockpit.stack .screens>.center{position:relative;top:auto;left:auto;width:94%;margin:0 auto;visibility:visible;--lwcs-cockpit-loop-state:inherit}
 .cockpit.stack .screens>:is(.wing,.center)>.float{flex:1 1 auto;min-width:0}
 .cockpit.stack .screens>.wing.l.wing-strip{order:0}
@@ -337,12 +349,6 @@ button.tile{appearance:none;border:0;font:inherit;color:inherit;text-align:left;
 .cockpit.stack .screens>.wing.l:not(.wing-strip){order:2}
 .cockpit.stack .screens>.wing.r{order:3}
 .cockpit.stack .screens>.wing.wing-none{display:none}
-.cockpit.stack .wing:not(.wing-open)>.float>.bz{display:none}
-.cockpit.stack .wing:not(.wing-strip) .wing-toggle{display:flex;align-items:center;gap:.6em;width:100%;appearance:none;border:0;font:inherit;font-weight:900;letter-spacing:.1em;cursor:pointer;padding:.7em 1.1em;color:#e6edf9;background:linear-gradient(180deg,#2c3a56,#151e33);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(120,150,200,.35);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
-.cockpit.stack .wing-toggle::before{content:"";width:3px;height:1em;background:#5fb0ff;box-shadow:0 0 6px #5fb0ff;transform:skewX(-18deg)}
-.cockpit.stack .wing-toggle i{margin-left:auto;font-size:.85em;color:#9fc4ff;transition:rotate .2s}
-.cockpit.stack .wing.wing-open .wing-toggle{margin-bottom:6px}
-.cockpit.stack .wing.wing-open .wing-toggle i{rotate:180deg}
 /* 选择条：列表横排、可横向滑动，行只留头像 + 名字 + 末尾数值 */
 .cockpit.stack .wing.wing-strip .pad{gap:.5em;padding:.75em .9em .7em}
 .cockpit.stack .wing.wing-strip .list{flex-direction:row;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;gap:.45em;padding-bottom:.15em;touch-action:pan-x pan-y}

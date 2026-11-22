@@ -55,6 +55,8 @@
     }).join('');
     return `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard"><div class="mvu-soul-ring-stage" data-ring-count="${n}">${slots}</div></div>`;
   };
+  // 触屏用的魂环牌（.cockpit.touch 时显示）：触屏不出魂环塔，点牌选环
+  const ringPicks = (rings, attrs) => `<div class="ring-picks">${rings.map((ring, i) => { const a = attrs ? attrs(ring, i) : ''; return `<button type="button" class="ring-pick" ${a || 'disabled'} aria-label="第${i + 1}魂环">${ringMedal(ring, String(i + 1))}</button>`; }).join('')}</div>`;
   const ringMedal = (ring, label, micro = false) => `<div class="medal"><div class="mvu-soul-ring-showcase${micro ? ' mvu-soul-ring-showcase--micro' : ''}"><div class="mvu-soul-ring-stage" data-ring-count="1"><div class="mvu-soul-ring-slot ${ringColorClass(ring)}" style="--ring-scale:1">${ringSvg()}</div></div></div>${label === '' ? '' : `<b>${esc(label)}</b>`}</div>`;
 
   // ---------- 角色数据读取 ----------
@@ -159,7 +161,7 @@
   const ctx = () => {
     if (!S.char[state.view]) state.view = S.sys.玩家名;
     const ch = S.char[state.view] || {};
-    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, dataRevision, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
+    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, dataRevision, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringPicks, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
   };
 
   // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。
@@ -254,7 +256,7 @@
     <nav class="arc" aria-label="状态栏领域"><div class="bz"><div class="b2"><div class="b3"><div class="track" id="ck-track"><span class="slider" aria-hidden="true"></span></div></div></div></div></nav>
     <div class="screens">
       <span class="hinge l" aria-hidden="true"></span><span class="hinge r" aria-hidden="true"></span>
-      <div class="wing l"><div class="float"><button type="button" class="wing-toggle" aria-expanded="false"><span></span><i class="fa-solid fa-chevron-down"></i></button><div class="bz"><div class="b2"><div class="b3">
+      <div class="wing l"><div class="float"><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-L01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingL"></div></div>
       </div></div></div></div></div>
@@ -262,7 +264,7 @@
         <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-core"></div></div>
       </div></div></div></div></div>
-      <div class="wing r"><div class="float"><button type="button" class="wing-toggle" aria-expanded="false"><span></span><i class="fa-solid fa-chevron-down"></i></button><div class="bz"><div class="b2"><div class="b3">
+      <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingR"></div></div>
       </div></div></div></div></div>
@@ -428,6 +430,7 @@
   const applyWide = () => {
     $('.cockpit').dataset.view = `${state.domain}/${state.page[state.domain] || domains[state.domain].keys[0].id}`;
     if (!stacked()) $('.cockpit').classList.remove('stack');
+    $('.cockpit').classList.toggle('touch', !hoverable());
     const wide = isMobile() ? '' : renderedWide;
     screens.classList.toggle('wide-l', wide === 'both' || wide === 'l');
     screens.classList.toggle('wide-r', wide === 'both' || wide === 'r');
@@ -440,7 +443,7 @@
   // 手机端三面切换的标签：页面可用 faces 指定；否则取该翼第一个标题（背包 / 钱包 …），只有侧轨时取侧轨小字，都没有才用通用名
   const faceLabel = (html, rail, dflt) => (String(html || '').match(/<h2 class="h"><span class="sock[^"]*"><i[^>]*><\/i><\/span>([^<]+)/) || [])[1]?.trim()
     || (!html && (String(rail || '').match(/<small>([^<]+)<\/small>/) || [])[1]?.trim()) || dflt;
-  const setFaceLabels = v => { $('.wing-toggle span', wingEl.l).textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); $('.wing-toggle span', wingEl.r).textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
+  const setFaceLabels = v => { const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
   let faceIdleTimer = 0;
   const beginFaceMotion = () => {
     clearTimeout(faceIdleTimer);
@@ -497,20 +500,26 @@
   };
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
-  // 手机上下排：两翼开合按「页面:侧」记住；名单型左翼（含列表行）做成横向选择条，选中项滚到条内可见处
-  const openWings = new Set();
-  const applyStack = () => {
+  // 手机上下排：座舱定高，三块内容在窗口里上下滚（展开详情、换页都不改座舱外高，聊天区不跟着重排）；
+  // 名单型左翼（含列表行）做成横向选择条放在最上面，选中项滚到条内可见处；换页时窗口回到顶部
+  const applyStack = (resetScroll = false) => {
     $('.cockpit').classList.toggle('stack', stacked());
     if (!stacked()) return;
-    const key = $('.cockpit').dataset.view;
+    if (resetScroll) screens.scrollTop = 0;
     for (const side of ['l', 'r']) {
       const w = wingEl[side], h = host[side], strip = side === 'l' && !!h.querySelector('.list .row');
-      const open = strip || openWings.has(key + ':' + side);
-      w.classList.toggle('wing-strip', strip); w.classList.toggle('wing-none', !h.firstElementChild); w.classList.toggle('wing-open', open);
-      $('.wing-toggle', w).setAttribute('aria-expanded', String(open));
+      w.classList.toggle('wing-strip', strip); w.classList.toggle('wing-none', !h.firstElementChild);
       const on = strip && $('.list .row.on', h);
       if (on) { const list = on.parentElement, lr = list.getBoundingClientRect(), r = on.getBoundingClientRect(); if (r.left < lr.left || r.right > lr.right) list.scrollLeft += r.left - lr.left - 12; }
     }
+  };
+  const revealInStack = (el, block = 'start') => {
+    if (!stacked() || !el || !screens.contains(el)) return false;
+    const box = screens.getBoundingClientRect(), r = el.getBoundingClientRect();
+    if (block === 'start' ? r.top >= box.top && r.top <= box.top + box.height * .4 : r.top >= box.top && r.bottom <= box.bottom) return true;
+    const top = screens.scrollTop + r.top - box.top - 6, target = block === 'start' ? top : Math.min(top, screens.scrollTop + r.bottom - box.bottom + 6);
+    screens.scrollTo({ top: Math.max(0, target), behavior: reduce ? 'auto' : 'smooth' });
+    return true;
   };
   function renderPage(how) {
     const { d, page } = currentPage(), v = page.view(ctx());
@@ -528,7 +537,7 @@
       mount(v, put(host.c, v.core, null, true, keepScroll));
       put(host.l, wingHtml(v, 'l'), null, true, keepScroll);
       put(host.r, wingHtml(v, 'r'), null, true, keepScroll);
-      applyStack();
+      applyStack(!keepScroll);
       scheduleCarouselFit();
     } else if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
@@ -577,7 +586,9 @@
     if (isMobile() && anchor) {
       const box = document.createElement('div'); box.className = 'inline-detail'; box.innerHTML = body;
       // 锚点在成排容器（如魂环舞台）里时，详情插在整个容器之后，不塞进绝对定位的舞台内部
-      (anchor.closest('[data-float]') || anchor).insertAdjacentElement('afterend', box); charge(box);
+      const slot = anchor.closest('[data-float]');
+      (slot?.parentElement?.matches('.soul-deck') ? slot.parentElement : slot || anchor).insertAdjacentElement('afterend', box); charge(box);
+      requestAnimationFrame(() => { if (!revealInStack(box, 'nearest')) box.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); });
       if (!reduce) box.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'ease-out' });
       requestAnimationFrame(fitCarousel); return;
     }
@@ -634,7 +645,7 @@
     if (!html) return;
     const swap = mode === 'scan' && floatOpen() && !pinned && anchor?.closest('[data-float]') === floatHost;
     state.inspect = { kind, id }; pinned = mode === 'click' && hoverable(); layer.classList.toggle('pinned', pinned);
-    $$('[data-inspect]').forEach(el => { const on = el.dataset.inspect === `${kind}:${id}`; el.classList.toggle('on', on); ringSlotOf(el)?.classList.toggle('mvu-hover-floating-active', on); });
+    $$('[data-inspect]').forEach(el => { const on = el.dataset.inspect === `${kind}:${id}`; el.classList.toggle('on', on); if (hoverable()) ringSlotOf(el)?.classList.toggle('mvu-hover-floating-active', on); });
     project(html, anchor, swap);
   }
   // 浮窗打开时给对应魂环挂引擎激活态（.mvu-hover-floating-active），魂环舞台随之保持塔形
@@ -675,7 +686,7 @@
   // 魂环扫描：魂环的命中带是细窄的环线（成塔后只剩几像素高），直接悬停很难瞄准。
   // 声明 data-scan 的容器（武魂卡）整片都是扫描区：取离鼠标最近的一圈。首次打开约 0.09 秒防误触，之后切换即时、浮窗复用不闪。
   const nearestRing = (host, x, y) => {
-    const tower = host.classList.contains('tower') || (hoverable() && host.matches(':hover,:focus-within')) || !!host.querySelector('.mvu-hover-floating-active');
+    const tower = (hoverable() && host.matches(':hover,:focus-within')) || !!host.querySelector('.mvu-hover-floating-active');
     let best = null, bd = Infinity;
     for (const el of host.querySelectorAll('[data-inspect]')) {
       const r = (el.querySelector('svg') || el).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -718,7 +729,9 @@
     openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected || holding || item.closest('.grabbing')) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
   });
   // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
-  addEventListener('pointerdown', e => { if (!e.target.closest('[data-scan],.fcard,.inline-detail')) $$('[data-scan].tower').forEach(h => h.classList.remove('tower')); if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
+  const dismissOutside = e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); };
+  addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') dismissOutside(e); });
+  addEventListener('click', e => { if (!hoverable()) dismissOutside(e); }, true);
   cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
 
   let editing = null, holding = false;
@@ -1026,15 +1039,16 @@
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
     const ieEl = e.target.closest('.ie'); if (ieEl) { e.stopPropagation(); return beginEdit(ieEl); }
-    const scanHost = !e.target.closest('.fcard,.inline-detail,[data-go]') && e.target.closest('[data-scan]');
+    // 鼠标：在魂环塔里按位置选最近的一圈。触屏不出塔，舞台只展示，选环走武魂台下的魂环牌（普通 data-inspect）
+    const scanHost = hoverable() && !e.target.closest('.fcard,.inline-detail,[data-go]') && e.target.closest('[data-scan]');
     if (scanHost) {
-      // 触屏没有悬停：第一下点武魂卡先把魂环展开成塔（同心叠环点不准），塔里再点哪一圈就选哪一圈；点卡片外收起
-      if (!hoverable() && !scanHost.classList.contains('tower') && !scanHost.querySelector('.mvu-hover-floating-active')) { $$('[data-scan].tower').forEach(h => h.classList.remove('tower')); scanHost.classList.add('tower'); return; }
       const el = (state.inspect && scanHost.querySelector('[data-inspect].on')) || nearestRing(scanHost, e.clientX, e.clientY);
       if (el) { const [kind, ...rest] = el.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), el); }
     }
     const t = e.target.closest('[data-confirm],[data-confirm-go],[data-confirm-no],[data-del-path],[data-inspect],[data-go],[data-view-char],[data-close-inspector],[data-pick],[data-set],[data-clamp],[data-dur],[data-act]');
     if (!t) return;
+    // 触屏：魂环舞台只作展示（不出塔），舞台上的环不响应点按，选环用下方魂环牌
+    if (!hoverable() && t.closest('.soul-stage')) return;
     // 改变状态的操作先确认：展开「将要…」条，写明要做什么，再点「确认」才执行
     if (t.dataset.confirmNo !== undefined) { t.closest('.confirm-strip')?.remove(); return; }
     if (t.dataset.confirmGo !== undefined) {
@@ -1079,7 +1093,7 @@
       // 手机端：在左翼列表里点选后转到主屏看详情；主屏里的选择（星图 / 竖牌）可用 data-face-after 指定转去哪一面
       if (isMobile()) {
         const f = t.dataset.faceAfter !== undefined ? Number(t.dataset.faceAfter) : t.closest('.wing.l') && t.matches('.row, .hpt, .tz') ? 0 : null;
-        if (f !== null && stacked()) { const el = f === -1 ? wingEl.l : f === 1 ? wingEl.r : center, r = el.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * .6) el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); }
+        if (f !== null && stacked()) revealInStack(f === -1 ? wingEl.l : f === 1 ? wingEl.r : center);
         else if (f !== null && f !== state.face) setFace(f);
       }
       return;
@@ -1098,11 +1112,6 @@
   // ---------- 手机：单屏横滑 ----------
   const dots = $('.dots');
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
-  for (const side of ['l', 'r']) $('.wing-toggle', wingEl[side]).addEventListener('click', () => {
-    const k = $('.cockpit').dataset.view + ':' + side;
-    if (openWings.has(k)) openWings.delete(k); else openWings.add(k);
-    applyStack();
-  });
   let drag = null;
   let suppressSwipeClick = false;
   screens.addEventListener('pointerdown', e => {

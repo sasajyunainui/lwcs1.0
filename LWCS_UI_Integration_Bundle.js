@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:d3c36a9c650e754819c5b07866556115cd0e14d376c651f4f1323e8ebcad12a5|cockpit/pages-role.js:c4b15fe2e8fbf950fb7a75783e0ea73c63fe36db47ccf07c90eb7c426ec8978a|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:38631c0c0d4be8968cf6d7fea493269435552b3adcc269b3c50674d35fa99961|cockpit/pages-role.js:fa9067bb21153f550fb370c6c358a72f1b32495d18633aa57c186ed55da2709a|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -48805,6 +48805,8 @@ ${播报文本}
     }).join('');
     return `<div class="mvu-soul-ring-showcase mvu-soul-ring-showcase--standard"><div class="mvu-soul-ring-stage" data-ring-count="${n}">${slots}</div></div>`;
   };
+  // 触屏用的魂环牌（.cockpit.touch 时显示）：触屏不出魂环塔，点牌选环
+  const ringPicks = (rings, attrs) => `<div class="ring-picks">${rings.map((ring, i) => { const a = attrs ? attrs(ring, i) : ''; return `<button type="button" class="ring-pick" ${a || 'disabled'} aria-label="第${i + 1}魂环">${ringMedal(ring, String(i + 1))}</button>`; }).join('')}</div>`;
   const ringMedal = (ring, label, micro = false) => `<div class="medal"><div class="mvu-soul-ring-showcase${micro ? ' mvu-soul-ring-showcase--micro' : ''}"><div class="mvu-soul-ring-stage" data-ring-count="1"><div class="mvu-soul-ring-slot ${ringColorClass(ring)}" style="--ring-scale:1">${ringSvg()}</div></div></div>${label === '' ? '' : `<b>${esc(label)}</b>`}</div>`;
 
   // ---------- 角色数据读取 ----------
@@ -48909,7 +48911,7 @@ ${播报文本}
   const ctx = () => {
     if (!S.char[state.view]) state.view = S.sys.玩家名;
     const ch = S.char[state.view] || {};
-    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, dataRevision, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
+    return { rt, library, loc: window.LWCS_COCKPIT_LOC(S, rt), S, dataRevision, name: state.view, ch, st: ch.属性 || {}, isPlayer: state.view === S.sys.玩家名, player: S.sys.玩家名, souls: souls(ch), tickDate, rankTitle, yearTier, ringStage, ringPicks, ringMedal, ringColorClass, bar, count, sock, head, empty, kv, val, hint: hintMark, pick, esc, fmt, num, entries, blank, avatarSrc, standingSrc, miniAva, state, ed, search, P: (...p) => ['char', state.view, ...p] };
   };
 
   // 写回：ops = [{ path, value }] 或 [{ path, del: true }]，path 是存档根下的键路径。
@@ -49004,7 +49006,7 @@ ${播报文本}
     <nav class="arc" aria-label="状态栏领域"><div class="bz"><div class="b2"><div class="b3"><div class="track" id="ck-track"><span class="slider" aria-hidden="true"></span></div></div></div></div></nav>
     <div class="screens">
       <span class="hinge l" aria-hidden="true"></span><span class="hinge r" aria-hidden="true"></span>
-      <div class="wing l"><div class="float"><button type="button" class="wing-toggle" aria-expanded="false"><span></span><i class="fa-solid fa-chevron-down"></i></button><div class="bz"><div class="b2"><div class="b3">
+      <div class="wing l"><div class="float"><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-L01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingL"></div></div>
       </div></div></div></div></div>
@@ -49012,7 +49014,7 @@ ${播报文本}
         <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-core"></div></div>
       </div></div></div></div></div>
-      <div class="wing r"><div class="float"><button type="button" class="wing-toggle" aria-expanded="false"><span></span><i class="fa-solid fa-chevron-down"></i></button><div class="bz"><div class="b2"><div class="b3">
+      <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingR"></div></div>
       </div></div></div></div></div>
@@ -49178,6 +49180,7 @@ ${播报文本}
   const applyWide = () => {
     $('.cockpit').dataset.view = `${state.domain}/${state.page[state.domain] || domains[state.domain].keys[0].id}`;
     if (!stacked()) $('.cockpit').classList.remove('stack');
+    $('.cockpit').classList.toggle('touch', !hoverable());
     const wide = isMobile() ? '' : renderedWide;
     screens.classList.toggle('wide-l', wide === 'both' || wide === 'l');
     screens.classList.toggle('wide-r', wide === 'both' || wide === 'r');
@@ -49190,7 +49193,7 @@ ${播报文本}
   // 手机端三面切换的标签：页面可用 faces 指定；否则取该翼第一个标题（背包 / 钱包 …），只有侧轨时取侧轨小字，都没有才用通用名
   const faceLabel = (html, rail, dflt) => (String(html || '').match(/<h2 class="h"><span class="sock[^"]*"><i[^>]*><\/i><\/span>([^<]+)/) || [])[1]?.trim()
     || (!html && (String(rail || '').match(/<small>([^<]+)<\/small>/) || [])[1]?.trim()) || dflt;
-  const setFaceLabels = v => { $('.wing-toggle span', wingEl.l).textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); $('.wing-toggle span', wingEl.r).textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
+  const setFaceLabels = v => { const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
   let faceIdleTimer = 0;
   const beginFaceMotion = () => {
     clearTimeout(faceIdleTimer);
@@ -49247,20 +49250,26 @@ ${播报文本}
   };
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
-  // 手机上下排：两翼开合按「页面:侧」记住；名单型左翼（含列表行）做成横向选择条，选中项滚到条内可见处
-  const openWings = new Set();
-  const applyStack = () => {
+  // 手机上下排：座舱定高，三块内容在窗口里上下滚（展开详情、换页都不改座舱外高，聊天区不跟着重排）；
+  // 名单型左翼（含列表行）做成横向选择条放在最上面，选中项滚到条内可见处；换页时窗口回到顶部
+  const applyStack = (resetScroll = false) => {
     $('.cockpit').classList.toggle('stack', stacked());
     if (!stacked()) return;
-    const key = $('.cockpit').dataset.view;
+    if (resetScroll) screens.scrollTop = 0;
     for (const side of ['l', 'r']) {
       const w = wingEl[side], h = host[side], strip = side === 'l' && !!h.querySelector('.list .row');
-      const open = strip || openWings.has(key + ':' + side);
-      w.classList.toggle('wing-strip', strip); w.classList.toggle('wing-none', !h.firstElementChild); w.classList.toggle('wing-open', open);
-      $('.wing-toggle', w).setAttribute('aria-expanded', String(open));
+      w.classList.toggle('wing-strip', strip); w.classList.toggle('wing-none', !h.firstElementChild);
       const on = strip && $('.list .row.on', h);
       if (on) { const list = on.parentElement, lr = list.getBoundingClientRect(), r = on.getBoundingClientRect(); if (r.left < lr.left || r.right > lr.right) list.scrollLeft += r.left - lr.left - 12; }
     }
+  };
+  const revealInStack = (el, block = 'start') => {
+    if (!stacked() || !el || !screens.contains(el)) return false;
+    const box = screens.getBoundingClientRect(), r = el.getBoundingClientRect();
+    if (block === 'start' ? r.top >= box.top && r.top <= box.top + box.height * .4 : r.top >= box.top && r.bottom <= box.bottom) return true;
+    const top = screens.scrollTop + r.top - box.top - 6, target = block === 'start' ? top : Math.min(top, screens.scrollTop + r.bottom - box.bottom + 6);
+    screens.scrollTo({ top: Math.max(0, target), behavior: reduce ? 'auto' : 'smooth' });
+    return true;
   };
   function renderPage(how) {
     const { d, page } = currentPage(), v = page.view(ctx());
@@ -49278,7 +49287,7 @@ ${播报文本}
       mount(v, put(host.c, v.core, null, true, keepScroll));
       put(host.l, wingHtml(v, 'l'), null, true, keepScroll);
       put(host.r, wingHtml(v, 'r'), null, true, keepScroll);
-      applyStack();
+      applyStack(!keepScroll);
       scheduleCarouselFit();
     } else if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
@@ -49327,7 +49336,9 @@ ${播报文本}
     if (isMobile() && anchor) {
       const box = document.createElement('div'); box.className = 'inline-detail'; box.innerHTML = body;
       // 锚点在成排容器（如魂环舞台）里时，详情插在整个容器之后，不塞进绝对定位的舞台内部
-      (anchor.closest('[data-float]') || anchor).insertAdjacentElement('afterend', box); charge(box);
+      const slot = anchor.closest('[data-float]');
+      (slot?.parentElement?.matches('.soul-deck') ? slot.parentElement : slot || anchor).insertAdjacentElement('afterend', box); charge(box);
+      requestAnimationFrame(() => { if (!revealInStack(box, 'nearest')) box.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); });
       if (!reduce) box.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'ease-out' });
       requestAnimationFrame(fitCarousel); return;
     }
@@ -49384,7 +49395,7 @@ ${播报文本}
     if (!html) return;
     const swap = mode === 'scan' && floatOpen() && !pinned && anchor?.closest('[data-float]') === floatHost;
     state.inspect = { kind, id }; pinned = mode === 'click' && hoverable(); layer.classList.toggle('pinned', pinned);
-    $$('[data-inspect]').forEach(el => { const on = el.dataset.inspect === `${kind}:${id}`; el.classList.toggle('on', on); ringSlotOf(el)?.classList.toggle('mvu-hover-floating-active', on); });
+    $$('[data-inspect]').forEach(el => { const on = el.dataset.inspect === `${kind}:${id}`; el.classList.toggle('on', on); if (hoverable()) ringSlotOf(el)?.classList.toggle('mvu-hover-floating-active', on); });
     project(html, anchor, swap);
   }
   // 浮窗打开时给对应魂环挂引擎激活态（.mvu-hover-floating-active），魂环舞台随之保持塔形
@@ -49425,7 +49436,7 @@ ${播报文本}
   // 魂环扫描：魂环的命中带是细窄的环线（成塔后只剩几像素高），直接悬停很难瞄准。
   // 声明 data-scan 的容器（武魂卡）整片都是扫描区：取离鼠标最近的一圈。首次打开约 0.09 秒防误触，之后切换即时、浮窗复用不闪。
   const nearestRing = (host, x, y) => {
-    const tower = host.classList.contains('tower') || (hoverable() && host.matches(':hover,:focus-within')) || !!host.querySelector('.mvu-hover-floating-active');
+    const tower = (hoverable() && host.matches(':hover,:focus-within')) || !!host.querySelector('.mvu-hover-floating-active');
     let best = null, bd = Infinity;
     for (const el of host.querySelectorAll('[data-inspect]')) {
       const r = (el.querySelector('svg') || el).getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -49468,7 +49479,9 @@ ${播报文本}
     openTimer = setTimeout(() => { hoverPending = false; if (!item.isConnected || holding || item.closest('.grabbing')) return; const [kind, ...rest] = key.split(':'); openInspector(kind, rest.join(':'), item, 'hover'); }, Number(item.dataset.hoverDelay) || hoverMs());
   });
   // 点浮窗与条目以外的地方、或屏内滚动时收起（浮窗锚点会移动）
-  addEventListener('pointerdown', e => { if (!e.target.closest('[data-scan],.fcard,.inline-detail')) $$('[data-scan].tower').forEach(h => h.classList.remove('tower')); if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); });
+  const dismissOutside = e => { if (floatOpen() && !e.target.closest('.fcard,.inline-detail,[data-inspect],[data-scan],.picker-list,.ie-floatbox')) closeInspector(); };
+  addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') dismissOutside(e); });
+  addEventListener('click', e => { if (!hoverable()) dismissOutside(e); }, true);
   cockpitEl.addEventListener('scroll', e => { if (layer.firstChild && !e.target.closest?.('.fcard')) closeInspector(); }, true);
 
   let editing = null, holding = false;
@@ -49776,15 +49789,16 @@ ${播报文本}
   $('.cockpit').addEventListener('click', e => {
     if (e.target.closest('.ie-edit')) return;
     const ieEl = e.target.closest('.ie'); if (ieEl) { e.stopPropagation(); return beginEdit(ieEl); }
-    const scanHost = !e.target.closest('.fcard,.inline-detail,[data-go]') && e.target.closest('[data-scan]');
+    // 鼠标：在魂环塔里按位置选最近的一圈。触屏不出塔，舞台只展示，选环走武魂台下的魂环牌（普通 data-inspect）
+    const scanHost = hoverable() && !e.target.closest('.fcard,.inline-detail,[data-go]') && e.target.closest('[data-scan]');
     if (scanHost) {
-      // 触屏没有悬停：第一下点武魂卡先把魂环展开成塔（同心叠环点不准），塔里再点哪一圈就选哪一圈；点卡片外收起
-      if (!hoverable() && !scanHost.classList.contains('tower') && !scanHost.querySelector('.mvu-hover-floating-active')) { $$('[data-scan].tower').forEach(h => h.classList.remove('tower')); scanHost.classList.add('tower'); return; }
       const el = (state.inspect && scanHost.querySelector('[data-inspect].on')) || nearestRing(scanHost, e.clientX, e.clientY);
       if (el) { const [kind, ...rest] = el.dataset.inspect.split(':'); return openInspector(kind, rest.join(':'), el); }
     }
     const t = e.target.closest('[data-confirm],[data-confirm-go],[data-confirm-no],[data-del-path],[data-inspect],[data-go],[data-view-char],[data-close-inspector],[data-pick],[data-set],[data-clamp],[data-dur],[data-act]');
     if (!t) return;
+    // 触屏：魂环舞台只作展示（不出塔），舞台上的环不响应点按，选环用下方魂环牌
+    if (!hoverable() && t.closest('.soul-stage')) return;
     // 改变状态的操作先确认：展开「将要…」条，写明要做什么，再点「确认」才执行
     if (t.dataset.confirmNo !== undefined) { t.closest('.confirm-strip')?.remove(); return; }
     if (t.dataset.confirmGo !== undefined) {
@@ -49829,7 +49843,7 @@ ${播报文本}
       // 手机端：在左翼列表里点选后转到主屏看详情；主屏里的选择（星图 / 竖牌）可用 data-face-after 指定转去哪一面
       if (isMobile()) {
         const f = t.dataset.faceAfter !== undefined ? Number(t.dataset.faceAfter) : t.closest('.wing.l') && t.matches('.row, .hpt, .tz') ? 0 : null;
-        if (f !== null && stacked()) { const el = f === -1 ? wingEl.l : f === 1 ? wingEl.r : center, r = el.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * .6) el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); }
+        if (f !== null && stacked()) revealInStack(f === -1 ? wingEl.l : f === 1 ? wingEl.r : center);
         else if (f !== null && f !== state.face) setFace(f);
       }
       return;
@@ -49848,11 +49862,6 @@ ${播报文本}
   // ---------- 手机：单屏横滑 ----------
   const dots = $('.dots');
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
-  for (const side of ['l', 'r']) $('.wing-toggle', wingEl[side]).addEventListener('click', () => {
-    const k = $('.cockpit').dataset.view + ':' + side;
-    if (openWings.has(k)) openWings.delete(k); else openWings.add(k);
-    applyStack();
-  });
   let drag = null;
   let suppressSwipeClick = false;
   screens.addEventListener('pointerdown', e => {
@@ -50087,9 +50096,11 @@ ${播报文本}
   const soulCard = (c, s, i) => {
     const keyOf = r => { const sk = r.skills[0], sp = s.spirits.find(x => x.rings.includes(r)); return !sk ? '' : sp ? `${s.slot}/${sp.slot}/${r.slot}/${sk.slot}` : r.independent ? `${s.slot}/${r.slot}/${sk.slot}` : ''; };
     const sub = `${!c.blank(s.系别) ? `<span class="sys">${c.esc(s.系别)}</span>` : ''}${s.rings.length ? `<em>${s.rings.length} 环</em>` : ringHint(c, s).includes('nx ok') ? '' : '<em>未附环</em>'}${ringHint(c, s)}`;
+    const ringAttrs = r => { const key = keyOf(r); return key ? `data-inspect="sk:${c.esc(key)}"` : ''; };
     return `<div class="soul-card" data-scan data-float="${i % 2 ? 'r' : 'l'}">
-      <div class="soul-stage">${s.rings.length ? c.ringStage(s.rings, r => { const key = keyOf(r); return key ? `data-inspect="sk:${c.esc(key)}"` : ''; }) : '<div class="soul-empty"><i></i><span>尚未附环</span></div>'}</div>
+      <div class="soul-stage">${s.rings.length ? c.ringStage(s.rings, ringAttrs) : '<div class="soul-empty"><i></i><span>尚未附环</span></div>'}</div>
       ${soulPlate(`${['第一', '第二', '第三', '第四'][i] || ''}武魂`, c.esc(s.表象名称), sub, `data-go="page-ability/martial" data-go-set="soul=${i}" role="link" tabindex="0" title="查看${c.esc(s.表象名称)}的武魂详情"`)}
+      ${s.rings.length ? c.ringPicks(s.rings, ringAttrs) : ''}
     </div>`;
   };
   const bloodCard = c => {
@@ -52656,7 +52667,7 @@ ${播报文本}
         <div class="plaques"><span class="plq">${c.ed(c.blank(soul.系别) ? '未定系别' : soul.系别, [...c.P(soul.slot), '系别'], { raw: c.blank(soul.系别) ? '' : soul.系别 })}</span><span class="plq steel">属性 · ${c.ed(soul.属性体系 || '无', [...c.P(soul.slot), '属性体系'], { kind: 'enum', options: SOUL_SYSTEMS })}</span></div>
         ${soul.属性体系 && soul.属性体系 !== '无' ? (on => `<div class="chips-row callable"><span class="lbl">可调用${c.hint('点选这个武魂能调用的元素。')}</span>${(soul.属性体系 === '五行' ? WUXING : ELEMENTS).map(x => `<button class="key-s mini${on.includes(x) ? ' on' : ''}" type="button" aria-pressed="${on.includes(x)}" data-callable="${c.esc(JSON.stringify({ path: [...c.P(soul.slot), '可调用元素'], x, on }))}">${c.esc(x)}</button>`).join('')}</div>`)((soul.可调用元素 || []).filter(x => x && x !== '无')) : ''}
         <p class="narr">${c.ed(c.blank(soul.描述) ? '未记录' : soul.描述, [...c.P(soul.slot), '描述'], { kind: 'text', raw: c.blank(soul.描述) ? '' : soul.描述 })}</p>
-        <div class="martial-stage">${soul.rings.length ? `<div class="soul-card" data-scan data-float="r"><div class="soul-stage">${c.ringStage(soul.rings, r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return sk && (p || r.independent) ? `data-inspect="sk:${skKey({ p, r, sk })}"` : ''; })}</div></div>`
+        <div class="martial-stage">${soul.rings.length ? `<div class="soul-card" data-scan data-float="r">${(attrs => `<div class="soul-stage">${c.ringStage(soul.rings, attrs)}</div>${c.ringPicks(soul.rings, attrs)}`)(r => { const p = soul.spirits.find(x => x.rings.includes(r)), sk = r.skills[0]; return sk && (p || r.independent) ? `data-inspect="sk:${skKey({ p, r, sk })}"` : ''; })}</div>`
           : `<div class="soul-card"><div class="soul-stage"><div class="soul-empty"><i></i><span>尚未附环</span></div></div><small class="lbl">下一魂环于 ${Math.floor(c.num(c.st.等级) / 10 + 1) * 10} 级开放</small></div>`}
         <div class="spirit-grid">${soul.spirits.map(p => `<div class="spirit-link" data-inspect="spirit:${c.esc(`${soul.slot}/${p.slot}`)}" tabindex="0">${spiritCard(c, p)}<i class="fa-solid fa-circle-info"></i></div>`).join('')}</div></div>
       </div>`,
