@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:be3fb7b38504d7303fcbd070c9e942a47257441cc0d12d52315ab4567a71bd54|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:60305a52b4e92c94a632fdbed4015c63a60cd9f31a324d3caa4c5e87229c82e2 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:9eaa7b3d6efaa33adc90ec32c37fc9bdf36858480de591b9cc68157df0106051|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:60305a52b4e92c94a632fdbed4015c63a60cd9f31a324d3caa4c5e87229c82e2 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -33098,13 +33098,32 @@ if (typeof 结算修正支持字段矩阵_V1 === 'object' && 结算修正支持�
     ]),
   ));
 }
+// 商店进货的锻造金属按阶位挑具体金属（11-22 起不再有不指定金属的「X锻金属块」）；生成时只取当前时代物品库里登记过的金属
 var 动态金属块基础金属候选表_V1 = Object.freeze({
-  1: Object.freeze(['钢精']),
-  2: Object.freeze(['沉银', '钢精']),
-  3: Object.freeze(['魔银', '天龙铁', '精金', '千机铜', '幽冥铁']),
-  4: Object.freeze(['金晶', '蓝孕铜', '龙鳞沉银', '灵金', '钛晶', '钛金', '星陨铁', '星银', '玉银']),
-  5: Object.freeze(['七彩沉银', '金水相涵']),
+  1: Object.freeze(['精铁', '黑钢', '赤铜', '白银', '钢精']),
+  2: Object.freeze(['沉银', '钢精', '黑钢', '秘银', '庚金']),
+  3: Object.freeze(['魔银', '天龙铁', '精金', '千机铜', '幽冥铁', '天灵铁']),
+  4: Object.freeze(['金晶', '蓝孕铜', '钛晶', '星陨铁', '龙源金']),
+  5: Object.freeze(['金水相涵', '星陨铁', '七彩金']),
 });
+var 锻造阶位名表_V1 = Object.freeze({ 1: '百锻', 2: '千锻', 3: '灵锻', 4: '魂锻', 5: '天锻' });
+var 锻造阶位品质表_V1 = Object.freeze({ 1: '普通', 2: '优秀', 3: '稀有', 4: '史诗', 5: '传说' });
+// 锻造过的金属估价：原料价 ×（1 + 0.5 × 阶位）+ 加工价（联邦币）；其他货币没有加工价对照，按倍率。与 TradeUI 计算锻造阶位价格倍率 同步
+function 计算锻造金属阶位价格_V1(原价 = 0, 阶位 = 0, 货币 = '') {
+  const 阶 = Math.max(0, Math.min(5, Math.floor(Number(阶位 || 0))));
+  const 价 = Math.max(0, Number(原价 || 0));
+  if (!阶) return Math.floor(价);
+  if (String(货币 || '').trim() === '联邦币') return Math.floor(价 * (1 + 0.5 * 阶) + { 1: 1000, 2: 300000, 3: 8000000, 4: 60000000, 5: 400000000 }[阶]);
+  return Math.max(1, Math.floor(价 * { 1: 2, 2: 5, 3: 20, 4: 80, 5: 400 }[阶]));
+}
+// 「千锻沉银」这类 阶名 + 金属名：返回 { 阶位, 金属 }；「X锻金属块」等不指定金属的旧名只给阶位
+function 解析锻造阶位物品名_V1(物品名 = '') {
+  const 匹配 = String(物品名 || '').trim().match(/^(百锻|千锻|灵锻|魂锻|天锻)(.+)$/);
+  if (!匹配) return null;
+  const 阶位 = Number(Object.keys(锻造阶位名表_V1).find(键 => 锻造阶位名表_V1[键] === 匹配[1]));
+  const 余名 = 匹配[2].trim();
+  return { 阶位, 金属: /^金属块?$/.test(余名) ? '' : 余名 };
+}
 var 物品经济品质列表_V1 = Object.freeze(['普通', '优秀', '稀有', '史诗', '传说', '神器', '超神器']);
 var 物品经济品质集合_V1 = new Set(物品经济品质列表_V1);
 var 装备加成属性列表_V1 = Object.freeze(['魂力上限', '精神力上限', '力量', '防御', '敏捷', '体力上限']);
@@ -33384,7 +33403,7 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
     if (材质 && 材质 !== '无') 输出.材质 = 材质;
   }
   if (物品分类 === '锻造金属') {
-    输出.阶位 = Math.max(0, Math.min(5, Math.floor(Number(来源.阶位 || 0))));
+    // 阶位只在背包批次上（11-22），定义不带；旧热区定义里的阶位（曾把金属稀有档写成阶位）在这里去掉
     const 金属特性 = Array.isArray(来源.金属特性)
       ? [...new Set(来源.金属特性.map(特性 => String(特性 || '').trim()).filter(Boolean))]
       : [];
@@ -34052,19 +34071,19 @@ var BaseProductPool = {
     分类: '功能道具',
     描述: '最基础的手持照明工具，比火把方便得多，可辅助低光环境探索。',
   },
-  普通铁锭: {
+  精铁: {
     价格: 200,
     货币: '联邦币',
     分类: '锻造金属',
-    描述: '最基础的锻造材料，用于练习或打造低级工具。',
-    阶位: 0,
+    描述: '最常见的锻造用铁，杂质少、性质稳定，是锻造入门与等级考核的标准原料。',
+    金属特性: ['高韧性'],
   },
   百锻精铁: {
-    价格: 1500,
+    价格: 1300,
     货币: '联邦币',
     分类: '锻造金属',
     描述: '经过百次锻打的精铁，是打造魂导器的入门材料。',
-    阶位: 1,
+    批次: [{ 数量: 1, 基础金属: '精铁' }],
   },
   '1级密封奶瓶': {
     价格: 80000,
@@ -34289,55 +34308,50 @@ var ShrekAcademyShopProducts = {
 
 var AssociationShopProducts = {
   锻造师协会: {
-    百锻金属块: {
-      价格: 50000,
+    百锻精铁: {
+      价格: 1300,
       货币: '联邦币',
       分类: '锻造金属',
-      描述: '经过百次锻打的金属，是锻造师的基础材料。',
-      阶位: 1,
+      描述: '经过百次锻打的精铁，是锻造师的基础材料。',
       品质: '普通',
       库存: 6,
-      批次: [{ 数量: 6, 基础金属: '钢精', 品质: '普通' }],
+      批次: [{ 数量: 6, 基础金属: '精铁', 品质: '普通' }],
     },
-    千锻金属块: {
-      价格: 500000,
+    千锻沉银: {
+      价格: 3300000,
       货币: '联邦币',
       分类: '锻造金属',
-      描述: '千锤百炼的稀有金属，拥有了初步的灵性。',
-      阶位: 2,
+      描述: '千锤百炼的沉银，拥有了初步的灵性。',
       品质: '优秀',
       库存: 4,
       批次: [{ 数量: 4, 基础金属: '沉银', 品质: '优秀' }],
     },
-    灵锻金属块: {
-      价格: 10000000,
+    灵锻魔银: {
+      价格: 12500000,
       货币: '联邦币',
       分类: '锻造金属',
-      描述: '被赋予生命的金属，是四级以上锻造师的杰作。',
-      阶位: 3,
-      品质: '史诗',
+      描述: '被赋予生命的魔银，是四级以上锻造师的杰作。',
+      品质: '稀有',
       库存: 2,
-      批次: [{ 数量: 2, 基础金属: '魔银', 品质: '史诗' }],
+      批次: [{ 数量: 2, 基础金属: '魔银', 品质: '稀有' }],
     },
-    魂锻金属块: {
-      价格: 80000000,
+    魂锻星陨铁: {
+      价格: 90000000,
       货币: '联邦币',
       分类: '锻造金属',
-      描述: '与灵魂相融的金属，圣匠的标志。',
-      阶位: 4,
+      描述: '与灵魂相融的星陨铁，圣匠的标志。',
       品质: '史诗',
       库存: 1,
       批次: [{ 数量: 1, 基础金属: '星陨铁', 品质: '史诗' }],
     },
-    天锻金属块: {
-      价格: 500000000,
+    天锻金水相涵: {
+      价格: 592500000,
       货币: '联邦币',
       分类: '锻造金属',
-      描述: '引动天地法则淬炼而成的神级金属。',
-      阶位: 5,
+      描述: '引动天地法则淬炼而成的金水相涵。',
       品质: '传说',
       库存: 1,
-      批次: [{ 数量: 1, 基础金属: '七彩沉银', 品质: '传说' }],
+      批次: [{ 数量: 1, 基础金属: '金水相涵', 品质: '传说' }],
     },
   },
   设计师协会: {
@@ -34459,7 +34473,6 @@ function 规范化商品模板为物品定义_V1(商品名 = '', 商品模板 = 
     return 规范化物品定义_V1(商品名, 定义, 分类);
   }
   if (分类 === '锻造金属') {
-    定义.阶位 = Math.max(0, Math.min(5, Math.floor(Number(模板.阶位 || 0))));
     const 金属特性 = Array.isArray(模板.金属特性)
       ? [...new Set(模板.金属特性.map(特性 => String(特性 || '').trim()).filter(Boolean))]
       : [];
@@ -34576,21 +34589,21 @@ function 构建拍卖专用模板表_V1(数据根 = {}) {
       描述: '拍卖场封存的万年级灵物匣，可用于高阶修炼突破。',
       使用效果: [{ 原型: '灵物吸收', 目标: '自身', 属性: '吸收灵物年限', 数值: 10000 }],
     },
-    魂锻金属块: {
-      价格: 80000000,
+    魂锻星陨铁: {
+      价格: 90000000,
       货币: '联邦币',
       分类: '锻造金属',
       品质: '史诗',
-      阶位: 4,
-      描述: '圣匠级魂锻金属，适合作为高阶斗铠核心材料。',
+      描述: '圣匠级魂锻星陨铁，适合作为高阶斗铠核心材料。',
+      批次: [{ 数量: 1, 基础金属: '星陨铁', 品质: '史诗' }],
     },
-    天锻金属块: {
-      价格: 500000000,
+    天锻金水相涵: {
+      价格: 592500000,
       货币: '联邦币',
       分类: '锻造金属',
       品质: '传说',
-      阶位: 5,
-      描述: '引动天地法则淬炼而成的神级金属。',
+      描述: '引动天地法则淬炼而成的天锻金水相涵。',
+      批次: [{ 数量: 1, 基础金属: '金水相涵', 品质: '传说' }],
     },
     三字斗铠设计图: {
       价格: 20000000,
@@ -34735,6 +34748,25 @@ function 查找商店商品模板定义_V1(数据根 = {}, 物品名 = '') {
     const 模板 = 商品模板表 && typeof 商品模板表 === 'object' && !Array.isArray(商品模板表) ? 商品模板表[名称] : null;
     return 模板 && typeof 模板 === 'object' && !Array.isArray(模板) ? 模板 : null;
   };
+  const 阶位商品 = 解析锻造阶位物品名_V1(名称);
+  if (阶位商品?.金属) {
+    const 原料 = 查找物品定义_V1(数据根, 阶位商品.金属) || 查找内置物品定义_V1(阶位商品.金属);
+    if (原料 && 规范化物品分类_V1(原料.分类, '') === '锻造金属') {
+      const 原定义 = cloneJsonValue(原料.定义, {});
+      delete 原定义.阶位;
+      const 货币 = String(原定义.默认货币 || 原定义.货币 || '').trim();
+      const 品质表 = 物品经济品质列表_V1;
+      const 品质 = [原定义.品质, 锻造阶位品质表_V1[阶位商品.阶位]].map(值 => 规范化物品经济品质_V1(值)).sort((甲, 乙) => 品质表.indexOf(乙) - 品质表.indexOf(甲))[0];
+      const 定义 = {
+        ...原定义,
+        分类: '锻造金属',
+        品质,
+        描述: `${锻造阶位名表_V1[阶位商品.阶位]}${阶位商品.金属}：${String(原定义.描述 || '').trim() || '锻造过的金属。'}`,
+        基础价格: 计算锻造金属阶位价格_V1(读取显式物品基础价格_V1(原定义) || 0, 阶位商品.阶位, 货币),
+      };
+      return { 物品名: 名称, 定义: 规范化物品定义_V1(名称, 定义, '锻造金属'), 分类: '锻造金属' };
+    }
+  }
   const 时代 = 读取当前静态资源时代_V1(数据根, 数据根?.world?.时间?.tick);
   const 直接模板 = 查表(EraBaseProductPools[时代]);
   if (直接模板) return { 物品名: 名称, 定义: 规范化商品模板为物品定义_V1(名称, 直接模板), 分类: 要求物品定义分类_V1(名称, 直接模板) };
@@ -37371,7 +37403,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
           rewardCoin: [100000, 1000000],
           rewardRep: [200, 500],
           progress: [3, 5],
-          resourceLabel: '一字斗铠图纸/百锻金属块',
+          resourceLabel: '一字斗铠图纸/百锻金属',
         },
         A: {
           rewardCoin: [2000000, 20000000],
@@ -37737,7 +37769,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         }
         const 金属阶位 = 推断委托板金属阶位(tier, title);
         const 名称 =
-          { 0: '基础矿料', 1: '百锻金属块', 2: '千锻金属块', 3: '灵锻金属块', 4: '魂锻金属块', 5: '天锻金属块' }[
+          { 0: '基础矿料', 1: '百锻金属', 2: '千锻金属', 3: '灵锻金属', 4: '魂锻金属', 5: '天锻金属' }[
             金属阶位
           ] || '基础矿料';
         const 品质下限 = 读取委托板交付品质下限(tier, 金属阶位);
@@ -39605,10 +39637,10 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
             else if (economy === '萧条') probMultiplier = 0.2;
 
             if (factionName.includes('锻造师协会')) {
-              tryGenerateDynamicItem(store.库存, '千锻金属块', 500000, 2, 60 * probMultiplier);
-              tryGenerateDynamicItem(store.库存, '灵锻金属块', 10000000, 3, 20 * probMultiplier);
-              tryGenerateDynamicItem(store.库存, '魂锻金属块', 80000000, 4, 3 * probMultiplier);
-              tryGenerateDynamicItem(store.库存, '天锻金属块', 500000000, 5, 0.1 * probMultiplier);
+              tryGenerateDynamicMetal(store.库存, 2, 60 * probMultiplier);
+              tryGenerateDynamicMetal(store.库存, 3, 20 * probMultiplier);
+              tryGenerateDynamicMetal(store.库存, 4, 3 * probMultiplier);
+              tryGenerateDynamicMetal(store.库存, 5, 0.1 * probMultiplier);
             } else if (factionName.includes('设计师协会')) {
               tryGenerateDynamicItem(store.库存, '二字斗铠设计图', 2000000, 3, 30 * probMultiplier);
               tryGenerateDynamicItem(store.库存, '三字斗铠设计图', 20000000, 4, 5 * probMultiplier);
@@ -39690,26 +39722,41 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       追加系统播报文本(data, `[市场波动] ${播报文本}`);
     };
     执行市场自然耗散();
-    function 随机动态金属块基础金属(tier) {
-      const 候选 = 动态金属块基础金属候选表_V1[Math.max(1, Math.min(5, Math.floor(Number(tier || 1))))] || 动态金属块基础金属候选表_V1[1];
-      return 候选[Math.floor(Math.random() * 候选.length)] || '钢精';
-    }
-    function tryGenerateDynamicItem(背包, itemName, basePrice, tier, prob) {
+    // 进货的锻造金属是「阶名 + 具体金属」（千锻沉银），批次记基础金属；不写批次阶位，阶位在名字里、估价已含阶位
+    function tryGenerateDynamicMetal(库存表, tier, prob) {
       if (Math.random() * 100 > prob) return;
-
+      const 阶名 = 锻造阶位名表_V1[tier];
+      const 候选 = (动态金属块基础金属候选表_V1[tier] || [])
+        .filter(金属 => !库存表[`${阶名}${金属}`])
+        .filter(金属 => 查找商店商品模板定义_V1(data, `${阶名}${金属}`));
+      if (!阶名 || !候选.length) return;
+      const 金属 = 候选[Math.floor(Math.random() * 候选.length)];
+      const 商品名 = `${阶名}${金属}`;
       let metalCount = 1;
-      const 是否金属块 = itemName.includes('金属块');
-      if (tier >= 2 && 是否金属块) {
-        let roll = Math.floor(Math.random() * 100) + 1;
+      if (tier >= 2) {
+        const roll = Math.floor(Math.random() * 100) + 1;
         if (roll <= 70) metalCount = 2;
         else if (roll <= 90) metalCount = 3;
         else if (roll <= 98) metalCount = 4;
         else metalCount = 5;
       }
+      const 波动 = (1 + (metalCount - 1) * 0.3) * (0.85 + Math.random() * 0.3);
+      const 库存 = Math.floor(Math.random() * 2) + 1;
+      库存表[商品名] = {
+        库存,
+        价格倍率: Math.max(0.01, Number(波动.toFixed(4))),
+        折扣: 0,
+        需求声望: { 3: 1000, 4: 5000, 5: 20000 }[tier] || 0,
+        需求: {},
+        批次: [{ 数量: 库存, 基础金属: 金属, 品质: 锻造阶位品质表_V1[tier] }],
+      };
+      if (metalCount > 1) 库存表[商品名].批次[0].副职业参数 = { 融合参数: { 数量: metalCount, 融合率: Math.floor(85 + Math.random() * 16) } };
+    }
+    function tryGenerateDynamicItem(背包, itemName, basePrice, tier, prob) {
+      if (Math.random() * 100 > prob) return;
 
-      let forgeMult = 1 + (metalCount - 1) * 0.3;
       let fluctuation = 0.85 + Math.random() * 0.3;
-      let finalPrice = Math.floor(basePrice * forgeMult * fluctuation);
+      let finalPrice = Math.floor(basePrice * fluctuation);
       let 库存 = tier === 1 ? Math.floor(Math.random() * 10) + 5 : Math.floor(Math.random() * 2) + 1;
 
       let reqFame = 0;
@@ -39725,14 +39772,6 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
         需求声望: reqFame,
         需求: {},
       };
-      if (是否金属块) {
-        背包[物品名].批次 = [{
-          数量: 库存,
-          基础金属: 随机动态金属块基础金属(tier),
-          品质: tier >= 5 ? '传说' : tier >= 4 ? '史诗' : tier >= 3 ? '稀有' : '优秀',
-        }];
-        if (metalCount > 1) 背包[物品名].批次[0].副职业参数 = { 融合参数: { 数量: metalCount, 融合率: Math.floor(85 + Math.random() * 16) } };
-      }
     }
 
     if (data && data.char) {
@@ -41184,6 +41223,7 @@ function 规范化背包项Schema_V1(背包项) {
                 if (批次.品质 !== undefined) 输出.品质 = 规范化物品经济品质_V1(批次.品质);
                 if (批次.品质系数 !== undefined) 输出.品质系数 = Math.max(0.1, Math.min(2, Number(批次.品质系数 || 1)));
                 if (String(批次.基础金属 || '').trim()) 输出.基础金属 = String(批次.基础金属 || '').trim();
+                if (Number(批次.阶位 || 0) > 0) 输出.阶位 = Math.max(1, Math.min(5, Math.floor(Number(批次.阶位))));
                 if (批次.魂导等级 !== undefined) 输出.魂导等级 = Math.max(0, Math.min(12, Math.floor(Number(批次.魂导等级 || 0))));
                 if (批次.耐久 !== undefined) 输出.耐久 = Math.max(0, Math.floor(Number(批次.耐久 || 0)));
                 if (批次.剩余使用次数 !== undefined) 输出.剩余使用次数 = Math.max(0, Math.floor(Number(批次.剩余使用次数 || 0)));
@@ -42095,9 +42135,59 @@ function 规范化角色Schema_V1(char) {
       delete char.私密档案;
     }
 
+    迁移背包锻造金属_V1(char);
     标记本轮等级上升();
     return char;
 
+}
+
+// 11-22 起锻造金属以具体金属为条目、阶位记在批次上。旧存档的 阶名 + 金属 / X锻金属块 / 普通铁锭 并过去；
+// 解析不出具体金属的（金属块且批次没有基础金属）原样保留
+function 读取已知锻造金属名集合_V1() {
+  const 集合 = new Set(Object.values(动态金属块基础金属候选表_V1).flat());
+  const 加入 = 库 => Object.keys(库?.锻造金属 && typeof 库.锻造金属 === 'object' ? 库.锻造金属 : {}).forEach(名 => 集合.add(名));
+  try { 加入(读取内置物品库_V1()); } catch (错误) {}
+  ['__LWCS_内置物品库__', '__LWCS_斗罗大陆物品库__', '__LWCS_绝世唐门物品库__', '__LWCS_终极斗罗物品库__'].forEach(键 => {
+    try { 加入(globalThis[键]); } catch (错误) {}
+  });
+  return 集合;
+}
+
+function 迁移背包锻造金属_V1(char = {}) {
+  const 背包 = char?.背包;
+  if (!背包 || typeof 背包 !== 'object' || Array.isArray(背包)) return;
+  if (!Object.keys(背包).some(物品名 => 物品名 === '普通铁锭' || 解析锻造阶位物品名_V1(物品名))) return;
+  const 已知金属 = 读取已知锻造金属名集合_V1();
+  const 并入 = (金属, 批次列表 = [], 原料数量 = 0) => {
+    const 目标 = 背包[金属] && typeof 背包[金属] === 'object' && !Array.isArray(背包[金属]) ? 背包[金属] : { 数量: 0 };
+    目标.数量 = Math.max(0, Math.floor(Number(目标.数量 || 0))) + Math.max(0, Math.floor(Number(原料数量 || 0)));
+    const 现有 = Array.isArray(目标.批次) ? 目标.批次 : [];
+    if (批次列表.length) 目标.批次 = [...现有, ...批次列表];
+    背包[金属] = 目标;
+  };
+  Object.keys(背包).forEach(物品名 => {
+    const 记录 = 背包[物品名];
+    if (!记录 || typeof 记录 !== 'object' || Array.isArray(记录)) return;
+    if (物品名 === '普通铁锭') {
+      delete 背包[物品名];
+      并入('精铁', Array.isArray(记录.批次) ? 记录.批次 : [], 记录.数量);
+      return;
+    }
+    const 解析 = 解析锻造阶位物品名_V1(物品名);
+    if (!解析) return;
+    const 批次 = Array.isArray(记录.批次) ? 记录.批次 : [];
+    const 普通数量 = Math.max(0, Math.floor(Number(记录.数量 || 0)));
+    const 金属可解析 = 解析.金属
+      ? 已知金属.has(解析.金属) || Boolean(背包[解析.金属]) || 批次.some(项 => String(项?.基础金属 || '').trim() === 解析.金属)
+      : !普通数量 && 批次.length > 0 && 批次.every(项 => String(项?.基础金属 || '').trim());
+    if (!金属可解析) return;
+    delete 背包[物品名];
+    if (普通数量 > 0) 并入(解析.金属, [{ 数量: 普通数量, 阶位: 解析.阶位, 基础金属: 解析.金属 }]);
+    批次.forEach(项 => {
+      const 金属 = 解析.金属 || String(项.基础金属).trim();
+      并入(金属, [{ ...项, 阶位: Number(项.阶位 || 0) > 0 ? 项.阶位 : 解析.阶位, 基础金属: 金属 }]);
+    });
+  });
 }
 
 function 规范化商店库存项Schema_V1(库存项) {
@@ -42110,6 +42200,7 @@ function 规范化商店库存项Schema_V1(库存项) {
                                     if (批次.品质 !== undefined) 输出.品质 = 规范化物品经济品质_V1(批次.品质);
                                     if (批次.品质系数 !== undefined) 输出.品质系数 = Math.max(0.1, Math.min(2, Number(批次.品质系数 || 1)));
                                     if (String(批次.基础金属 || '').trim()) 输出.基础金属 = String(批次.基础金属 || '').trim();
+                                    if (Number(批次.阶位 || 0) > 0) 输出.阶位 = Math.max(1, Math.min(5, Math.floor(Number(批次.阶位))));
                                     if (批次.魂导等级 !== undefined) 输出.魂导等级 = Math.max(0, Math.min(12, Math.floor(Number(批次.魂导等级 || 0))));
                                     if (批次.耐久 !== undefined) 输出.耐久 = Math.max(0, Math.floor(Number(批次.耐久 || 0)));
                                     if (批次.剩余使用次数 !== undefined) 输出.剩余使用次数 = Math.max(0, Math.floor(Number(批次.剩余使用次数 || 0)));

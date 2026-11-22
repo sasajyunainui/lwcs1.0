@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:43feca684e4118a79d916cf08586fee2aa01c2672555ec64c834d00fa9696ecd|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:16ea3d3f86c1f1ce30cf5aa0db62bc1353a7e81b490a281daa3c69448281694c|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:36073ce97db00e8b7d1fd317b9fed8e590ab4addc7b7a789f3d1b686bcb36461|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:bdc1b9a30a88255c5af9a63c520b7dce019d82599e52edbc88eca657bb2f8858|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:16ea3d3f86c1f1ce30cf5aa0db62bc1353a7e81b490a281daa3c69448281694c|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -2894,6 +2894,20 @@
     });
   }
 
+  function 读取交付锻造阶位要求_桥接(需求名 = '') {
+    const 名称 = toText(需求名, '').trim();
+    if (名称 === '基础矿料') return 0;
+    const 匹配 = 名称.match(/^(百锻|千锻|灵锻|魂锻|天锻)金属块?$/);
+    return 匹配 ? ['百锻', '千锻', '灵锻', '魂锻', '天锻'].indexOf(匹配[1]) + 1 : null;
+  }
+
+  function 读取交付候选锻造阶位_桥接(候选 = {}) {
+    const 批次阶位 = Math.floor(toNumber(候选.阶位, 0));
+    if (候选.批次索引 >= 0 && 批次阶位 > 0) return Math.min(5, 批次阶位);
+    const 前缀 = toText(候选.物品名, '').match(/^(百锻|千锻|灵锻|魂锻|天锻)/);
+    return 前缀 ? ['百锻', '千锻', '灵锻', '魂锻', '天锻'].indexOf(前缀[1]) + 1 : 0;
+  }
+
   function 构建交付候选数据_桥接(根数据 = {}, 物品名 = '', 背包记录 = {}, 批次 = null, 批次索引 = -1) {
     const 命中定义 = 查找物品定义_桥接(根数据, 物品名);
     const 定义 = 命中定义?.定义 || {};
@@ -2958,7 +2972,10 @@
       });
     });
     const 精确列表 = 列表.filter(候选 => 交付候选精确命中名称_桥接(候选, 需求名));
-    const 可用列表 = (精确列表.length ? 精确列表 : 列表.filter(候选 => 交付候选包含命中名称_桥接(候选, 需求名))).filter(候选 =>
+    // 「百锻金属」「千锻金属块」「基础矿料」是阶位要求：任意该阶的锻造金属都能交（阶位看批次，旧存档看名字前缀）
+    const 阶位要求 = 读取交付锻造阶位要求_桥接(需求名);
+    const 阶位列表 = 阶位要求 === null ? [] : 列表.filter(候选 => 候选.物品分类 === '锻造金属' && 读取交付候选锻造阶位_桥接(候选) === 阶位要求);
+    const 可用列表 = (精确列表.length ? 精确列表 : 阶位列表.length ? 阶位列表 : 列表.filter(候选 => 交付候选包含命中名称_桥接(候选, 需求名))).filter(候选 =>
       交付候选满足需求_桥接(候选, 需求),
     );
     return 可用列表.sort((甲, 乙) => {
@@ -53051,7 +53068,6 @@ ${播报文本}
     const defRows = def ? [
       dstr('品质', '品质', { kind: 'enum', options: ITEM_QUALITY, dflt: '普通' }),
       ['基础价格', c.ed(wan(c.num(def.基础价格)), [...dp, '基础价格'], { kind: 'number', integer: true, min: 0, raw: c.num(def.基础价格) }), `基础价格 · ${c.ed(def.默认货币 || coins[0], [...dp, '默认货币'], { kind: 'enum', options: coins })}`],
-      cat === '锻造金属' ? dnum('阶位', '阶位') : null,
       cat !== '魂灵' && (def.魂导等级 !== undefined || EQ_KINDS.has(cat)) ? dnum('魂导等级', '魂导等级') : null,
       ...(cat === '魂灵' ? [dstr('魂灵品质', '魂灵品质', { kind: 'enum', options: SPIRIT_QUALITY, dflt: 'F' }), dstr('表象名称', '表象名称'), dstr('标准物种', '标准物种'), dnum('年限', '年限')] : []),
       ...(isEq ? [dstr('装备槽位', '装备槽位', { kind: 'enum', options: EQ_SLOT }), dnum('基础耐久', '基础耐久')] : []),
@@ -55599,7 +55615,18 @@ class TradeUIComponent {
     const 品质系数 = Math.max(0.1, Math.min(2, Number(数据.品质系数 ?? 1)));
     const 融合率 = 数据?.副职业参数?.融合参数?.融合率;
     const 融合倍率 = 融合率 === undefined ? 1 : Math.max(0.8, Math.min(1.2, 0.8 + Number(融合率 ?? 0) / 250));
-    return Math.max(0.01, 品质倍率 * 品质系数 * 融合倍率);
+    return Math.max(0.01, 品质倍率 * 品质系数 * 融合倍率 * this.计算锻造阶位价格倍率(数据.阶位, 基准定义));
+  }
+
+  // 锻造过的金属（批次阶位 1～5）按原料定义估价：原料价 ×（1 + 0.5 × 阶位）+ 加工价（联邦币），折成相对原料价的倍率；
+  // 其他货币没有加工价对照，按倍率。与 MVU_Schema_Runtime 计算锻造金属阶位价格_V1 同步
+  计算锻造阶位价格倍率(阶位 = 0, 定义 = {}) {
+    const 阶 = Math.max(0, Math.min(5, Math.floor(Number(阶位 || 0))));
+    if (!阶) return 1;
+    const 原价 = Math.max(0, Number(定义?.基础价格 ?? 定义?.价格 ?? 0));
+    const 货币 = String(定义?.默认货币 || 定义?.货币 || '').trim();
+    if (货币 === '联邦币' && 原价 > 0) return 1 + 0.5 * 阶 + { 1: 1000, 2: 300000, 3: 8000000, 4: 60000000, 5: 400000000 }[阶] / 原价;
+    return { 1: 2, 2: 5, 3: 20, 4: 80, 5: 400 }[阶];
   }
 
   计算来源批次平均倍率(来源 = {}, 数量 = 1, 静态定义 = {}) {
@@ -55660,7 +55687,6 @@ class TradeUIComponent {
       默认货币: 来源.默认货币 || 来源.货币 || fallback.currency || this.getDefaultCurrencyByContext(fallback.storeName || fallback.source || '', this.charData?.状态?.位置 || '', fallback.storeData),
     };
     if (分类 === '锻造金属') {
-      定义.阶位 = Math.max(0, Math.min(5, Math.floor(Number(来源.阶位 || 0))));
       const 金属特性 = Array.isArray(来源.金属特性)
         ? [...new Set(来源.金属特性.map(特性 => String(特性 || '').trim()).filter(Boolean))]
         : [];
@@ -58542,7 +58568,9 @@ class ProfessionUIComponent {
     const 上下文 = this.读取材料上下文(引用);
     const 名称 = 上下文?.物品名 || this.取材料原名(引用);
     if (!名称) return '';
-    return `${Math.max(1, Number(数量 || 1))}份${名称}`;
+    const 阶位 = this.getItemTier(引用);
+    const 显示名 = 阶位 > 0 && !/百锻|千锻|灵锻|魂锻|天锻/.test(名称) ? `${this.getForgeTierLabel(阶位)}${名称}` : 名称;
+    return `${Math.max(1, Number(数量 || 1))}份${显示名}`;
   }
   规范化背包批次(来源批次 = {}, 数量 = 1, fallback = {}) {
     const 来源 = 来源批次 && typeof 来源批次 === 'object' && !Array.isArray(来源批次) ? 来源批次 : {};
@@ -58784,7 +58812,7 @@ class ProfessionUIComponent {
   }
 
   getForgeTierLabel(tier) {
-    return ({ 1: '百锻', 2: '千锻', 3: '灵锻', 4: '魂锻', 5: '天锻' })[Number(tier) || 1] || `${Number(tier) || 0}阶`;
+    return ({ 0: '原料', 1: '百锻', 2: '千锻', 3: '灵锻', 4: '魂锻', 5: '天锻' })[Number(tier) || 0] || `${Number(tier) || 0}阶`;
   }
 
   getGearTierFamilyLabel(tier) {
@@ -58987,15 +59015,23 @@ class ProfessionUIComponent {
     return this.读取本次作品认证等级(jobName, tier);
   }
 
+  // 锻造阶位（11-22 规则）：材料是具体金属，原料为 0 阶；锻过的阶位记在背包批次的「阶位」上，只认批次阶位，
+  // 不认物品定义里的「阶位」（旧物品库把金属稀有档写成了阶位，如沉银 3）。没有批次阶位时，旧名产物按名字兼容
+  // （百锻精铁、千锻金属块、一字斗铠图纸…），其余视为 0 阶原料
   getItemTier(itemName) {
     const 原名 = this.取材料原名(itemName) || String(itemName || '').trim();
-    const 定义阶位 = Number(this.查找物品定义(原名)?.定义?.阶位 || 0);
-    if (定义阶位 > 0) return Math.max(1, Math.floor(定义阶位));
+    const 上下文 = this.读取材料上下文(itemName);
+    if (上下文 && 上下文.批次索引 >= 0) {
+      const 记录 = this.currentInventory?.[原名];
+      const 批次阶位 = Number((Array.isArray(记录?.批次) ? 记录.批次[上下文.批次索引] : null)?.阶位);
+      if (Number.isFinite(批次阶位) && 批次阶位 > 0) return Math.min(5, Math.floor(批次阶位));
+    }
     if (/天锻|四字|十万年/.test(原名)) return 5;
     if (/魂锻|三字|红级/.test(原名)) return 4;
     if (/灵锻|二字|黑级/.test(原名)) return 3;
     if (/千锻|一字|紫级/.test(原名)) return 2;
-    return 1;
+    if (/百锻/.test(原名)) return 1;
+    return 0;
   }
 
   getForgeUnlockLevel(tier) { return [1, 3, 5, 7, 9][tier - 1] || 99; }
@@ -59107,7 +59143,7 @@ class ProfessionUIComponent {
   }
 
   getSelectedTierStock(materialNames) {
-    const totals = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const totals = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     for (const name of materialNames) {
       totals[this.getItemTier(name)] += Math.max(0, Number(this.读取材料上下文(name)?.数量 || 0));
     }
@@ -59240,7 +59276,8 @@ class ProfessionUIComponent {
     const 特性集合 = new Set(上下文.金属特性);
     const 输出 = {};
     const 强度 = Math.max(1, Math.floor(Number(tier || 1)));
-    const 目标基础金属 = 上下文.目标金属 || (上下文.基础金属列表.length === 1 ? 上下文.基础金属列表[0] : '');
+    // 单金属锻造的产物就是该金属（目标名「百锻精铁」只是显示名），材料的基础金属优先
+    const 目标基础金属 = (上下文.基础金属列表.length === 1 ? 上下文.基础金属列表[0] : '') || 上下文.目标金属;
     if (分类 === '锻造金属') 输出.阶位 = Math.max(1, Math.min(5, 强度));
     if (目标基础金属 && (分类 === '锻造金属' || /金属块/.test(targetName))) 输出.基础金属 = 目标基础金属;
     if (!特性集合.size) return Object.keys(输出).length ? 输出 : {};
@@ -59330,7 +59367,6 @@ class ProfessionUIComponent {
       默认货币: definition.默认货币 || this.getLegalCurrency(),
       基础耐久: Math.max(100, Math.floor(Number(definition.基础耐久 || 100))),
     };
-    if (分类 === '锻造金属') 新定义.阶位 = Math.max(0, Math.min(5, Math.floor(Number(definition.阶位 || this.getItemTier(targetName) || 0))));
     if (副职业装备物品分类集合.has(分类)) {
       if (definition.装备槽位) 新定义.装备槽位 = definition.装备槽位;
       if (definition.属性加成 && typeof definition.属性加成 === 'object' && !Array.isArray(definition.属性加成)) 新定义.属性加成 = definition.属性加成;
@@ -59456,7 +59492,8 @@ class ProfessionUIComponent {
   构建材料库存快照(materialNames = []) {
     const 快照 = {};
     materialNames.forEach(名称 => {
-      快照[名称] = this.读取背包总数量(this.currentInventory[名称]);
+      // 材料值是「物品名 + 批次索引」引用，按引用读这一份（普通数量或该批次）的数量；直接拿引用当背包键会读到 0，收尾时把整条材料当成耗尽删掉
+      快照[名称] = Math.max(0, Number(this.读取材料上下文(名称)?.数量 || 0));
     });
     return 快照;
   }
@@ -59889,7 +59926,7 @@ class ProfessionUIComponent {
           itemName,
           this.编码材料引用(itemName, 索引),
           { ...(命中?.定义 || {}), 物品分类: 命中?.分类 || '', ...(批次 || {}), 数量: Math.max(0, Math.floor(Number(批次.数量 || 0))) },
-          `${itemName} · 批次${索引 + 1}`,
+          `${Number(批次?.阶位 || 0) > 0 && !/百锻|千锻|灵锻|魂锻|天锻/.test(itemName) ? this.getForgeTierLabel(批次.阶位) : ''}${itemName} · 批次${索引 + 1}`,
         );
       });
     });
@@ -59960,8 +59997,16 @@ class ProfessionUIComponent {
       const mTier = this.getItemTier(materialNames[0]);
       const mItem = this.resolveInventoryItem(materialNames[0]);
       if (Boolean((mItem?.副职业参数?.融合参数?.数量 || 0) > 1 || /合金|玉银/.test(materialNames[0])) && tier > mTier && !(mTier === 4 && tier === 5)) return '融锻合金定型后无法常规升阶；仅允许【魂锻合金 → 天锻】特例。';
+      // 11-22 规则：原料（0 阶）一次锻到任一目标阶；锻过的只能接一级——千锻一品 → 灵锻、灵锻 → 魂锻、魂锻 → 天锻
+      if (mTier > 0) {
+        const 可接续 = (mTier === 2 && tier === 3) || (mTier === 3 && tier === 4) || (mTier === 4 && tier === 5);
+        if (!可接续) return `${this.getForgeTierLabel(mTier)}材料不能锻成${this.getForgeTierLabel(tier)}：锻造从原料一次打到目标阶，锻过的只能按 千锻一品 → 灵锻、灵锻 → 魂锻、魂锻 → 天锻 接一级。`;
+        if (mTier === 2 && Number(mItem?.品质系数 ?? 1) < 1.15) return '只有千锻一品（品质系数≥1.15）可以接着锻成灵锻。';
+      }
       return null;
     }
+    // 融锻不提升阶位：材料与目标同阶，最低千锻（千锻须一品，见下）
+    if (tier < 2) return '融锻最低要千锻一品：选千锻以上、与目标同阶的金属（融锻不提升阶位）。';
     const fusionUnlockLv = this.getForgeFusionUnlockLevel(tier);
     if (runtime.lv < fusionUnlockLv && fusionUnlockLv !== runtime.lv + 1) return `${this.getForgeTierLabel(tier)}融锻尚未解锁，需要 Lv.${fusionUnlockLv} 锻造师。`;
     const 当前阶位支持数 = this.读取阶位支持融锻数(runtime.lv, tier);
@@ -60168,6 +60213,37 @@ class ProfessionUIComponent {
     ];
   }
 
+  // 锻造失败反噬（11-22 规则，本人执行时；数值可微调）：灵锻失败 = 正常天赋强攻系 40 级的 生命 / 精神力（约 2000 / 800）× 30%～50%，
+  // 天锻失败 = 90 级天才强攻系（约 12000 / 7500）× 30%～50%；百锻、千锻、魂锻失败无反噬
+  读取锻造反噬(tier) {
+    const 基准 = ({ 3: { 生命: 2000, 精神力: 800 }, 5: { 生命: 12000, 精神力: 7500 } })[Number(tier)];
+    if (!基准) return null;
+    const 比例 = 0.3 + Math.random() * 0.2;
+    return { 生命: Math.round(基准.生命 * 比例), 精神力: Math.round(基准.精神力 * 比例) };
+  }
+
+  // 把累计反噬并进补丁：同一路径已有写回（资源消耗）就在它上面再扣，没有就从当前值扣。生命最低留 1
+  应用锻造反噬补丁(patchOps = [], 累计 = {}) {
+    [['生命', 'HP', 1], ['精神力', '精神力', 0]].forEach(([键, 字段, 下限]) => {
+      const 扣减 = Math.max(0, Math.floor(Number(累计[键] || 0)));
+      if (!扣减) return;
+      const 路径 = `${this.activeCharBasePath}/属性/${字段}`;
+      const 已有 = patchOps.find(op => op && op.op === 'replace' && op.path === 路径);
+      const 基数 = 已有 ? Number(已有.value || 0) : Number(this.charData.属性?.[字段] || 0);
+      const 结果 = Math.max(下限, Math.floor(基数 - 扣减));
+      if (已有) 已有.value = 结果;
+      else patchOps.push({ op: 'replace', path: 路径, value: 结果 });
+    });
+    return patchOps;
+  }
+
+  // 单金属锻造的产物以「基础金属名」入库（阶位记在批次上）；融锻产物是合金，以目标名入库
+  读取锻造产物键(targetName = '', materialNames = [], isFusion = false) {
+    if (isFusion || materialNames.length !== 1) return targetName;
+    const 金属 = this.读取材料基础金属名(materialNames[0]) || (this.getItemTier(materialNames[0]) === 0 ? this.读取具体金属名(this.取材料原名(materialNames[0])) : '');
+    return 金属 || targetName;
+  }
+
   buildResourceFinalPatches(资源状态 = {}) {
     return [
       { op: 'replace', path: `${this.activeCharBasePath}/属性/体力`, value: Math.max(0, Number(资源状态.体力 || 0)) },
@@ -60209,7 +60285,8 @@ class ProfessionUIComponent {
       ? { op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}`, value: nextValue }
       : { op: 'remove', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}` });
   }
-  buildInventoryAddPatches(itemName, itemData, amount = 1, 批次派生字段 = false) {
+  // 前置补丁：同一次提交里已经写过这个背包条目（例如单金属锻造产物与材料同名、材料刚被扣减），在那条写回的结果上追加，不能从旧库存覆盖
+  buildInventoryAddPatches(itemName, itemData, amount = 1, 批次派生字段 = false, 前置补丁 = null) {
     const safeItem = itemData && typeof itemData === 'object' ? itemData : {};
     const 分类 = this.要求产物分类(itemName, safeItem, this.activeMode === 'forge' ? '锻造金属' : '');
     const 数量 = Math.max(1, Math.floor(Number(amount || safeItem.数量 || 1)));
@@ -60220,7 +60297,6 @@ class ProfessionUIComponent {
       基础价格: Math.max(1, Math.floor(Number(safeItem.基础价格 || 1))),
       默认货币: safeItem.默认货币 || this.getLegalCurrency(),
     };
-    if (分类 === '锻造金属') definition.阶位 = Math.max(0, Math.floor(Number(safeItem.阶位 || this.getItemTier(itemName) || 0)));
     if (Number(safeItem.魂导等级 || 0) > 0) definition.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(safeItem.魂导等级 || 0))));
     if (!批次派生字段 && Number(safeItem.基础使用次数 || 0) > 0) definition.基础使用次数 = Math.max(1, Math.floor(Number(safeItem.基础使用次数 || 1)));
     const 是魂导器 = Number(safeItem.魂导等级 || 0) > 0 && !/奶瓶|定装|炮弹|炸弹/.test(itemName);
@@ -60269,8 +60345,11 @@ class ProfessionUIComponent {
       有效期至tick: safeItem.有效期至tick,
       副职业参数: 来源副职业参数.融合参数 ? { 融合参数: 来源副职业参数.融合参数 } : undefined,
     });
-    const 当前记录 = this.currentInventory[itemName] && typeof this.currentInventory[itemName] === 'object' && !Array.isArray(this.currentInventory[itemName])
-      ? this.复制JSON(this.currentInventory[itemName], {})
+    const 条目路径 = `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(itemName)}`;
+    const 前置写回 = Array.isArray(前置补丁) ? [...前置补丁].reverse().find(op => op && op.path === 条目路径) : null;
+    const 基准记录 = 前置写回 ? (前置写回.op === 'remove' ? null : 前置写回.value) : this.currentInventory[itemName];
+    const 当前记录 = 基准记录 && typeof 基准记录 === 'object' && !Array.isArray(基准记录)
+      ? this.复制JSON(基准记录, {})
       : null;
     if (当前记录) {
       if (批次列表.length) {
@@ -60465,6 +60544,7 @@ class ProfessionUIComponent {
       最后成功率: 0,
     };
     const 产物汇总 = {};
+    const 连续反噬 = { 生命: 0, 精神力: 0 };
     let 修理成功标记 = false;
 
     const 锻造复合数 = Math.max(Number(commissionCtx.fusionCount || 1), 1);
@@ -60485,9 +60565,20 @@ class ProfessionUIComponent {
         const 本次成功率 = this.activeMode === 'forge'
           ? (是否代工 ? Number(commissionCtx.successRate || 0) : (锻造是否融锻 ? this.getForgeFusionSuccessRate(effectiveRuntime, 锻造复合数) : this.getSingleTierSuccessRate(tier, effectiveRuntime)))
           : this.读取本次通用成功率(cfg, effectiveRuntime, commissionCtx, tier, materialNames, targetName);
-        const roll = Math.floor(Math.random() * 100) + 1;
-        const isGreatSuccess = roll <= 5 && !commissionCtx.isOfficial;
-        const isSuccess = isGreatSuccess || roll <= 本次成功率;
+        // 锻造同单次规则：融锻一次最多尝试 金属数 次（容错 = 金属数 − 1），本人执行时灵锻 / 天锻每次失败结算反噬
+        const 尝试上限 = this.activeMode === 'forge' && 锻造是否融锻 ? 锻造复合数 : 1;
+        let roll = 0, isGreatSuccess = false, isSuccess = false;
+        for (let 尝试 = 0; 尝试 < 尝试上限 && !isSuccess; 尝试 += 1) {
+          roll = Math.floor(Math.random() * 100) + 1;
+          isGreatSuccess = roll <= 5 && !commissionCtx.isOfficial;
+          isSuccess = isGreatSuccess || roll <= 本次成功率;
+          if (isSuccess || this.activeMode !== 'forge' || 是否代工) continue;
+          const 反噬 = this.读取锻造反噬(tier);
+          if (!反噬) continue;
+          连续反噬.生命 += 反噬.生命;
+          连续反噬.精神力 += 反噬.精神力;
+          资源状态.精神力 = Math.max(0, Number(资源状态.精神力 || 0) - 反噬.精神力);
+        }
         统计.最后检定 = roll;
         统计.最后成功率 = 本次成功率;
         if (isSuccess) {
@@ -60508,7 +60599,7 @@ class ProfessionUIComponent {
               : (锻造是否融锻
                 ? this.getForgeFusionQuality(tier, this.getForgeMaxQ(tier, 锻造复合数), 本次融合率, roll, isGreatSuccess)
                 : this.clamp(isGreatSuccess ? 1.2 : this.getForgeSingleQuality(tier, commissionCtx.executorRuntime || runtime), 0.8, 1.2));
-            const 产物名 = targetName;
+            const 产物名 = this.读取锻造产物键(targetName, materialNames, 锻造是否融锻);
             if (!产物汇总[产物名]) {
               产物汇总[产物名] = {
                 数量: 0,
@@ -60577,7 +60668,7 @@ class ProfessionUIComponent {
       };
       if (Number(数据.魂导等级 || 0) > 0) 物品数据.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(数据.魂导等级 || 0))));
       if (数据.副职业参数) 物品数据.副职业参数 = 数据.副职业参数;
-      patchOps.push(...this.buildInventoryAddPatches(产物名, 物品数据, Number(数据.数量 || 1), Object.keys(批次数据).length > 0));
+      patchOps.push(...this.buildInventoryAddPatches(产物名, 物品数据, Number(数据.数量 || 1), Object.keys(批次数据).length > 0, patchOps));
     });
 
     const 修复道具制作执行 = this.activeMode === 'repair' && 修理成功标记 ? this.读取修复道具制作计划(targetName) : null;
@@ -60608,10 +60699,11 @@ class ProfessionUIComponent {
       patchOps.push(...progress.patches);
     }
 
-    const 连续结果播报 = `[连续副职业] ${本次工序显示名} ${连续配置.连续天数}天（${总小时}小时）结束：执行${统计.执行次数}次，成功${统计.成功次数}次，失败${统计.失败次数}次，大成功${统计.大成功次数}次。${是否代工 ? '' : ` 冥想${统计.冥想小时}小时，睡眠${统计.睡眠小时}小时。`}`;
+    this.应用锻造反噬补丁(patchOps, { 生命: 连续反噬.生命 });
+    const 连续结果播报 = `[连续副职业] ${本次工序显示名} ${连续配置.连续天数}天（${总小时}小时）结束：执行${统计.执行次数}次，成功${统计.成功次数}次，失败${统计.失败次数}次，大成功${统计.大成功次数}次。${是否代工 ? '' : ` 冥想${统计.冥想小时}小时，睡眠${统计.睡眠小时}小时。`}${连续反噬.生命 || 连续反噬.精神力 ? ` 锻造反噬累计：生命 -${连续反噬.生命}，精神力 -${连续反噬.精神力}。` : ''}`;
     patchOps.push(...this.buildSystemResultPatches(连续结果播报, 统计.最后检定, 统计.最后成功率));
 
-    const materialText = materialNames.length > 0 ? materialNames.map(name => `${qty}份${name}`).join('、') : '无显式材料';
+    const materialText = materialNames.length > 0 ? materialNames.map(name => this.构建材料显示名(name, qty)).join('、') : '无显式材料';
     const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
     const 连续时长文本 = `${连续配置.连续天数}天（${总小时}小时）`;
     const actionLead = commissionCtx.isOfficial
@@ -60650,9 +60742,23 @@ class ProfessionUIComponent {
     const fusionRate = isFusion ? Number(commissionCtx.fusionSync || this.getForgeFusionRate(commissionCtx.executorRuntime || runtime, materialNames)) : Number(firstMaterial?.副职业参数?.融合参数?.融合率 ?? 100);
     const maxQ = this.getForgeMaxQ(tier, efc);
 
-    const roll = Math.floor(Math.random() * 100) + 1;
-    const isGreatSuccess = roll <= 5 && !commissionCtx.isOfficial;
-    const isSuccess = isGreatSuccess || roll <= successRate;
+    // 11-22 规则：融锻容错 = 金属数 − 1（一次锻造里最多尝试 金属数 次，任一次成功即成；全部失败金属报废）；单金属失败即报废。
+    // 本人执行时，灵锻 / 天锻每次失败都结算反噬
+    const 尝试上限 = isFusion ? efc : 1;
+    const 反噬累计 = { 生命: 0, 精神力: 0 };
+    let roll = 0, isGreatSuccess = false, isSuccess = false, 失败次数 = 0;
+    for (let 尝试 = 0; 尝试 < 尝试上限 && !isSuccess; 尝试 += 1) {
+      roll = Math.floor(Math.random() * 100) + 1;
+      isGreatSuccess = roll <= 5 && !commissionCtx.isOfficial;
+      isSuccess = isGreatSuccess || roll <= successRate;
+      if (isSuccess) break;
+      失败次数 += 1;
+      const 反噬 = commissionCtx.isCommission ? null : this.读取锻造反噬(tier);
+      if (反噬) { 反噬累计.生命 += 反噬.生命; 反噬累计.精神力 += 反噬.精神力; }
+    }
+    const 产物键 = this.读取锻造产物键(targetName, materialNames, isFusion);
+    const 产物显示名 = 产物键 === targetName ? targetName : `${this.getForgeTierLabel(tier)}${产物键}`;
+    const 反噬文本 = 反噬累计.生命 || 反噬累计.精神力 ? ` 锻造反噬：生命 -${反噬累计.生命}，精神力 -${反噬累计.精神力}。` : '';
 
     let finalQ = 0, resultLog = '', expGain = cfg.expGain[tier] || 50;
     if (isSuccess) {
@@ -60660,16 +60766,17 @@ class ProfessionUIComponent {
       else if (isFusion) finalQ = this.getForgeFusionQuality(tier, maxQ, fusionRate, roll, isGreatSuccess);
       else finalQ = this.clamp(isGreatSuccess ? 1.2 : this.getForgeSingleQuality(tier, commissionCtx.executorRuntime || runtime), 0.8, 1.2);
 
+      const 融锻失败文本 = 失败次数 ? `（融锻中失败 ${失败次数} 次后成功）` : '';
       if (isGreatSuccess) {
         if (!commissionCtx.isCommission) expGain *= 2;
-        resultLog = `[大成功] ${commissionCtx.executorName}触发极限锻压，成功打造出【${targetName}】。品质系数 ${finalQ.toFixed(2)}。`;
+        resultLog = `[大成功] ${commissionCtx.executorName}触发极限锻压，成功打造出【${产物显示名}】${融锻失败文本}。品质系数 ${finalQ.toFixed(2)}。${反噬文本}`;
       } else {
         const feeMsg = commissionCtx.isCommission ? (commissionCtx.commissionFee > 0 ? ` 已支付代工费 ${this.formatCurrency(commissionCtx.commissionFee)}。` : ' 本次代工因好感度优惠免单。') : '';
-        resultLog = `${commissionCtx.isCommission ? '[委托成功]' : '[打造成功]'} ${commissionCtx.executorName}成功完成【${targetName}】的锻造，品质系数 ${finalQ.toFixed(2)}。${feeMsg}`;
+        resultLog = `${commissionCtx.isCommission ? '[委托成功]' : '[打造成功]'} ${commissionCtx.executorName}成功完成【${产物显示名}】的锻造${融锻失败文本}，品质系数 ${finalQ.toFixed(2)}。${feeMsg}${反噬文本}`;
       }
       expGain = this.applyProfessionExpGainMultiplier(expGain, commissionCtx);
     } else {
-      resultLog = `${commissionCtx.isCommission ? '[委托失败]' : '[打造失败]'} ${commissionCtx.executorName}尝试打造【${targetName}】失败。Roll ${roll} > 成功率 ${successRate}。`;
+      resultLog = `${commissionCtx.isCommission ? '[委托失败]' : '[打造失败]'} ${commissionCtx.executorName}尝试打造【${产物显示名}】失败${尝试上限 > 1 ? `（融锻连续失败 ${失败次数} 次）` : ''}，金属报废。Roll ${roll} > 成功率 ${successRate}。${反噬文本}`;
     }
 
     let patchOps = [];
@@ -60685,16 +60792,17 @@ class ProfessionUIComponent {
       const 批次数据 = this.构建工坊产物批次数据('锻造金属', targetName, materialNames, tier, Number(finalQ.toFixed(2)), 0);
       Object.assign(newItem, 批次数据);
       if (isFusion) { newItem.副职业参数 = { 融合参数: { 数量: efc, 融合率: Math.floor(fusionRate) } }; newItem.描述 += ` (${efc}种金属融锻)`; }
-      patchOps.push(...this.buildInventoryAddPatches(targetName, newItem, 1, Object.keys(批次数据).length > 0));
+      patchOps.push(...this.buildInventoryAddPatches(产物键, newItem, 1, Object.keys(批次数据).length > 0, patchOps));
       if (!commissionCtx.isCommission) {
         const progress = this.buildJobProgressPatches(cfg.jobName, expGain, this.读取本次作品认证等级(cfg.jobName, tier));
         patchOps.push(...progress.patches);
         if (progress.newLv > progress.oldLv) resultLog += `\n\n[副职业突破] ${cfg.jobName}等级提升至 Lv.${progress.newLv}。`;
       }
     }
+    this.应用锻造反噬补丁(patchOps, 反噬累计);
     patchOps.push(...this.buildSystemResultPatches(resultLog, roll, successRate));
 
-    const materialText = materialNames.map(name => `${qty}份${name}`).join('、');
+    const materialText = materialNames.map(name => this.构建材料显示名(name, qty)).join('、');
     const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
     const actionLead = commissionCtx.isOfficial ? `我要在${officialLocationName}办理官方代工，委托完成【${targetName}】的${cfg.displayName}` : (commissionCtx.isPrivate ? `我要委托【${commissionCtx.executorName}】代工${cfg.displayName}，目标是【${targetName}】` : `我要进行${cfg.displayName}，目标是【${targetName}】`);
     const consumptionText = commissionCtx.isCommission ? `本次代工费：${this.formatCurrency(commissionCtx.commissionFee)}。材料仍由委托人提供。` : `本次消耗：${this.formatResourceCost(costs)}。`;
@@ -60783,7 +60891,7 @@ class ProfessionUIComponent {
 
     patchOps.push(...this.buildSystemResultPatches(resultLog, roll, successRate));
 
-    const materialText = materialNames.length > 0 ? materialNames.map(name => `${qty}份${name}`).join('、') : '无显式材料';
+    const materialText = materialNames.length > 0 ? materialNames.map(name => this.构建材料显示名(name, qty)).join('、') : '无显式材料';
     const officialLocationName = this.getOfficialCommissionLocation(cfg.jobName);
     const actionLead = commissionCtx.isOfficial ? `我要在${officialLocationName}办理官方代工，委托执行${本次工序显示名}，目标是【${targetName}】` : (commissionCtx.isPrivate ? `我要委托【${commissionCtx.executorName}】代工${本次工序显示名}，目标是【${targetName}】` : `我要进行${本次工序显示名}，目标是【${targetName}】`);
     const consumptionText = commissionCtx.isCommission ? `本次代工费：${this.formatCurrency(commissionCtx.commissionFee)}。材料与目标物仍由委托人提供。` : `本次消耗：${this.formatResourceCost(costs)}。`;

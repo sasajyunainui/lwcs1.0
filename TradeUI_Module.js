@@ -946,7 +946,18 @@ class TradeUIComponent {
     const 品质系数 = Math.max(0.1, Math.min(2, Number(数据.品质系数 ?? 1)));
     const 融合率 = 数据?.副职业参数?.融合参数?.融合率;
     const 融合倍率 = 融合率 === undefined ? 1 : Math.max(0.8, Math.min(1.2, 0.8 + Number(融合率 ?? 0) / 250));
-    return Math.max(0.01, 品质倍率 * 品质系数 * 融合倍率);
+    return Math.max(0.01, 品质倍率 * 品质系数 * 融合倍率 * this.计算锻造阶位价格倍率(数据.阶位, 基准定义));
+  }
+
+  // 锻造过的金属（批次阶位 1～5）按原料定义估价：原料价 ×（1 + 0.5 × 阶位）+ 加工价（联邦币），折成相对原料价的倍率；
+  // 其他货币没有加工价对照，按倍率。与 MVU_Schema_Runtime 计算锻造金属阶位价格_V1 同步
+  计算锻造阶位价格倍率(阶位 = 0, 定义 = {}) {
+    const 阶 = Math.max(0, Math.min(5, Math.floor(Number(阶位 || 0))));
+    if (!阶) return 1;
+    const 原价 = Math.max(0, Number(定义?.基础价格 ?? 定义?.价格 ?? 0));
+    const 货币 = String(定义?.默认货币 || 定义?.货币 || '').trim();
+    if (货币 === '联邦币' && 原价 > 0) return 1 + 0.5 * 阶 + { 1: 1000, 2: 300000, 3: 8000000, 4: 60000000, 5: 400000000 }[阶] / 原价;
+    return { 1: 2, 2: 5, 3: 20, 4: 80, 5: 400 }[阶];
   }
 
   计算来源批次平均倍率(来源 = {}, 数量 = 1, 静态定义 = {}) {
@@ -1007,7 +1018,6 @@ class TradeUIComponent {
       默认货币: 来源.默认货币 || 来源.货币 || fallback.currency || this.getDefaultCurrencyByContext(fallback.storeName || fallback.source || '', this.charData?.状态?.位置 || '', fallback.storeData),
     };
     if (分类 === '锻造金属') {
-      定义.阶位 = Math.max(0, Math.min(5, Math.floor(Number(来源.阶位 || 0))));
       const 金属特性 = Array.isArray(来源.金属特性)
         ? [...new Set(来源.金属特性.map(特性 => String(特性 || '').trim()).filter(Boolean))]
         : [];

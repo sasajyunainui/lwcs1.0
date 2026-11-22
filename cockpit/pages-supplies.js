@@ -111,7 +111,6 @@
     const defRows = def ? [
       dstr('品质', '品质', { kind: 'enum', options: ITEM_QUALITY, dflt: '普通' }),
       ['基础价格', c.ed(wan(c.num(def.基础价格)), [...dp, '基础价格'], { kind: 'number', integer: true, min: 0, raw: c.num(def.基础价格) }), `基础价格 · ${c.ed(def.默认货币 || coins[0], [...dp, '默认货币'], { kind: 'enum', options: coins })}`],
-      cat === '锻造金属' ? dnum('阶位', '阶位') : null,
       cat !== '魂灵' && (def.魂导等级 !== undefined || EQ_KINDS.has(cat)) ? dnum('魂导等级', '魂导等级') : null,
       ...(cat === '魂灵' ? [dstr('魂灵品质', '魂灵品质', { kind: 'enum', options: SPIRIT_QUALITY, dflt: 'F' }), dstr('表象名称', '表象名称'), dstr('标准物种', '标准物种'), dnum('年限', '年限')] : []),
       ...(isEq ? [dstr('装备槽位', '装备槽位', { kind: 'enum', options: EQ_SLOT }), dnum('基础耐久', '基础耐久')] : []),

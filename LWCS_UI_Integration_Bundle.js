@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:43feca684e4118a79d916cf08586fee2aa01c2672555ec64c834d00fa9696ecd|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:36073ce97db00e8b7d1fd317b9fed8e590ab4addc7b7a789f3d1b686bcb36461|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -2894,6 +2894,20 @@
     });
   }
 
+  function 读取交付锻造阶位要求_桥接(需求名 = '') {
+    const 名称 = toText(需求名, '').trim();
+    if (名称 === '基础矿料') return 0;
+    const 匹配 = 名称.match(/^(百锻|千锻|灵锻|魂锻|天锻)金属块?$/);
+    return 匹配 ? ['百锻', '千锻', '灵锻', '魂锻', '天锻'].indexOf(匹配[1]) + 1 : null;
+  }
+
+  function 读取交付候选锻造阶位_桥接(候选 = {}) {
+    const 批次阶位 = Math.floor(toNumber(候选.阶位, 0));
+    if (候选.批次索引 >= 0 && 批次阶位 > 0) return Math.min(5, 批次阶位);
+    const 前缀 = toText(候选.物品名, '').match(/^(百锻|千锻|灵锻|魂锻|天锻)/);
+    return 前缀 ? ['百锻', '千锻', '灵锻', '魂锻', '天锻'].indexOf(前缀[1]) + 1 : 0;
+  }
+
   function 构建交付候选数据_桥接(根数据 = {}, 物品名 = '', 背包记录 = {}, 批次 = null, 批次索引 = -1) {
     const 命中定义 = 查找物品定义_桥接(根数据, 物品名);
     const 定义 = 命中定义?.定义 || {};
@@ -2958,7 +2972,10 @@
       });
     });
     const 精确列表 = 列表.filter(候选 => 交付候选精确命中名称_桥接(候选, 需求名));
-    const 可用列表 = (精确列表.length ? 精确列表 : 列表.filter(候选 => 交付候选包含命中名称_桥接(候选, 需求名))).filter(候选 =>
+    // 「百锻金属」「千锻金属块」「基础矿料」是阶位要求：任意该阶的锻造金属都能交（阶位看批次，旧存档看名字前缀）
+    const 阶位要求 = 读取交付锻造阶位要求_桥接(需求名);
+    const 阶位列表 = 阶位要求 === null ? [] : 列表.filter(候选 => 候选.物品分类 === '锻造金属' && 读取交付候选锻造阶位_桥接(候选) === 阶位要求);
+    const 可用列表 = (精确列表.length ? 精确列表 : 阶位列表.length ? 阶位列表 : 列表.filter(候选 => 交付候选包含命中名称_桥接(候选, 需求名))).filter(候选 =>
       交付候选满足需求_桥接(候选, 需求),
     );
     return 可用列表.sort((甲, 乙) => {
@@ -53051,7 +53068,6 @@ ${播报文本}
     const defRows = def ? [
       dstr('品质', '品质', { kind: 'enum', options: ITEM_QUALITY, dflt: '普通' }),
       ['基础价格', c.ed(wan(c.num(def.基础价格)), [...dp, '基础价格'], { kind: 'number', integer: true, min: 0, raw: c.num(def.基础价格) }), `基础价格 · ${c.ed(def.默认货币 || coins[0], [...dp, '默认货币'], { kind: 'enum', options: coins })}`],
-      cat === '锻造金属' ? dnum('阶位', '阶位') : null,
       cat !== '魂灵' && (def.魂导等级 !== undefined || EQ_KINDS.has(cat)) ? dnum('魂导等级', '魂导等级') : null,
       ...(cat === '魂灵' ? [dstr('魂灵品质', '魂灵品质', { kind: 'enum', options: SPIRIT_QUALITY, dflt: 'F' }), dstr('表象名称', '表象名称'), dstr('标准物种', '标准物种'), dnum('年限', '年限')] : []),
       ...(isEq ? [dstr('装备槽位', '装备槽位', { kind: 'enum', options: EQ_SLOT }), dnum('基础耐久', '基础耐久')] : []),
