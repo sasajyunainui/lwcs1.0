@@ -1215,7 +1215,101 @@
     };
   }
 
+  // 商店即地点：world.地点 某节点下 商店 里的每家店当作该节点的子地点（路径「城市-店名」），店铺类型决定设施。
+  // 只在路径给出的那个节点里找（路径没写城市时，从当前所在位置逐级向上找），不跨城搜索；
+  // 店名整词比对：去掉重复写进末段的上级地名，忽略 分店 / 分会 / 分部 的后缀差别，其余必须完全相等
+  const SHOP_NAME_SUFFIX = /(?:分店|分会|分部)$/;
+  function shopFunctionProfiles(shopName) {
+    const name = String(shopName || '');
+    const functions = [];
+    if (/锻造/.test(name)) functions.push('锻造');
+    if (/制造|设计|修理|机甲/.test(name)) functions.push('工业');
+    functions.push(/黑市/.test(name) ? '黑市' : /拍卖/.test(name) ? '拍卖' : '商业');
+    return functions;
+  }
+
+  function walkWorldPlaceNodes(places, segments) {
+    const chain = [];
+    let cursor = places;
+    for (const segment of segments) {
+      const next = isPlainRecord(cursor) ? cursor[segment] : null;
+      if (!isPlainRecord(next)) break;
+      chain.push(next);
+      cursor = next.子节点;
+    }
+    return chain;
+  }
+
+  function matchShopInNode(node, nodePath, leaf) {
+    const shops = isPlainRecord(node?.商店) ? node.商店 : null;
+    if (!shops) return null;
+    let text = String(leaf || '').trim();
+    for (const name of [...nodePath].reverse()) {
+      if (name && text.startsWith(name) && text.length > name.length) text = text.slice(name.length).replace(/^[-·]/, '');
+    }
+    const base = text.replace(SHOP_NAME_SUFFIX, '');
+    if (!base) return null;
+    return Object.keys(shops).find(key => key === text || key.replace(SHOP_NAME_SUFFIX, '') === base) || null;
+  }
+
+  function matchShopLocation(dataRoot, query, currentPath = []) {
+    const places = dataRoot?.world?.地点;
+    if (!isPlainRecord(places)) return null;
+    const segments = normalizeLocationPath(query);
+    if (!segments.length) return null;
+    const leaf = segments[segments.length - 1];
+    let hit = null;
+    const chain = walkWorldPlaceNodes(places, segments);
+    if (chain.length === segments.length - 1 && chain.length > 0) {
+      // 路径写明了上级：只在那个节点的商店里找
+      const nodePath = segments.slice(0, -1);
+      const key = matchShopInNode(chain[chain.length - 1], nodePath, leaf);
+      if (key) hit = { key, nodePath, node: chain[chain.length - 1] };
+    } else if (segments.length === 1 && !chain.length) {
+      // 只写了店名：从当前所在位置逐级向上找
+      const currentChain = walkWorldPlaceNodes(places, currentPath);
+      for (let depth = currentChain.length; depth > 0 && !hit; depth -= 1) {
+        const nodePath = currentPath.slice(0, depth);
+        const key = matchShopInNode(currentChain[depth - 1], nodePath, leaf);
+        if (key) hit = { key, nodePath, node: currentChain[depth - 1] };
+      }
+    }
+    return hit;
+  }
+
+  // 对外：一个地点写法是否就是某家商店；命中返回 { key: 店名, nodePath: 所属地点路径 }，否则 null（与地点解析同一套规则）
+  function resolveShopAlias(dataRoot, query, currentPath = []) {
+    const hit = matchShopLocation(dataRoot, query, Array.isArray(currentPath) ? currentPath : normalizeLocationPath(currentPath));
+    return hit ? { key: hit.key, nodePath: [...hit.nodePath] } : null;
+  }
+
+  function resolveShopLocationView(dataRoot, library, query, currentPath = []) {
+    const hit = matchShopLocation(dataRoot, query, currentPath);
+    if (!hit) return null;
+    const parentName = hit.nodePath.join('-');
+    const parent = resolveDynamicLocationView(dataRoot, library, parentName)
+      || resolveStaticLocationView(library, hit.nodePath[hit.nodePath.length - 1], hit.nodePath.slice(0, -1));
+    return {
+      resolved: true,
+      dynamic: false,
+      shop: true,
+      recordId: `shop:${parentName}-${hit.key}`,
+      name: hit.key,
+      path: [...hit.nodePath, hit.key],
+      node: { 类型: '商店', 状态: 'intact' },
+      worldRules: {
+        区域档案: parent?.worldRules?.区域档案 || '大型城市',
+        功能档案: shopFunctionProfiles(hit.key),
+        覆盖: {},
+      },
+      source: 'world.地点.商店',
+      parent,
+    };
+  }
+
   function resolveWorldLocationView(dataRoot, library, query, currentPath = []) {
+    const shop = resolveShopLocationView(dataRoot, library, query, currentPath);
+    if (shop) return shop;
     const dynamic = resolveDynamicLocationView(dataRoot, library, query);
     if (dynamic) return dynamic;
     const staticView = resolveStaticLocationView(library, query, currentPath);
@@ -1872,6 +1966,7 @@
     buildFactionInstance,
     buildLocationInstantiationOps,
     resolveWorldActionContext,
+    resolveShopAlias,
     resolveIdentity,
   });
 

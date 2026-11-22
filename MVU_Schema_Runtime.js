@@ -7201,6 +7201,24 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
 
       if (!data.world.动态地点) data.world.动态地点 = {};
 
+      // 商店即地点：剧情另造的、其实就是所属地点某家商店的动态地点（如「东海城锻造师协会」→「东海城-锻造师协会分店」），
+      // 角色位置改写到店铺路径，删去重复的动态地点；匹配规则与地点解析同一个（resolveShopAlias：只在所属地点内整词比对店名）
+      const 地点库运行时 = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+      if (typeof 地点库运行时?.resolveShopAlias === 'function') {
+        Object.keys(data.world.动态地点).forEach(locName => {
+          const 父节点 = String(data.world.动态地点[locName]?.归属父节点 || '').trim();
+          const 命中 = 父节点 ? 地点库运行时.resolveShopAlias(data, `${父节点}-${locName}`, []) : null;
+          if (!命中) return;
+          const 店铺路径 = [...命中.nodePath, 命中.key].join('-');
+          _(data.char).forEach(charData => {
+            const 位置 = String(charData?.状态?.位置 || '');
+            const 段 = 位置.split('-');
+            if (位置 && 段[段.length - 1] === locName) charData.状态.位置 = ((位置.match(/^(?:斗罗大陆|斗灵大陆)-/) || [''])[0]) + 店铺路径;
+          });
+          delete data.world.动态地点[locName];
+        });
+      }
+
       _(data.world.动态地点).forEach((locData, locName) => {
         if (locData.x === undefined) locData.x = FLAT_LOCATIONS[locData.归属父节点]?.x ?? -1;
         if (locData.y === undefined) locData.y = FLAT_LOCATIONS[locData.归属父节点]?.y ?? -1;

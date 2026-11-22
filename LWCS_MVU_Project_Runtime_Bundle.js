@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:ec1a276bbd9dd779eac82d12e3db310570e521a22f350b4200b502d8fa298da8|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:abf261be1affb92bc57cebd52c6d3665f5720a3d96929f5814617266fb48986f|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:dfa26264de0e5f509bc0522b6e092a8997ff96fa3ec062db4bfa7d9ac38cb426 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:be3fb7b38504d7303fcbd070c9e942a47257441cc0d12d52315ab4567a71bd54|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:dfa26264de0e5f509bc0522b6e092a8997ff96fa3ec062db4bfa7d9ac38cb426 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -1507,7 +1507,101 @@
     };
   }
 
+  // 商店即地点：world.地点 某节点下 商店 里的每家店当作该节点的子地点（路径「城市-店名」），店铺类型决定设施。
+  // 只在路径给出的那个节点里找（路径没写城市时，从当前所在位置逐级向上找），不跨城搜索；
+  // 店名整词比对：去掉重复写进末段的上级地名，忽略 分店 / 分会 / 分部 的后缀差别，其余必须完全相等
+  const SHOP_NAME_SUFFIX = /(?:分店|分会|分部)$/;
+  function shopFunctionProfiles(shopName) {
+    const name = String(shopName || '');
+    const functions = [];
+    if (/锻造/.test(name)) functions.push('锻造');
+    if (/制造|设计|修理|机甲/.test(name)) functions.push('工业');
+    functions.push(/黑市/.test(name) ? '黑市' : /拍卖/.test(name) ? '拍卖' : '商业');
+    return functions;
+  }
+
+  function walkWorldPlaceNodes(places, segments) {
+    const chain = [];
+    let cursor = places;
+    for (const segment of segments) {
+      const next = isPlainRecord(cursor) ? cursor[segment] : null;
+      if (!isPlainRecord(next)) break;
+      chain.push(next);
+      cursor = next.子节点;
+    }
+    return chain;
+  }
+
+  function matchShopInNode(node, nodePath, leaf) {
+    const shops = isPlainRecord(node?.商店) ? node.商店 : null;
+    if (!shops) return null;
+    let text = String(leaf || '').trim();
+    for (const name of [...nodePath].reverse()) {
+      if (name && text.startsWith(name) && text.length > name.length) text = text.slice(name.length).replace(/^[-·]/, '');
+    }
+    const base = text.replace(SHOP_NAME_SUFFIX, '');
+    if (!base) return null;
+    return Object.keys(shops).find(key => key === text || key.replace(SHOP_NAME_SUFFIX, '') === base) || null;
+  }
+
+  function matchShopLocation(dataRoot, query, currentPath = []) {
+    const places = dataRoot?.world?.地点;
+    if (!isPlainRecord(places)) return null;
+    const segments = normalizeLocationPath(query);
+    if (!segments.length) return null;
+    const leaf = segments[segments.length - 1];
+    let hit = null;
+    const chain = walkWorldPlaceNodes(places, segments);
+    if (chain.length === segments.length - 1 && chain.length > 0) {
+      // 路径写明了上级：只在那个节点的商店里找
+      const nodePath = segments.slice(0, -1);
+      const key = matchShopInNode(chain[chain.length - 1], nodePath, leaf);
+      if (key) hit = { key, nodePath, node: chain[chain.length - 1] };
+    } else if (segments.length === 1 && !chain.length) {
+      // 只写了店名：从当前所在位置逐级向上找
+      const currentChain = walkWorldPlaceNodes(places, currentPath);
+      for (let depth = currentChain.length; depth > 0 && !hit; depth -= 1) {
+        const nodePath = currentPath.slice(0, depth);
+        const key = matchShopInNode(currentChain[depth - 1], nodePath, leaf);
+        if (key) hit = { key, nodePath, node: currentChain[depth - 1] };
+      }
+    }
+    return hit;
+  }
+
+  // 对外：一个地点写法是否就是某家商店；命中返回 { key: 店名, nodePath: 所属地点路径 }，否则 null（与地点解析同一套规则）
+  function resolveShopAlias(dataRoot, query, currentPath = []) {
+    const hit = matchShopLocation(dataRoot, query, Array.isArray(currentPath) ? currentPath : normalizeLocationPath(currentPath));
+    return hit ? { key: hit.key, nodePath: [...hit.nodePath] } : null;
+  }
+
+  function resolveShopLocationView(dataRoot, library, query, currentPath = []) {
+    const hit = matchShopLocation(dataRoot, query, currentPath);
+    if (!hit) return null;
+    const parentName = hit.nodePath.join('-');
+    const parent = resolveDynamicLocationView(dataRoot, library, parentName)
+      || resolveStaticLocationView(library, hit.nodePath[hit.nodePath.length - 1], hit.nodePath.slice(0, -1));
+    return {
+      resolved: true,
+      dynamic: false,
+      shop: true,
+      recordId: `shop:${parentName}-${hit.key}`,
+      name: hit.key,
+      path: [...hit.nodePath, hit.key],
+      node: { 类型: '商店', 状态: 'intact' },
+      worldRules: {
+        区域档案: parent?.worldRules?.区域档案 || '大型城市',
+        功能档案: shopFunctionProfiles(hit.key),
+        覆盖: {},
+      },
+      source: 'world.地点.商店',
+      parent,
+    };
+  }
+
   function resolveWorldLocationView(dataRoot, library, query, currentPath = []) {
+    const shop = resolveShopLocationView(dataRoot, library, query, currentPath);
+    if (shop) return shop;
     const dynamic = resolveDynamicLocationView(dataRoot, library, query);
     if (dynamic) return dynamic;
     const staticView = resolveStaticLocationView(library, query, currentPath);
@@ -2164,6 +2258,7 @@
     buildFactionInstance,
     buildLocationInstantiationOps,
     resolveWorldActionContext,
+    resolveShopAlias,
     resolveIdentity,
   });
 
@@ -39651,6 +39746,24 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
 
       if (!data.world.动态地点) data.world.动态地点 = {};
+
+      // 商店即地点：剧情另造的、其实就是所属地点某家商店的动态地点（如「东海城锻造师协会」→「东海城-锻造师协会分店」），
+      // 角色位置改写到店铺路径，删去重复的动态地点；匹配规则与地点解析同一个（resolveShopAlias：只在所属地点内整词比对店名）
+      const 地点库运行时 = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+      if (typeof 地点库运行时?.resolveShopAlias === 'function') {
+        Object.keys(data.world.动态地点).forEach(locName => {
+          const 父节点 = String(data.world.动态地点[locName]?.归属父节点 || '').trim();
+          const 命中 = 父节点 ? 地点库运行时.resolveShopAlias(data, `${父节点}-${locName}`, []) : null;
+          if (!命中) return;
+          const 店铺路径 = [...命中.nodePath, 命中.key].join('-');
+          _(data.char).forEach(charData => {
+            const 位置 = String(charData?.状态?.位置 || '');
+            const 段 = 位置.split('-');
+            if (位置 && 段[段.length - 1] === locName) charData.状态.位置 = ((位置.match(/^(?:斗罗大陆|斗灵大陆)-/) || [''])[0]) + 店铺路径;
+          });
+          delete data.world.动态地点[locName];
+        });
+      }
 
       _(data.world.动态地点).forEach((locData, locName) => {
         if (locData.x === undefined) locData.x = FLAT_LOCATIONS[locData.归属父节点]?.x ?? -1;

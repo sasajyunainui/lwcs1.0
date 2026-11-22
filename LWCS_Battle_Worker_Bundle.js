@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:abf261be1affb92bc57cebd52c6d3665f5720a3d96929f5814617266fb48986f|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:16ea3d3f86c1f1ce30cf5aa0db62bc1353a7e81b490a281daa3c69448281694c|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6 */
+/* sources-sha256: MVU_Skill_Runtime.js:ea1dd8bdbe85fa606c23d555396ca34afc02043e6d7b11ba92cc7aaa07409455|MVU_Schema_Runtime.js:be3fb7b38504d7303fcbd070c9e942a47257441cc0d12d52315ab4567a71bd54|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:16ea3d3f86c1f1ce30cf5aa0db62bc1353a7e81b490a281daa3c69448281694c|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -35116,6 +35116,24 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       }
 
       if (!data.world.动态地点) data.world.动态地点 = {};
+
+      // 商店即地点：剧情另造的、其实就是所属地点某家商店的动态地点（如「东海城锻造师协会」→「东海城-锻造师协会分店」），
+      // 角色位置改写到店铺路径，删去重复的动态地点；匹配规则与地点解析同一个（resolveShopAlias：只在所属地点内整词比对店名）
+      const 地点库运行时 = globalThis.__LWCS_LIBRARY_DATA_RUNTIME_V1__;
+      if (typeof 地点库运行时?.resolveShopAlias === 'function') {
+        Object.keys(data.world.动态地点).forEach(locName => {
+          const 父节点 = String(data.world.动态地点[locName]?.归属父节点 || '').trim();
+          const 命中 = 父节点 ? 地点库运行时.resolveShopAlias(data, `${父节点}-${locName}`, []) : null;
+          if (!命中) return;
+          const 店铺路径 = [...命中.nodePath, 命中.key].join('-');
+          _(data.char).forEach(charData => {
+            const 位置 = String(charData?.状态?.位置 || '');
+            const 段 = 位置.split('-');
+            if (位置 && 段[段.length - 1] === locName) charData.状态.位置 = ((位置.match(/^(?:斗罗大陆|斗灵大陆)-/) || [''])[0]) + 店铺路径;
+          });
+          delete data.world.动态地点[locName];
+        });
+      }
 
       _(data.world.动态地点).forEach((locData, locName) => {
         if (locData.x === undefined) locData.x = FLAT_LOCATIONS[locData.归属父节点]?.x ?? -1;
