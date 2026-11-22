@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:18584feab871c1b0ade5bda6b49c8b12a94cce33402c3315477d1a3938de811e|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:3a637c22c60a4599a9890bb6bc0b4af7cecaa59b3c04d46283919ddf7794e83d|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:672d043e73ac827b283de52f507240ed0da11334350bccf9629cc34dce69ec48|BattleRuntime_Module.js:30877d7a03ed70d75166003e4e294961bafb259dfd90064493369d57786335b9|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:18584feab871c1b0ade5bda6b49c8b12a94cce33402c3315477d1a3938de811e|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:3a637c22c60a4599a9890bb6bc0b4af7cecaa59b3c04d46283919ddf7794e83d|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -97884,7 +97884,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actor = findUnitInWorld(worldSnapshot, actorId);
     if (!actor) throw new Error('battle_decision_belief_actor_missing');
     const actorSide = sideOf(worldSnapshot, actor);
-    const experience = experienceOf(actor);
+    // 估敌的经验取本方最高（情报全队共享，11-22）。
+    const experience = sideExperience(worldSnapshot, actor);
     const strengthHalfWidth = Math.ceil(2 + 8 * (1 - experience));
     const existingUnits = existing?.units && typeof existing.units === 'object' ? existing.units : {};
     const units = Object.fromEntries(worldEntries(worldSnapshot).map(entry => {
@@ -98140,6 +98141,46 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (relation && relation !== '陌生') prior += BELIEF_CLOSE_RELATION.test(relation) ? BELIEF_FAMILIAR_CLOSE : BELIEF_FAMILIAR_RELATION;
     return Math.min(BELIEF_FAMILIAR_CAP, prior);
   }
+  /* 情报全队共享（用户 11-22「可以肉眼看见，或者能通过交流获取的情报，都可以共享」）：开战前就有、说得出来的——本方任何一人认识
+     的敌人（熟人知根知底）、交过手的（了解程度取本方最高）、知道它暴露过的招、精神力感知压过它看出的实力——全队都按这份看；估敌
+     等级的经验取本方最高（buildFreshBelief）。当下那一瞬间的判断（看破、看穿来招里自己的精神力优势、精神系）仍按各人。
+     知情的人：本方非召唤物的参战者（倒下的也算：开战前就能说）。 */
+  const sideKnowersCache = new WeakMap();
+  function sideKnowers(world = {}, observer = {}) {
+    const side = sideOf(world, observer);
+    if (!side || !world || typeof world !== 'object') return [observer];
+    let bySide = sideKnowersCache.get(world);
+    if (!bySide) sideKnowersCache.set(world, bySide = new Map());
+    if (!bySide.has(side)) bySide.set(side, worldEntries(world).filter(entry => entry.side === side && !preview.isSummonUnit(entry.unit)).map(entry => entry.unit));
+    const knowers = bySide.get(side);
+    return knowers.includes(observer) ? knowers : [observer, ...knowers];
+  }
+  const sideIntimate = (world, observer, target) => sideKnowers(world, observer).some(unit => beliefIntimate(unit, target));
+  const sideKnowsExposure = (world, observer, target) => sideKnowers(world, observer).some(unit => beliefKnowsExposure(unit, target, world));
+  const sideFamiliarExchanges = (world, observer, target) => Math.max(0, ...sideKnowers(world, observer).map(unit => beliefFamiliarExchanges(unit, target, world)));
+  const sideSenses = (world, observer, target) => sideKnowers(world, observer).some(unit => beliefSenses(unit, target));
+  // 共享视野（精神共享类，用户 11-22「除了提高命中和闪避外，上面说的也一起接上」）：持有者之间看破立即互通（seenThroughBy），看破骗招、
+  // 看穿来招时精神力优势按本方持有者里最高的那份算（linkedSenseEdge：施放者的精神探测分给队友）。
+  const holdsSharedVision = unit => Object.values(unit?.状态效果 || {}).some(state => /共享视野/.test(String(state?.状态 || state?.状态名称 || '')));
+  function linkedSenseEdge(world = {}, observer = {}, target = {}) {
+    if (!holdsSharedVision(observer)) return senseEdge(observer, target);
+    return Math.max(0, ...sideKnowers(world, observer).filter(unit => unit === observer || holdsSharedVision(unit)).map(unit => senseEdge(unit, target)));
+  }
+  /* 看破靠眼神交流共享（用户 11-22「战斗中也不会直接叫出来，比如眼神交流就知道了。不考虑暴露给对方吧」）：佯装蓄力、卖破绽被看破，
+     看破的人当场知道；队友下一回合知道；和看破者同持共享视野的立即知道。骗招者不因此知道（看破第二层另掷，deceptionRealizeChance）。
+     看破的回合记在 seenRound（BattleRuntime；没有记的按已过一回合）。 */
+  function seenThroughBy(world = {}, actorId = '', seers = [], seenRound = undefined) {
+    const ids = (Array.isArray(seers) ? seers : []).map(String);
+    if (ids.includes(String(actorId))) return true;
+    if (!ids.length) return false;
+    const actor = findUnitInWorld(world, actorId);
+    if (!actor) return false;
+    const side = sideOf(world, actor), mates = ids.map(id => findUnitInWorld(world, id)).filter(unit => unit && sideOf(world, unit) === side);
+    if (!mates.length) return false;
+    if (!(Number(seenRound) >= Number(world?.回合 || 0))) return true;
+    return holdsSharedVision(actor) && mates.some(holdsSharedVision);
+  }
+  const sideExperience = (world, observer) => Math.max(0, ...sideKnowers(world, observer).map(unit => experienceOf(unit)));
   // 系别信念（信息模型 0b，用户 2026-11-17「根据释放的魂技原型可进一步加深判断」）: what one sees of a skill an enemy releases —
   // the kind of its first (main) effect: 伤害 (on an enemy), 硬控 / 软控 (a state, interference or debuff on an enemy: one that
   // takes the turn, or one that does not), 治疗 (HP back to one's side), 自身增益 / 友方增益 (a buff, shield or modifier on
@@ -98291,12 +98332,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     FEINT_SEE_EXPERIENCE = 0.2;
   function feintSeeThroughChance(world = {}, observer = {}, feinter = {}, skill = {}) {
     const name = String(skill?.魂技名 || skill?.name || '').trim();
-    if (name && beliefKnowsExposure(observer, feinter, world) && preview.exposedSkills(feinter).some(known => String(known?.魂技名 || known?.name || '').trim() === name)) return 1;
-    const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(feinter)) || 0) + beliefFamiliarExchanges(observer, feinter, world);
+    if (name && sideKnowsExposure(world, observer, feinter) && preview.exposedSkills(feinter).some(known => String(known?.魂技名 || known?.name || '').trim() === name)) return 1;
+    const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(feinter)) || 0) + sideFamiliarExchanges(world, observer, feinter);
     const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FEINT_SEE_MENTAL : 0;
     const shown = Number(world?.佯装记录?.[preview.unitName(feinter)] || 0) || 0;
     return clamp(FEINT_SEE_BASE + FEINT_SEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FEINT_SEE_REPEAT * shown +
-      FEINT_SEE_SENSE * senseEdge(observer, feinter) + (sensePierces(observer) ? FEINT_SEE_PIERCE : 0) +
+      FEINT_SEE_SENSE * linkedSenseEdge(world, observer, feinter) + (sensePierces(observer) ? FEINT_SEE_PIERCE : 0) +
       FEINT_SEE_EXPERIENCE * Math.max(0, experienceOf(observer) - experienceOf(feinter)), 0, 1);
   }
   /* 看破第二层（用户 11-22「佯装者也不能被对面看破自己还天真的以为不会被看破吧？…首先是决定是否被看破，其次是决定那边是否能反应过来
@@ -98306,7 +98347,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
      { 骗招者名字: { 看破者名字: 次数 } }。起始值，之后用原作骗招战例校准。 */
   const DECEPTION_REALIZE_BASE = 0.2, DECEPTION_REALIZE_CLARITY = 0.4, DECEPTION_REALIZE_SENSE = 0.3, DECEPTION_REALIZE_EXPERIENCE = 0.2, DECEPTION_REALIZE_CAP = 0.9;
   function deceptionRealizeChance(world = {}, deceiver = {}, seer = {}) {
-    const seen = Number(beliefExchangeCounts(world, sideOf(world, deceiver)).get(preview.unitId(seer)) || 0) + beliefFamiliarExchanges(deceiver, seer, world);
+    const seen = Number(beliefExchangeCounts(world, sideOf(world, deceiver)).get(preview.unitId(seer)) || 0) + sideFamiliarExchanges(world, deceiver, seer);
     return clamp(DECEPTION_REALIZE_BASE + DECEPTION_REALIZE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + DECEPTION_REALIZE_SENSE * senseEdge(deceiver, seer) +
       DECEPTION_REALIZE_EXPERIENCE * Math.max(0, experienceOf(deceiver) - experienceOf(seer)), 0, DECEPTION_REALIZE_CAP);
   }
@@ -98329,10 +98370,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const FORESEE_SCALE = Number(root.__LWCS_TUNE__?.FORESEE_SCALE ?? 1);
   function foreseeChance(world = {}, observer = {}, attacker = {}, skill = {}) {
     const name = String(skill?.魂技名 || skill?.name || '').trim();
-    const known = name && beliefKnowsExposure(observer, attacker, world) && preview.exposedSkills(attacker).some(entry => String(entry?.魂技名 || entry?.name || '').trim() === name);
-    const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(attacker)) || 0) + beliefFamiliarExchanges(observer, attacker, world);
+    const known = name && sideKnowsExposure(world, observer, attacker) && preview.exposedSkills(attacker).some(entry => String(entry?.魂技名 || entry?.name || '').trim() === name);
+    const seen = Number(beliefExchangeCounts(world, sideOf(world, observer)).get(preview.unitId(attacker)) || 0) + sideFamiliarExchanges(world, observer, attacker);
     const mental = /精神/.test(String(observer?.系别 || observer?.type || observer?.第1武魂?.系别 || observer?.属性?.系别 || '')) ? FORESEE_MENTAL : 0;
-    return clamp(FORESEE_SCALE * (FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FORESEE_SENSE * senseEdge(observer, attacker) +
+    return clamp(FORESEE_SCALE * (FORESEE_BASE + FORESEE_CLARITY * seen / (seen + BELIEF_EXCHANGE_PRIOR) + mental + FORESEE_SENSE * linkedSenseEdge(world, observer, attacker) +
       (known ? FORESEE_KNOWN : 0)), 0, FORESEE_CAP);
   }
 
@@ -98387,11 +98428,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const projectUnit = (sourceUnit, publicSide = '') => {
       // 熟人知根知底（用户 2026-11-15「原本就很熟悉的两人，或者近期对战过的，就没必要试探了」）: an enemy the actor has fought or
       // is close to is pictured as it is — its skills and panel — like the actor's own side.
-      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide || beliefIntimate(sourceActor, sourceUnit)) {
+      if (alreadyPublic === true || sideOf(worldSnapshot, sourceUnit) === actorSide || sideIntimate(worldSnapshot, sourceActor, sourceUnit)) {
         const unit = preview.inheritProjectedStateSourceWindows(cloneValue(sourceUnit), sourceUnit, worldSnapshot);
         // 佯装蓄力 of an enemy known well: still a feint it may or may not have seen through (BattlePreview feintShown).
         if (sideOf(worldSnapshot, sourceUnit) !== actorSide && preview.isFeint(unit.蓄力技能)) {
-          unit.蓄力技能 = (unit.蓄力技能.__佯装.看破 || []).map(String).includes(String(actorId)) ? null : preview.feintShown(unit.蓄力技能);
+          unit.蓄力技能 = seenThroughBy(worldSnapshot, actorId, unit.蓄力技能.__佯装.看破, unit.蓄力技能.__佯装.看破回合) ? null : preview.feintShown(unit.蓄力技能);
         }
         if (sideOf(worldSnapshot, sourceUnit) === actorSide && !Number.isFinite(Number(unit?.routine_attack_ratio))) unit.routine_attack_ratio = knownRoutineAttackRatio(unit);
         // 队友开武魂（T24 11-18）: a teammate with its 武魂 unreleased and not hidden releases it at its first action (开武魂 takes
@@ -98423,8 +98464,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // the unit — a battle fought with it (战斗历史) and a relation (社交.关系) — counts as exchanges seen before this one.
       // Its abilities are known by the exchanges and the acquaintance (clarity); its strength by those and by a sense that
       // outreaches it (strengthClarity, beliefSenses).
-      const seen = Number(exchanges.get(id) || 0) + beliefFamiliarExchanges(sourceActor, sourceUnit, worldSnapshot), clarity = seen / (seen + BELIEF_EXCHANGE_PRIOR);
-      const senses = beliefSenses(sourceActor, sourceUnit);
+      const seen = Number(exchanges.get(id) || 0) + sideFamiliarExchanges(worldSnapshot, sourceActor, sourceUnit), clarity = seen / (seen + BELIEF_EXCHANGE_PRIOR);
+      const senses = sideSenses(worldSnapshot, sourceActor, sourceUnit);
       const gauged = seen + (senses ? BELIEF_SENSE_EXCHANGES : 0), strengthClarity = gauged / (gauged + BELIEF_EXCHANGE_PRIOR);
       const toward = (estimate, truth) => Number.isFinite(Number(truth)) ? estimate + (Number(truth) - estimate) * strengthClarity : estimate;
       const truePanel = key => preview.readCombatStatBreakdown(sourceUnit, key).base;
@@ -98439,7 +98480,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // 系别信念（0b）: the system as the deciding side believes it (beliefSystemPosterior) — the pictured panel, the typical attack
       // and the agility correction are the believed systems' blended by their weights; 系别 names the likeliest.
       // 跨场情报（0c）: what it showed in earlier battles, when the deciding unit knows of them (beliefKnowsExposure).
-      const exposed = publicUnitRole !== 'SUMMON' && beliefKnowsExposure(sourceActor, sourceUnit, worldSnapshot) ? preview.exposedSkills(sourceUnit) : [];
+      const exposed = publicUnitRole !== 'SUMMON' && sideKnowsExposure(worldSnapshot, sourceActor, sourceUnit) ? preview.exposedSkills(sourceUnit) : [];
       const systemBelief = publicUnitRole === 'SUMMON' ? { [String(beliefUnit.visibleSystem || '').trim()]: 1 } : beliefSystemPosterior(sourceUnit, beliefState, exposed);
       const system = beliefMostLikelySystem(systemBelief);
       const blend = (read, weights = systemBelief) => Object.entries(weights).reduce((sum, [name, weight]) => sum + weight * read(name), 0);
@@ -98539,7 +98580,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ...(sourceUnit.__battleRuntime.closeStruck ? { closeStruck: cloneValue(sourceUnit.__battleRuntime.closeStruck) } : {}),
           ...(sourceUnit.__battleRuntime.engaged ? { engaged: { ...sourceUnit.__battleRuntime.engaged } } : {}),
           // 卖破绽（T32）: one that has not seen through it sees no stance, only the opening shown (BattlePreview BAIT_OPENING).
-          ...(sourceUnit.__battleRuntime.activeDefenseStance?.bait === true && !(sourceUnit.__battleRuntime.activeDefenseStance.seenBy || []).map(String).includes(String(actorId))
+          ...(sourceUnit.__battleRuntime.activeDefenseStance?.bait === true && !seenThroughBy(worldSnapshot, actorId, sourceUnit.__battleRuntime.activeDefenseStance.seenBy, sourceUnit.__battleRuntime.activeDefenseStance.seenRound)
             ? { attackOpening: { strength: Number(preview.BAIT_OPENING) || 1 } }
             : sourceUnit.__battleRuntime.activeDefenseStance ? { activeDefenseStance: cloneValue(sourceUnit.__battleRuntime.activeDefenseStance) } : {}),
           ...(sourceUnit.__battleRuntime.lastReleasedSkill ? { lastReleasedSkill: cloneValue(sourceUnit.__battleRuntime.lastReleasedSkill) } : {}),
@@ -98611,7 +98652,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         敏捷: projected.agi,
       };
       // 佯装蓄力: an enemy that saw through it sees no charge; any other sees it as a charge (BattlePreview feintShown).
-      const feintSeen = preview.isFeint(sourceUnit?.蓄力技能) && (sourceUnit.蓄力技能.__佯装.看破 || []).map(String).includes(String(actorId));
+      const feintSeen = preview.isFeint(sourceUnit?.蓄力技能) && seenThroughBy(worldSnapshot, actorId, sourceUnit.蓄力技能.__佯装.看破, sourceUnit.蓄力技能.__佯装.看破回合);
       if (sourceUnit?.蓄力技能 && !feintSeen) {
         projected.蓄力技能 = preview.feintShown(cloneValue(sourceUnit.蓄力技能));
         const natural = sourceUnit.__battleRuntime?.naturalOpportunity;
@@ -139218,8 +139259,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const shownHere = r20ReleasedThisBattle(table.world, request.actorId).has(name);
       const shownBefore = !shownHere && (preview.exposedSkills?.(actorUnit) || []).some(skill => skillName(skill) === name);
       if (!shownHere) for (const [unit, row] of foes) {
-        if (shownBefore && beliefKnowsExposure(actorUnit, unit, table.world)) continue;
-        const seen = Number(beliefExchangeCounts(table.world, table.sides[row]).get(String(request.actorId)) || 0) + beliefFamiliarExchanges(actorUnit, unit, table.world);
+        if (shownBefore && sideKnowsExposure(table.world, unit, actorUnit)) continue;
+        const seen = Number(beliefExchangeCounts(table.world, table.sides[row]).get(String(request.actorId)) || 0) + sideFamiliarExchanges(table.world, unit, actorUnit);
         learn += (1 - seen / (seen + BELIEF_EXCHANGE_PRIOR)) ** 2 / foes.length;
       }
     }
@@ -153498,7 +153539,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const seenBy = listCombatUnits(combatData).filter(unit => previewRuntime.isBattleCapable(unit) && previewRuntime.sideOf(combatData, unit) !== ownSide)
             .filter(unit => !neverSeen && Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, {}) ?? 0))
             .map(unit => String(previewRuntime.unitId(unit)));
-          actor.__battleRuntime.activeDefenseStance = { ...actor.__battleRuntime.activeDefenseStance, bait: true, seenBy };
+          actor.__battleRuntime.activeDefenseStance = { ...actor.__battleRuntime.activeDefenseStance, bait: true, seenBy, seenRound: Number(combatData.回合 || 0) };
           recordDeceptionRealized(combatData, actor, seenBy);
           const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
           combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
@@ -153529,6 +153570,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           .filter(unit => !neverSeen && Math.random() < Number(decisionRuntime.feintSeeThroughChance?.(combatData, unit, actor, declaration.feintSkill) ?? 0))
           .map(unit => previewRuntime.unitId(unit));
         actor.蓄力技能 = previewRuntime.feintRecord(declaration.feintSkill, declaration.targetIds || [], actionEvent.actionId, seenBy);
+        // 看破的回合：队友下一回合才从眼神里知道（BattleDecision seenThroughBy）。
+        actor.蓄力技能.__佯装.看破回合 = Number(combatData.回合 || 0);
         recordDeceptionRealized(combatData, actor, seenBy);
         // 佯装记录 { 名字: 次数 } (a battle-level field, kept across requests): each feint makes the next easier to see through.
         const shown = combatData.佯装记录 && typeof combatData.佯装记录 === 'object' ? combatData.佯装记录 : {}, feinterName = previewRuntime.unitName(actor);
