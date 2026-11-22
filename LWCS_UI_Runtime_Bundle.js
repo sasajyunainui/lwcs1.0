@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:153dc877ccd6ddc3238588c7e32cd37ede3bd15bd6a8b6853346ca6afe5d7fdf|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:096632f1a8b6749fb9f751dae9cfb870a4a1a618a96fc85dda886306a20cc123|BattleRuntime_Module.js:63941f19d3519d3a8ee3fe093a312e8178e0fe31c7bcb5cd909b2b2999d0bcbc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:153dc877ccd6ddc3238588c7e32cd37ede3bd15bd6a8b6853346ca6afe5d7fdf|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:1849365b86d46922d79bfebd87c9e5578df7d7fee375504db3221c36ce45e0eb|BattleRuntime_Module.js:9a1aedbb19fc29114b1f284c2395a98e53f1474fc0c29a49588192854eb41a92|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -102159,7 +102159,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // takes, less its routine attack) treated a support's HP as a fighter's and charged the whole action given up, so in
     // 262 chances over 24 2v2 battles nobody ever stepped in. The race knows what each unit brings (a support's buffs and
     // heals too), how long each lasts and what a unit that loses its turn this round no longer does. Stepping in is worth
-    // the race with the one stepping in hit and denied its turn, against the race with the target hit; the best over
+    // the race with the one stepping in hit (since 11-22 it keeps its turn: 拦截 is an answer), against the race with the target hit; the best over
     // INTERCEPT_RACE_MARGIN steps in.
     const side = sideOf(world, target);
     const table = r20Facts({ visibleWorld: world, actorId: preview.unitId(target), actorSide: side,
@@ -102171,8 +102171,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (row === undefined) return null;
       const remaining = table.remaining.slice();
       remaining[row] = Math.max(0, remaining[row] - hit);
+      // 拦截不占本回合行动（11-22「改成拦截规则吧」，BattleRuntime chooseStructuredInterceptor）：挡下的人只挨这一下，行动照旧。
       const idle = new Array(count).fill(0);
-      if (stepIn) idle[row] = 1;
       const plan = { denied: table.held || null, idle, until: new Array(count).fill(0), base: table, leaves: null, baseCount: count, changed: new Array(count).fill(false),
         busy: table.busy || null, strikes: table.strikes || null };
       return r20Race({ ...table, remaining, alive: table.alive.slice(), stamina: table.stamina.slice() }, side, plan);
@@ -137683,6 +137683,84 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (root.__LWCS_TUNE__?.NECESSITY_DRY === true || !out.size) return null;
     return new Set(out.keys());
   }
+  /* 局部战团·按战团剪候选（方案 project-state 局部战团方案-20261122.md 第十一节）：决策时按推演第 0 步的规则算一次战团（真实缠斗 table.locked ＋
+     自由人按分工偏好挑敌、扑后排的近战被自由的拦截者截下）。行动者是自由人：不剪（挑谁缠是它的决定）；在战团里：敌方单体候选只留
+     ①缠着它的 ②落单者（不在战团、它那边无自由拦截者）③回援（缠着本方危险队友的敌人）④正在蓄力的 ⑤还自由的敌人；其余不估。
+     开关 LWCS_TUNE.GROUPS_PRUNE（默认关）、GROUPS_PRUNE_DRY（只算只报，钩子 onGroupPrune）。 */
+  function r20GroupPrune(request, candidateIds, frozenById) {
+    const tune = root.__LWCS_TUNE__ || {};
+    if (!(tune.GROUPS_PRUNE === true || tune.GROUPS_PRUNE_DRY === true) || !isPreparedDecisionRequest(request) ||
+      String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() !== 'ACTIVE') return null;
+    const table = r20Facts(request), actorRow = table.index.get(String(request.actorId || ''));
+    if (actorRow === undefined) return null;
+    const count = table.ids.length, sides = table.sides, units = table.units, out = table.out;
+    if (new Set(sides).size !== 2) return null;
+    const alive = row => table.remaining[row] > 0, acts = row => alive(row) && !!table.acts?.[row];
+    const role = r20RaceRoles(units, count), ranged = row => role[row] === '远程', supportFirst = row => role[row] === '支援';
+    const front = row => units[row]?.__battleRuntime?.position !== '后';
+    const bond = Array.from({ length: count }, () => new Set());
+    for (let row = 0; row < count; row += 1) {
+      const locked = table.locked?.[row];
+      if (locked) for (const other of locked) if (other < count && alive(row) && alive(other) && sides[other] !== sides[row]) { bond[row].add(other); bond[other].add(row); }
+    }
+    // 能拦（与 BattleRuntime chooseStructuredInterceptor 同一规则）。
+    const canIntercept = (row, attacker = -1, target = -1) => acts(row) && !supportFirst(row) && !units[row]?.蓄力技能 && [...bond[row]].every(other => other === attacker) &&
+      (attacker < 0 || target < 0 || !preview.interceptWindupBudget || Number(preview.interceptWindupBudget(units[attacker], R20_ASSUMED_MOVE, units[row], units[target])) >= 0);
+    const best = row => { let most = 0; for (let other = 0; other < count; other += 1) if (sides[other] !== sides[row] && alive(other)) most = Math.max(most, out[row][other]); return most; };
+    const prefers = (row, other) => {
+      switch (role[row]) {
+        case '强攻': return front(other) || /强攻|防御/.test(role[other]);
+        case '敏攻': return !front(other) || /支援|控制/.test(role[other]);
+        case '控制': return /控制|远程|支援/.test(role[other]) || !!units[other]?.蓄力技能;
+        case '防御': return front(other);
+        default: return false;
+      }
+    };
+    const loners = [];
+    for (let row = 0; row < count; row += 1) if (acts(row) && !bond[row].size && !supportFirst(row) && !ranged(row) && row !== actorRow) loners.push(row);
+    loners.sort((left, right) => best(right) - best(left));
+    for (const row of loners) {
+      if (bond[row].size) continue;
+      let pick = -1, value = 0;
+      for (let other = 0; other < count; other += 1) {
+        if (sides[other] === sides[row] || !alive(other)) continue;
+        const v = out[row][other] * (prefers(row, other) ? R20_GROUP_PREFER : 1);
+        if (v > value) { value = v; pick = other; }
+      }
+      if (pick < 0) continue;
+      let to = pick;
+      if (!front(pick) || supportFirst(pick)) {
+        let guard = -1, most = -1;
+        for (let other = 0; other < count; other += 1) if (other !== pick && sides[other] === sides[pick] && canIntercept(other, row, pick)) { const v = out[other][row]; if (v > most) { most = v; guard = other; } }
+        if (guard >= 0) to = guard;
+      }
+      bond[row].add(to); bond[to].add(row);
+    }
+    const own = sides[actorRow];
+    root.__LWCS_DECISION_DEBUG__?.onGroupPrune?.({ request, phase: 'groups', free: !bond[actorRow].size, bond: [...bond[actorRow]].map(row => table.ids[row]) });
+    if (!bond[actorRow].size) return null;
+    const endangered = row => { const net = (Number(table.pressure?.[row]) || 0) - (Number(table.mend?.[row]) || 0); return alive(row) && net > 1e-9 && table.remaining[row] / net < R20_GUARD_DANGER_ROUNDS; };
+    const covered = row => { for (let other = 0; other < count; other += 1) if (other !== row && sides[other] === sides[row] && canIntercept(other)) return true; return false; };
+    const allowed = new Set(bond[actorRow]);
+    for (let row = 0; row < count; row += 1) {
+      if (sides[row] === own || !alive(row)) continue;
+      if (!bond[row].size && !covered(row)) allowed.add(row);                                   // 落单
+      if (!bond[row].size) allowed.add(row);                                                    // 还自由的
+      if (units[row]?.蓄力技能) allowed.add(row);                                              // 正在蓄力
+      if ([...bond[row]].some(ally => sides[ally] === own && ally !== actorRow && endangered(ally))) allowed.add(row);   // 回援
+    }
+    const pruned = new Map();
+    for (const candidateId of candidateIds) {
+      const d = frozenById.get(candidateId)?.declaration || {}, kind = String(d.actionKind || '').toUpperCase();
+      if (!['BASIC_ATTACK', 'RELEASE_SKILL'].includes(kind) || !Array.isArray(d.targetIds) || d.targetIds.length !== 1) continue;
+      const row = table.index.get(String(d.targetIds[0]));
+      if (row === undefined || sides[row] === own || allowed.has(row)) continue;
+      pruned.set(candidateId, '别的战团里的敌人');
+    }
+    root.__LWCS_DECISION_DEBUG__?.onGroupPrune?.({ request, phase: 'prune', candidates: candidateIds.length, pruned });
+    if (tune.GROUPS_PRUNE_DRY === true || !pruned.size) return null;
+    return new Set(pruned.keys());
+  }
   // 简化演算开关（座舱设置「战斗演算」写 __LWCS_BATTLE_SIMPLE__）。
   const r20Simple = () => { try { return root.__LWCS_BATTLE_SIMPLE__ === true || root.parent?.__LWCS_BATTLE_SIMPLE__ === true; } catch (error) { return root.__LWCS_BATTLE_SIMPLE__ === true; } };
   const R20_SIMPLE_KEEP = 4;
@@ -137854,7 +137932,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (step === 0 && plan?.commit && alive(plan.commit.row) && alive(plan.commit.to)) { bond[plan.commit.row].add(plan.commit.to); bond[plan.commit.to].add(plan.commit.row); }
         const role = groupRoles, ranged = unit => role[unit] === '远程', supportFirst = unit => role[unit] === '支援';
         const front = unit => groupUnits[unit]?.__battleRuntime?.position !== '后';
-        const canIntercept = unit => alive(unit) && striking(unit) && !bond[unit].size && !supportFirst(unit) && !ranged(unit) && (role[unit] === '防御' || front(unit));
+        // 能拦（与 BattleRuntime chooseStructuredInterceptor 同一规则）：空闲（没缠上或只与这个攻击者缠着）、能出手、不蓄力、非辅助治疗食物系、来得及。
+        const interceptMove = R20_ASSUMED_MOVE;
+        const canIntercept = (unit, attacker = -1, target = -1) => alive(unit) && striking(unit) && !supportFirst(unit) && !groupUnits[unit]?.蓄力技能 &&
+          [...bond[unit]].every(other => other === attacker) &&
+          (attacker < 0 || target < 0 || !preview.interceptWindupBudget || Number(preview.interceptWindupBudget(groupUnits[attacker], interceptMove, groupUnits[unit], groupUnits[target])) >= 0);
         const best = unit => { let most = 0; for (let other = 0; other < count; other += 1) if (sides[other] !== sides[unit] && alive(other)) most = Math.max(most, cells(unit, other).out[unit][other]); return most; };
         const prefers = (unit, other) => {
           switch (role[unit]) {
@@ -137881,7 +137963,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           let to = pick;
           if (!front(pick) || supportFirst(pick)) {
             let guard = -1, most = -1;
-            for (let other = 0; other < count; other += 1) if (other !== pick && sides[other] === sides[pick] && canIntercept(other)) {
+            for (let other = 0; other < count; other += 1) if (other !== pick && sides[other] === sides[pick] && canIntercept(other, unit, pick)) {
               const v = cells(other, unit).out[other][unit]; if (v > most) { most = v; guard = other; }
             }
             if (guard >= 0) to = guard;
@@ -141203,7 +141285,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 简化演算（用户 11-21，设置「战斗演算：简化」，默认完整）：同一招打多个敌方单体目标时，只把粗估（表里这一招对目标的输出 ×
     // 目标优先级）前 R20_SIMPLE_KEEP 名和必留目标（缠斗对手、残血最低、优先级最高、对自己输出最高）送去完整估值；其余不估，
     // 分数记为保留者最低分以下（不会被选中）。粗估实测只中 65%～74%（11-21 测量 B），所以只在用户选了简化时用。
-    const prunes = [r20SimplePrune(request, candidateIds, frozenById), r20RolePrune(request, candidateIds, frozenById), r20NecessityPrune(request, candidateIds, frozenById)].filter(Boolean);
+    const prunes = [r20SimplePrune(request, candidateIds, frozenById), r20RolePrune(request, candidateIds, frozenById), r20NecessityPrune(request, candidateIds, frozenById),
+      r20GroupPrune(request, candidateIds, frozenById)].filter(Boolean);
     const pruned = prunes.length > 1 ? new Set(prunes.flatMap(set => [...set])) : prunes[0] || null;
     const valueOf = candidateId => {
       if (pruned?.has(candidateId)) return null;
@@ -142809,8 +142892,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (timed) existing.duration = Math.max(Number(existing.duration || 0), normalizedDuration);
       else delete existing.duration;
       existing.__本回合新附加 = true;
-      existing.shield_value = Math.max(0, Number(existing.shield_value || 0)) + amount;
+      // 同技能不叠加（叠加规则「同技能不叠加」）试过（11-22，LWCS_TUNE.SHIELD_NO_STACK）：同一来源的护盾再上只刷新到这一次的量——元素系三放
+      // 第 3 魂技护盾叠到生命上限的 59%；但 3v3 退场校准随之出现 2～3 局打满 30 回合（疑似估值仍按技能写的护盾量计价、反复重放），待查，
+      // 默认仍累加。返回实际多出的量。
+      const before = Math.max(0, Number(existing.shield_value || 0));
+      existing.shield_value = root.__LWCS_TUNE__?.SHIELD_NO_STACK === true ? Math.max(before, amount) : before + amount;
       if (effect?.对应等级 !== undefined) existing.对应等级 = Math.max(0, Number(effect.对应等级 || 0));
+      return existing.shield_value - before;
     } else {
       unit.状态效果[stateName] = {
         类型: 'buff', 状态: stateName, 状态名称: stateName, 层数: 1,
@@ -157767,9 +157855,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return previewRuntime.calculateReactionContest(reactor, sourceActor, declaration);
   }
 
-  // 援护: who may step in front of `target` against this attack, and whether one of them does. Eligible: a unit of the
-  // target's side (not a summon) that can act, has not acted this round, is not charging or guard-broken, and gets there
-  // in time (BattlePreview interceptWindupBudget). The choice among them, or none, is the decision layer's
+  // 援护（拦截，用户 11-22「改成拦截规则吧」：守护是事先选定、占行动、全程挡；拦截是应对、只挡这一下）: who may step in front of `target`
+  // against this attack, and whether one of them does. Eligible: a unit of the target's side (not a summon) that can answer, is free —
+  // not locked with an enemy other than the attacker (BattlePreview lockedOpponentsOf), not charging, not guard-broken, not one that
+  // lives to support (辅助、治疗、食物系) — and gets there in time (BattlePreview interceptWindupBudget). It costs no action of the
+  // round (until 11-22 it took the unit's own action and only a unit that had not acted yet could): the one who steps in answers the
+  // hit as its answer, and a melee hit taken locks the two (recordEngagement), so it is not free for the next one. The choice among them, or none, is the decision layer's
   // (BattleDecision chooseInterceptor) — for a unit the player controls too.
   // 位移重做（用户 2026-11-14「无论是自己瞬移，还是帮别人瞬移都是如此」，第 86/110 章替队友挡致命一击）: 友方身上有一道没用掉的换位躲避，
   // 记着换位的施法者；来袭单体攻击落在友方之前，由该施法者（同阵营、还能行动、不是攻击者）承受——施法者与友方对调了位置。
@@ -157787,6 +157878,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function chooseStructuredInterceptor(combatData = {}, attacker = {}, declaration = {}, target = {}) {
     if (typeof decisionRuntime?.chooseInterceptor !== 'function') return null;
+    const supportsFirst = unit => /辅助|治疗|食物/.test(String(unit?.属性?.系别 || unit?.系别 || '').trim());
+    const interceptorFree = unit => (previewRuntime.lockedOpponentsOf ? previewRuntime.lockedOpponentsOf(combatData, unit) : []).every(other => other === attacker);
     const round = Number(combatData?.回合 || 0), side = inferUnitSide(combatData, target);
     // 位移重做: 换位拉进己方阵中的敌人，本回合援护盖不到它。
     if (previewRuntime.positionDeniesCover(target, round)) return null;
@@ -157796,16 +157889,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!unit || unit === target || unit.召唤键 || inferUnitSide(combatData, unit) !== side) continue;
       const opportunity = unit.__battleRuntime?.naturalOpportunity;
       gateHook({ allyId: previewRuntime.unitId(unit), targetId: previewRuntime.unitId(target), attackerId: previewRuntime.unitId(attacker),
-        gate: !previewRuntime.isBattleCapable(unit) || !structuredActorCanAct(unit, 'ACTIVE') ? 'CANNOT_ACT' : unit.蓄力技能 || previewRuntime.fusionChargeHost(combatData, unit) ? 'CHARGING'
-          : previewRuntime.guardBrokenOf(unit, round) ? 'GUARD_BROKEN' : String(opportunity?.status || '').trim() !== 'PENDING' || Number(opportunity?.round || 0) !== round ? `ACTED:${String(opportunity?.status || 'NONE')}`
+        gate: !previewRuntime.isBattleCapable(unit) || !structuredActorCanAct(unit, 'REACTION') ? 'CANNOT_ACT' : unit.蓄力技能 || previewRuntime.fusionChargeHost(combatData, unit) ? 'CHARGING'
+          : previewRuntime.guardBrokenOf(unit, round) ? 'GUARD_BROKEN' : supportsFirst(unit) ? 'SUPPORT' : !interceptorFree(unit) ? 'ENGAGED'
             : previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) < 0 ? 'TOO_FAST' : 'OK',
         windup: previewRuntime.actionWindup(attacker, declaration), budget: previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) });
     }
     const candidates = listPrimaryCombatUnits(combatData).filter(unit => unit && unit !== target && !unit.召唤键 &&
-      inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'ACTIVE') &&
+      inferUnitSide(combatData, unit) === side && previewRuntime.isBattleCapable(unit) && structuredActorCanAct(unit, 'REACTION') &&
       !unit.蓄力技能 && !previewRuntime.fusionChargeHost(combatData, unit) && !previewRuntime.guardBrokenOf(unit, round) &&
-      String(unit.__battleRuntime?.naturalOpportunity?.status || '').trim() === 'PENDING' &&
-      Number(unit.__battleRuntime.naturalOpportunity.round || 0) === round &&
+      !supportsFirst(unit) && interceptorFree(unit) &&
       previewRuntime.interceptWindupBudget(attacker, declaration, unit, target) >= 0);
     if (!candidates.length) return null;
     const chosen = String(decisionRuntime.chooseInterceptor({
@@ -162836,10 +162928,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 shared.declaration = redirected;
                 actionContext.declaration = redirected;
                 if (actionContext.primaryTarget === target) actionContext.primaryTarget = interceptor;
-                const opportunity = interceptor.__battleRuntime.naturalOpportunity;
-                opportunity.status = 'CONSUMED_BY_INTERCEPT';
-                opportunity.consumedByActionId = String(actionContext.actionEvent.actionId || '').trim();
-                opportunity.actionName = '援护';
+                // 拦截不占援护者本回合的行动（11-22）：它照常应对这一击（下面的应对机会），本回合自己的行动照旧。
                 writeLedgerEvent(combatData, {
                   eventKind: 'runtime_trace', round: Number(combatData.回合 || 0),
                   actorId: interceptorId, actorName: previewRuntime.unitName(interceptor),
