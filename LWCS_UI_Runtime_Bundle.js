@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5a43736336bbb578498ec791ae4ec9229fa442bde67fd081c2895c7d9bbe0ee1|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:153dc877ccd6ddc3238588c7e32cd37ede3bd15bd6a8b6853346ca6afe5d7fdf|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:5c25f1b2ff619cdd2e0662fa0e7ef446853b47ce32393d0c966afca82c935cdd|BattleRuntime_Module.js:63941f19d3519d3a8ee3fe093a312e8178e0fe31c7bcb5cd909b2b2999d0bcbc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -78508,6 +78508,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const summonDefinitions = [];
         for (let index = 0; index < count; index += 1) {
           const displayName = count > 1 ? `${summonName}#${index + 1}` : summonName;
+          // 同技能不叠加（与 BattleRuntime 召唤生成一致，11-22）：同一宿主的同名召唤物还在场，这一招只刷新它的持续回合、不再多一只——预演不能
+          // 再算成多一只，否则估值以为重放有利，强攻系对元素系每回合重放幻魔分影打满 400 回合。
+          const hostId = unitId(actor), hostName = unitName(actor);
+          if (listUnits(context.worldSnapshot).some(entry => isSummonUnit(entry.unit) && entry.unit.已消散 !== true && readHp(entry.unit) > 0 &&
+            String(entry.unit.名称 || entry.unit.name || '').trim() === displayName &&
+            (String(entry.unit.宿主ID || '').trim() === hostId || String(entry.unit.宿主名 || '').trim() === hostName))) continue;
           // B1-P0：预演侧召唤 id 统一带 preview-summon: 前缀——战报脱敏
           // （internalSummonIdPattern）与依赖过滤立即覆盖，且不可能与真实单位撞名。
           // 运行时车道（commitStructuredSummon）的主键不变，另计 previewSummonKey 别名。
@@ -137562,6 +137568,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const R20_NECESSITY_ON = root.__LWCS_TUNE__?.NECESSITY !== false;
   // 牵制配对（r20Race）：先默认关，测完再定。
   const R20_PAIRING_ON = root.__LWCS_TUNE__?.PAIRING === true;
+  /* 局部战团（用户 11-22 批准；方案 project-state 局部战团方案-20261122.md 第九、十节；原作七场团战笔记）：推演里「谁缠着谁」跨步保留
+     （bond）——真实缠斗、这个候选打了谁（plan.commit）连成战团；自由人按分工偏好（R20_GROUP_PREFER）挑一个敌人缠上，可以挑已在战团里的
+     （一人顶数人由此而来）；扑后排的近战会被对方自由的拦截者（前排或防御系，不以支援为主）截下。每人这一步能打的（reach）= 缠着的 +
+     落单者（不在战团、它那边也没有自由的拦截者）；远程能打全体（守护照旧转接）。出手价值 latent / worth、承压 pressed、实际打谁都只在
+     reach 里取。开关 LWCS_TUNE.GROUPS，先默认关。 */
+  const R20_GROUPS_ON = root.__LWCS_TUNE__?.GROUPS === true;
+  const R20_GROUP_PREFER = 1.5;
+  const r20RaceRoleCache = new WeakMap();
+  function r20RaceRoles(units = [], count = 0) {
+    let roles = Array.isArray(units) ? r20RaceRoleCache.get(units) : null;
+    if (!roles) { roles = (Array.isArray(units) ? units : []).map(unit => (unit ? r20UnitRole(unit) : '强攻')); if (Array.isArray(units)) r20RaceRoleCache.set(units, roles); }
+    return roles.length >= count ? roles : [...roles, ...new Array(count - roles.length).fill('强攻')];
+  }
   function r20NecessityPrune(request, candidateIds, frozenById) {
     if (!R20_NECESSITY_ON || !isPreparedDecisionRequest(request) || String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() !== 'ACTIVE') return null;
     const table = r20Facts(request), actorRow = table.index.get(String(request.actorId || ''));
@@ -137739,6 +137758,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // latent[u]: what u brings once it acts again — the same cells, read whether or not it acts this step (held, charging, idle).
     const latent = new Array(count);
     let time = 0;
+    // 局部战团：跨步保留的「缠着谁」（bond[u] = 敌方行的集合，双向）。
+    const bond = R20_GROUPS_ON && new Set(sides).size === 2 ? Array.from({ length: count }, () => new Set()) : null;
+    const groupUnits = bond ? (facts.units || base.units || []) : null, groupRoles = bond ? r20RaceRoles(groupUnits, count) : null;
     for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
       r20Work.steps += 1;
       // Which cells a pair reads now: a unit the candidate brought, the candidate's; a unit it changed, the candidate's
@@ -137778,6 +137800,66 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (strikes && released < strikes.length) nextChange = Math.min(nextChange, Math.max(strikes[released].at, time + 1e-6));
       // A summon leaves with its host (BattleRuntime refreshSummonMentalLoad).
       if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && !(left[host[unit]] > 1e-9)) left[unit] = 0;
+      // 局部战团：这一步先更新谁缠着谁、给自由人分配对手，得出每人能打的范围 reach（null：不限）。
+      let reach = null;
+      if (bond) {
+        const alive = unit => left[unit] > 1e-9;
+        for (let unit = 0; unit < count; unit += 1) {
+          if (!alive(unit)) { for (const other of bond[unit]) bond[other].delete(unit); bond[unit].clear(); continue; }
+          for (const other of [...bond[unit]]) if (!alive(other)) bond[unit].delete(other);
+          const locked = facts.locked?.[unit];
+          if (locked) for (const other of locked) if (other < count && alive(other) && sides[other] !== sides[unit]) { bond[unit].add(other); bond[other].add(unit); }
+        }
+        if (step === 0 && plan?.commit && alive(plan.commit.row) && alive(plan.commit.to)) { bond[plan.commit.row].add(plan.commit.to); bond[plan.commit.to].add(plan.commit.row); }
+        const role = groupRoles, ranged = unit => role[unit] === '远程', supportFirst = unit => role[unit] === '支援';
+        const front = unit => groupUnits[unit]?.__battleRuntime?.position !== '后';
+        const canIntercept = unit => alive(unit) && striking(unit) && !bond[unit].size && !supportFirst(unit) && !ranged(unit) && (role[unit] === '防御' || front(unit));
+        const best = unit => { let most = 0; for (let other = 0; other < count; other += 1) if (sides[other] !== sides[unit] && alive(other)) most = Math.max(most, cells(unit, other).out[unit][other]); return most; };
+        const prefers = (unit, other) => {
+          switch (role[unit]) {
+            case '强攻': return front(other) || /强攻|防御/.test(role[other]);
+            case '敏攻': return !front(other) || /支援|控制/.test(role[other]);
+            case '控制': return /控制|远程|支援/.test(role[other]) || !!groupUnits[other]?.蓄力技能;
+            case '防御': return front(other);
+            default: return false;
+          }
+        };
+        const loners = [];
+        for (let unit = 0; unit < count; unit += 1) if (alive(unit) && striking(unit) && !bond[unit].size && !supportFirst(unit) && !ranged(unit)) loners.push(unit);
+        loners.sort((left, right) => best(right) - best(left));
+        for (const unit of loners) {
+          if (bond[unit].size) continue;
+          let pick = -1, value = 0;
+          for (let other = 0; other < count; other += 1) {
+            if (sides[other] === sides[unit] || !alive(other)) continue;
+            const v = cells(unit, other).out[unit][other] * (prefers(unit, other) ? R20_GROUP_PREFER : 1);
+            if (v > value) { value = v; pick = other; }
+          }
+          if (pick < 0) continue;
+          // 扑后排（或以支援为主的）：对方有自由的拦截者就截下（原作徐笠智截腾腾、乐正宇截腾腾、朱竹清截朱竹云）。
+          let to = pick;
+          if (!front(pick) || supportFirst(pick)) {
+            let guard = -1, most = -1;
+            for (let other = 0; other < count; other += 1) if (other !== pick && sides[other] === sides[pick] && canIntercept(other)) {
+              const v = cells(other, unit).out[other][unit]; if (v > most) { most = v; guard = other; }
+            }
+            if (guard >= 0) to = guard;
+          }
+          bond[unit].add(to); bond[to].add(unit);
+        }
+        // 落单：不在战团里，它那边也没有自由的拦截者。
+        const covered = row => { for (let other = 0; other < count; other += 1) if (other !== row && sides[other] === sides[row] && canIntercept(other)) return true; return false; };
+        const loose = [];
+        for (let other = 0; other < count; other += 1) if (alive(other) && !bond[other].size && !covered(other)) loose.push(other);
+        reach = new Array(count).fill(null);
+        for (let unit = 0; unit < count; unit += 1) {
+          if (!alive(unit) || ranged(unit)) continue;
+          const can = new Set(bond[unit]);
+          for (const other of loose) if (sides[other] !== sides[unit]) can.add(other);
+          reach[unit] = can;
+        }
+      }
+      const reaches = (unit, other) => !reach || !reach[unit] || reach[unit].has(other);
       // What each unit brings in a round, and what its enemies could land on it together.
       for (let unit = 0; unit < count; unit += 1) {
         worth[unit] = 0; latent[unit] = 0; pressed[unit] = 0; dealt[unit] = 0; mended[unit] = 0; hits[unit] = 0; aimed[unit] = -1; landed[unit] = 0;
@@ -137786,9 +137868,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         for (let other = 0; other < count; other += 1) {
           if (!(left[other] > 1e-9)) continue;
           if (sides[other] === sides[unit]) { latent[unit] = Math.max(latent[unit], cells(unit, other).support[unit][other]); if (striking(unit)) worth[unit] = latent[unit]; continue; }
-          latent[unit] = Math.max(latent[unit], cells(unit, other).out[unit][other]);
+          if (reaches(unit, other)) latent[unit] = Math.max(latent[unit], cells(unit, other).out[unit][other]);
           if (striking(unit)) worth[unit] = latent[unit];
-          if (striking(other)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
+          if (striking(other) && reaches(other, unit)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
         }
       }
       // 控制（11-16 行为检查目录第 58 题「面对控制先打控制者」：推演原先只按伤害与治疗出手，控制者只值它那点伤害）: a unit
@@ -137944,10 +138026,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       /* 牵制配对（用户 11-22「起码得落单才能集火吧？队友不可能什么都不做看着你被集火吧？」，批了配对模型）：这一步两边腾得出手的人
          （能出手、没和活着的敌人缠斗、不是以支援为主——对队友的支援格子高于对敌人的输出格子）先一对一互相牵制：按两人之间较大的
          那一下从大到小配，两人都还没配上才配。配上的人打自己的配对对象；配不上的（人多出来的一边）照旧打集火目标——对面腾得出手的
-         都被牵制住了，那个目标没人来拦，算落单。缠斗中的人照旧（默认打缠斗对手）。 */
+         都被牵制住了，那个目标没人来拦，算落单（有人守护的，这一下照旧落到守护者身上，struck）。缠斗中的人照旧（默认打缠斗对手）。
+         补全（用户 11-22「不实际约束那有什么意义呢？」「加上吧」）：
+         · 打谁就和谁缠上（plan.commit，r20Shadow）：这个候选用单体攻击打了一个敌人，行动者就缠上它、一直打到它倒下；它原来的配对
+           对象放了出来，按自由人重新配——「扔下对手去打别人」的代价进了估值，实际选择跟着推演走。
+         · 回援：配完后，对面有没被缠住的人在白打我方、而我方某人的配对对象威胁比他小，就换过来（缠住威胁大的，放出威胁小的）——
+           留出去没人管的总是对面威胁最小的那个（威胁：它对我方任一人的输出格子的最大值）。 */
       let paired = null;
       if (R20_PAIRING_ON && sideNames.length === 2) {
         paired = new Array(count).fill(-1);
+        const commit = plan?.commit && left[plan.commit.row] > 1e-9 && left[plan.commit.to] > 1e-9 ? plan.commit : null;
         const engagedNow = unit => !!facts.locked?.[unit] && [...facts.locked[unit]].some(row => left[row] > 1e-9);
         const supportFirst = unit => {
           let give = 0, hit = 0;
@@ -137959,12 +138047,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           return give > hit;
         };
         const freeOf = side => { const list = []; for (let unit = 0; unit < count; unit += 1) if (sides[unit] === side && striking(unit) && !engagedNow(unit) && !supportFirst(unit)) list.push(unit); return list; };
-        const one = freeOf(sideNames[0]), two = freeOf(sideNames[1]);
+        let one = freeOf(sideNames[0]), two = freeOf(sideNames[1]);
+        // 行动者缠上的目标（这一步它在出手前摇里也算缠着）：它若是自由人，就是行动者的对手、不再和别人配。
+        if (commit) {
+          paired[commit.row] = commit.to;
+          if ([...one, ...two].includes(commit.to)) paired[commit.to] = commit.row;
+          one = one.filter(unit => unit !== commit.row && paired[unit] < 0); two = two.filter(unit => unit !== commit.row && paired[unit] < 0);
+        }
         if (one.length && two.length) {
           const pairs = [];
           for (const a of one) for (const b of two) pairs.push({ a, b, value: Math.max(cells(a, b).out[a][b], cells(b, a).out[b][a]) });
           pairs.sort((x, y) => y.value - x.value);
           for (const { a, b } of pairs) if (paired[a] < 0 && paired[b] < 0) { paired[a] = b; paired[b] = a; }
+        }
+        // 回援：一边的自由人配完还有剩（白打对面），对面配上了对、对手威胁比剩下那个小的人换过去。
+        const threat = unit => { let most = 0; for (let other = 0; other < count; other += 1) if (sides[other] !== sides[unit] && left[other] > 1e-9) most = Math.max(most, cells(unit, other).out[unit][other]); return most; };
+        for (const [mine, theirs] of [[one, two], [two, one]]) {
+          const loose = theirs.filter(unit => paired[unit] < 0);
+          if (!loose.length) continue;
+          for (const unit of mine) {
+            const partner = paired[unit];
+            if (partner < 0 || (commit && unit === commit.row)) continue;
+            let pick = -1, most = threat(partner) + 1e-9;
+            for (const other of loose) { const t = threat(other); if (t > most) { most = t; pick = other; } }
+            if (pick < 0) continue;
+            paired[unit] = pick; paired[pick] = unit; paired[partner] = -1;
+            loose.splice(loose.indexOf(pick), 1, partner);
+          }
         }
       }
       for (let unit = 0; unit < count; unit += 1) {
@@ -137986,6 +138095,19 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (value > bestValue) { bestValue = value; best = other; }
           }
           if (best >= 0 && !(strike - switchCost(target) > bestValue)) { target = best; strike = bestValue; }
+        }
+        // 局部战团：打的人不在能打的范围里（集火目标在别的战团、又不落单），改打范围里最划算的。
+        if (reach && reach[unit]) {
+          const redirect = row => { const by = cover?.[row]; return by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) && (!by.guard || time < 1 - 1e-9 || endangered(row)) ? by.row : row; };
+          if (!reach[unit].has(target) && ![...reach[unit]].some(row => redirect(row) === target)) {
+            let pick = -1, value = 0;
+            for (const row of reach[unit]) {
+              if (!(left[row] > 1e-9)) continue;
+              const other = struck(row), v = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
+              if (v > value) { value = v; pick = other; }
+            }
+            if (pick >= 0) { target = pick; strike = value; }
+          }
         }
         if (paired && paired[unit] >= 0 && left[paired[unit]] > 1e-9) {
           const other = struck(paired[unit]);
@@ -139417,7 +139539,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // not — 115 rounds where the old valuation took 4).
     const idle = actorRow !== undefined && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE'
       ? table.sides.map((side, row) => (row === actorRow ? 1 : 0)) : null;
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, ...(trace ? { falls: [] } : {}) };
+    // 牵制配对（r20Race）：主动出手用单体攻击打一个敌人，行动者就缠上它（plan.commit）。
+    const declaredNow = candidate?.declaration || {}, commitRow = Array.isArray(declaredNow.targetIds) && declaredNow.targetIds.length === 1 ? table.index.get(String(declaredNow.targetIds[0])) : undefined;
+    const commit = (R20_PAIRING_ON || R20_GROUPS_ON) && idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] &&
+      ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaredNow.actionKind || '').toUpperCase()) ? { row: actorRow, to: commitRow } : null;
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -152863,6 +152989,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const standing = Object.values(table).find(unit => unit && unit.已消散 !== true && unit.召唤单位类型 === '本命召唤兽' &&
           isUnitIdentityMatch(unit.__宿主, actor) && previewRuntime.readHp(unit) > 0);
         if (standing) { summons.push(standing); continue; }
+      }
+      // 同技能不叠加（叠加规则「同技能不叠加」）：同一宿主的同名召唤物（同一招的同一只，数量 > 1 时名字带 #序号）还在场，再放这一招只刷新
+      // 它的持续回合，不再多一只。11-22：幻魔分影（魂骨技，前摇 0、无消耗）在应对里一回合连放 8 次，分身越攒越多，宿主主动出手时全体协同，
+      // 援护链堆出 ACTION_QUEUE_NODE_LIMIT_EXCEEDED（cp7|35|强攻系|召唤系|2|PLAYER）。
+      if (!bonded) {
+        const standing = Object.values(table).find(unit => unit && unit.已消散 !== true && String(unit.名称 || unit.name || '').trim() === displayName &&
+          isUnitIdentityMatch(unit.__宿主, actor) && previewRuntime.readHp(unit) > 0);
+        if (standing) {
+          const window = ensureSummonWindowRuntime(standing);
+          window.remainingWindows = Math.max(Number(window.remainingWindows) || 0, duration);
+          standing.剩余窗口 = window.remainingWindows;
+          const kept = actor.状态效果?.[`召唤:${displayName}`];
+          if (kept && typeof kept === 'object') kept.duration = Math.max(Number(kept.duration) || 0, duration);
+          syncSummonMirror(standing);
+          summons.push(standing);
+          continue;
+        }
       }
       const levelPanel = bonded && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(summonLevel) || null : null;
       const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
