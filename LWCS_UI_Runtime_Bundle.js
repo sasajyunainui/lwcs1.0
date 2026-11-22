@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4ddf9d949e2e8d84b5bfeba3687cdbfcfae21c9eb9ba2a3d9e442b1d764f2c75|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:ff7ee03aeb1fb341320f8cf7f445d3a23d61106651e267a6e2ccecd37b06e443|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4ddf9d949e2e8d84b5bfeba3687cdbfcfae21c9eb9ba2a3d9e442b1d764f2c75|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -50030,7 +50030,6 @@ ${播报文本}
     if (c.num(ch.属性?.魂力) > max) e.detail.extra.push({ path: ['char', p[1], '属性', '魂力'], value: max });
   });
   const relationList = c => c.entries(c.ch.社交?.关系).map(([name, r]) => ({ name, ...r, aff: c.num(r.好感度) })).sort((a, b) => b.aff - a.aff);
-  const affBar = v => `<div class="aff"><i style="${v >= 0 ? `left:50%;width:${Math.min(50, v / 2)}%` : `left:${50 + v / 2}%;width:${Math.min(50, -v / 2)}%;background:linear-gradient(90deg,#4a8bff,#6fb4ff)`}"></i></div>`;
   const where = c => String(c.ch.状态?.位置 || '').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
   // 位置能否识别：内置地点库（目标路径整段相等）或存档地点树里有这一层；日常行动预演依赖它
   const placeKnown = c => {
@@ -50240,56 +50239,91 @@ ${播报文本}
     };
   };
 
-  // 关系：左翼 = 关系名单（已结识按好感排序 / 同地未结识），主屏 = 圆形星盘（点星选中），右翼 = 选中对象的关系档案与操作。
-  // 星盘：自己居中；内轨 = 已结识（好感越高越靠近中心），外轨 = 同地未结识（暗星，不连线）
+  // 关系：左翼 = 已结识名单（按好感排序，双向好感并排），主屏 = 选中对象的关系档案，右翼 = 此地在场的人（含未结识）。
+  // 同地按地点段比较（存档里同一处有的带「斗罗大陆-」根、有的不带）
+  const locSegs = (c, p) => c.loc.segs(p).join('-');
+  const locText = (c, p) => c.loc.segs(p).join(' · ') || '—';
+  const sign = v => `${v >= 0 ? '+' : ''}${v}`;
+  // 一个人的关系两端：mine = 我存档里对 TA 的记录，theirs = TA 存档里对我的记录（没有就是 null）
+  const bondOf = (c, name) => {
+    const o = c.S.char[name], mine = c.ch.社交?.关系?.[name] || null, theirs = o?.社交?.关系?.[c.name] || null;
+    return { name, o, mine, theirs, aff: mine ? c.num(mine.好感度) : null, back: theirs ? c.num(theirs.好感度) : null };
+  };
+  // 武魂相关度 = 基础（模型填写，未补全时是提示文字）+ 好感加成（每 10 点好感 +1，最多 +20）；与运行时同一算法，运行时在就用运行时
+  const syncOf = (c, r) => {
+    const raw = Number(r?.武魂相关度基础), base = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.floor(raw))) : null;
+    const bonus = Math.max(0, Math.min(20, Math.floor(Math.max(0, c.num(r?.好感度)) / 10)));
+    const f = c.rt('计算武魂相关度总分'), total = typeof f === 'function' ? c.num(f(r)) : Math.min(100, (base ?? 0) + bonus);
+    return { base, bonus, total };
+  };
+  // 双极好感槽：中线为 0，向右暖色、向左冷色；10 点一格
+  const affGauge = (c, label, v, path) => `<div class="rd-gauge${v == null ? ' none' : v < 0 ? ' cold' : ''}">
+      <small>${c.esc(label)}</small>
+      <b>${v == null ? '—' : path ? c.ed(sign(c.fmt(v)), path, { kind: 'number', integer: true, min: -100, max: 100, raw: v }) : sign(c.fmt(v))}</b>
+      <div class="rd-bi"${v == null ? ` data-hint="${c.esc(label)}：对方的关系记录里还没有这一条"` : ''}><i style="${v == null ? 'width:0' : v >= 0 ? `left:50%;width:${Math.min(50, v / 2)}%` : `right:50%;width:${Math.min(50, -v / 2)}%`}"></i></div>
+    </div>`;
+
   const relations = c => {
-    const list = relationList(c), others = Object.keys(c.S.char).filter(n => n !== c.name);
-    const sameLoc = name => c.S.char[name] && c.S.char[name].状态?.位置 === c.ch.状态?.位置;
-    const strangers = others.filter(n => !list.some(r => r.name === n) && sameLoc(n)).map(name => ({ name, stranger: true }));
-    const place = (arr, r0, offset) => arr.map((r, i) => { const a = -Math.PI / 2 + offset + i * (2 * Math.PI / Math.max(arr.length, 1)); const rad = r.stranger ? r0 : r0 - Math.max(0, Math.min(100, r.aff)) / 100 * 6; return { ...r, x: 50 + Math.cos(a) * rad, y: 50 + Math.sin(a) * rad }; });
-    const inner = place(list, 27, 0), outer = place(strangers, 38, Math.PI / Math.max(strangers.length, 1) / (list.length ? 1 : 2));
-    const short = t => String(t || '').length > 7 ? String(t).slice(0, 7) + '…' : String(t || '');
-    const total = inner.length + outer.length, sel = [...list, ...strangers].find(r => r.name === c.state.ui.relsel) || list[0] || strangers[0];
-    const on = n => sel && n === sel.name ? ' on' : '';
-    const row = r => `<button class="row${on(r.name)}" type="button" data-set="relsel=${c.esc(r.name)}" data-face-after="1" aria-current="${!!on(r.name)}">${c.miniAva(r.name)}<div><strong>${c.esc(r.name)}</strong><small>${c.esc(r.stranger ? '同地 · 未结识' : r.关系 || '关系未记录')}</small></div>${r.stranger ? '<span></span>' : `<span class="end ${r.aff >= 0 ? 'warm' : 'cold'}">${r.aff >= 0 ? '+' : ''}${c.fmt(r.aff)}</span>`}</button>`;
+    const list = relationList(c), here = locSegs(c, c.ch.状态?.位置);
+    const present = here ? Object.keys(c.S.char).filter(n => n !== c.name && locSegs(c, c.S.char[n]?.状态?.位置) === here) : [];
+    const known = new Set(list.map(r => r.name)), all = [...list.map(r => r.name), ...present.filter(n => !known.has(n))];
+    const sel = all.includes(c.state.ui.relsel) ? c.state.ui.relsel : all[0];
+    const on = n => n === sel ? ' on' : '';
+    const row = r => {
+      const b = bondOf(c, r.name);
+      return `<button class="row rel-row${on(r.name)}" type="button" data-set="relsel=${c.esc(r.name)}" aria-current="${r.name === sel}">${c.miniAva(r.name)}<div><strong>${c.esc(r.name)}</strong><small title="${c.esc(r.关系 || '')}">${c.esc(r.关系 || '—')}</small></div>
+        <span class="rel-pair" data-hint="你对 ${c.esc(r.name)}：${sign(c.fmt(b.aff))}　${c.esc(r.name)} 对你：${b.back == null ? '没有记录' : sign(c.fmt(b.back))}"><b class="${b.aff < 0 ? 'cold' : 'warm'}">${sign(c.fmt(b.aff))}</b><i class="fa-solid fa-arrow-right-arrow-left"></i><b class="${b.back == null ? 'nil' : b.back < 0 ? 'cold' : 'warm'}">${b.back == null ? '—' : sign(c.fmt(b.back))}</b></span></button>`;
+    };
+    const hereRow = n => {
+      const r = c.ch.社交?.关系?.[n], o = c.S.char[n];
+      return `<button class="row rel-row${on(n)}${r ? '' : ' stranger'}" type="button" data-set="relsel=${c.esc(n)}" data-face-after="0" aria-current="${n === sel}">${c.miniAva(n)}<div><strong>${c.esc(n)}</strong><small title="${c.esc(o?.社交?.主身份 || '')}">${c.esc(o?.社交?.主身份 || '—')}</small></div><span class="rel-tag${r ? '' : ' dim'}">${r ? '已结识' : '未结识'}</span></button>`;
+    };
     return {
       tag: 'CORE · RELATIONS',
-      left: `<div class="pad">${c.head('people-arrows', '关系', 'Relations', 'gd')}
-        ${total ? `<div class="list q-list">${list.length ? `<small class="list-cap">已结识 · ${list.length}</small>${list.map(row).join('')}` : ''}${strangers.length ? `<small class="list-cap">同地未结识 · ${strangers.length}</small>${strangers.map(row).join('')}` : ''}</div>` : c.empty('people-arrows', '还没有记录任何关系', `${others.length} 位角色在目录中`)}
+      left: `<div class="pad">${c.head('people-arrows', '关系', 'Relations', 'gd', list.length ? `<span class="legend rel-legend" data-hint="左：你对 TA 的好感　右：TA 对你的好感（-100 ~ 100）"><i class="fa-solid fa-arrow-right-arrow-left"></i>好感</span>` : '')}
+        ${list.length ? `<div class="list q-list rel-list"><small class="list-cap">已结识 · ${list.length}</small>${list.map(row).join('')}</div>` : c.empty('people-arrows', '还没有记录任何关系')}
       </div>`,
-      core: !total ? `<div class="pad sparse">${c.empty('circle-nodes', '星图是空的')}</div>` : `<div class="pad">
-        ${c.head('circle-nodes', '关系星图', 'Constellation', '', `<span class="legend"><i class="fa-solid fa-handshake-simple" style="color:#e07b3a;width:auto;height:auto"></i>好感${c.hint('连线粗细与数字是好感（-100 ~ 100）；好感越高的人越靠近中心。')}</span>`)}
-        <div class="constellation orbital"><div class="orbitfield">
-          <svg viewBox="0 0 100 100" aria-hidden="true">
-            <circle class="orbit" cx="50" cy="50" r="27"/><circle class="orbit outer" cx="50" cy="50" r="38"/>
-            ${inner.map(r => `<line class="link" x1="50" y1="50" x2="${r.x.toFixed(2)}" y2="${r.y.toFixed(2)}" style="color:${r.aff >= 0 ? '#ffb27a' : '#7cb4ff'}" stroke="currentColor" stroke-width="${(.5 + Math.abs(r.aff) / 120).toFixed(2)}"/>`).join('')}
-          </svg>
-          <span class="orbit-label" style="top:${50 + 27}%">已结识 ${list.length}</span>${strangers.length ? `<span class="orbit-label dim" style="top:${50 + 38}%">同地未结识 ${strangers.length}</span>` : ''}
-          ${inner.map(r => `<span class="link-tag" style="left:${50 + (r.x - 50) * .42}%;top:${50 + (r.y - 50) * .42}%;color:${r.aff >= 0 ? '#ffd9b8' : '#cfe2ff'}"><i class="fa-solid fa-handshake-simple"></i> ${r.aff >= 0 ? '+' : ''}${c.fmt(r.aff)}</span>`).join('')}
-          <div class="star self" style="left:50%;top:50%">${c.miniAva(c.name)}<b>${c.esc(c.name)}</b></div>
-          ${inner.map(r => `<button type="button" class="star${on(r.name)}" data-set="relsel=${c.esc(r.name)}" data-face-after="1" style="left:${r.x}%;top:${r.y}%">${c.miniAva(r.name)}<b>${c.esc(r.name)}</b><small>${c.esc(short(r.关系))}</small></button>`).join('')}
-          ${outer.map(r => `<button type="button" class="star stranger${on(r.name)}" data-set="relsel=${c.esc(r.name)}" data-face-after="1" style="left:${r.x}%;top:${r.y}%">${c.miniAva(r.name)}<b>${c.esc(r.name)}</b><small>同地 · 未结识</small></button>`).join('')}
-        </div></div>
+      core: sel ? `<div class="pad rel-dossier">${relDossier(c, sel)}</div>` : `<div class="pad sparse">${c.empty('people-arrows', '还没有记录任何关系')}</div>`,
+      right: `<div class="pad">${c.head('location-dot', '此地', 'Present', '', here ? `<span class="legend rel-here" title="${c.esc(locText(c, c.ch.状态?.位置))}">${c.esc(locText(c, c.ch.状态?.位置))}</span>` : '')}
+        ${present.length ? `<div class="list q-list rel-list"><small class="list-cap">在场 · ${present.length}</small>${present.sort((a, b) => !!c.ch.社交?.关系?.[b] - !!c.ch.社交?.关系?.[a]).map(hereRow).join('')}</div>` : c.empty('location-dot', here ? '此地没有其他在册的人' : '位置未记录')}
       </div>`,
-      right: `<div class="pad">${sel ? relDetail(c, sel.name) : c.empty('user', '选择一个人查看关系')}</div>`,
     };
   };
-  // 关系档案（右翼）：已结识 = 关系 / 好感可改 + 好感条 + 所在 / 武魂相关度；未结识只给所在与查看
-  const relDetail = (c, name) => {
-    const r = c.ch.社交?.关系?.[name], other = c.S.char[name], loc = String(other?.状态?.位置 || '未知').replace(/^斗罗大陆-/, '').replace(/-/g, ' · ');
-    const view = other ? `<button class="cta" type="button" data-view-char="${c.esc(name)}"><i class="fa-solid fa-eye"></i>查看 ${c.esc(name)}</button>` : '';
-    if (!r) return `<div class="insp-head">${c.miniAva(name)}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">${c.esc(other?.社交?.主身份 || '')}</small></div></div>
-      <div class="tiles"><div class="tile">${c.sock('location-dot')}<b>${c.esc(loc)}</b><small>同地 · 尚未结识</small></div></div>
-      <div class="acts">${view}</div>`;
-    const aff = c.num(r.好感度), base = c.num(r.武魂相关度基础);
-    return `<div class="insp-head">${c.miniAva(name)}<div><strong style="font-size:1.1em">${c.esc(name)}</strong><br><small class="lbl">${c.esc(r.对方身份 || other?.社交?.主身份 || '')}</small></div></div>
-      ${c.kv([['关系', c.ed(r.关系 || '', c.P('社交', '关系', name, '关系'))], ['好感', `${c.ed(`${aff >= 0 ? '+' : ''}${c.fmt(aff)}`, c.P('社交', '关系', name, '好感度'), { kind: 'number', integer: true, min: -100, max: 100, raw: aff })} / 100`]])}
-      ${affBar(aff)}
-      <div class="tiles">
-        <div class="tile">${c.sock('location-dot')}<b>${c.esc(loc)}</b><small>所在</small></div>
-        <div class="tile">${c.sock('link')}<b>${base}</b><small>武魂相关度基础${c.hint('总相关度由运行时按武魂、属性与关系计算，≥70 时可触发武魂融合。')}</small></div>
-      </div>
-      <div class="acts">${view}</div>`;
+  // 关系档案（主屏）：名片（身份 / 等级 / 武魂 / 年龄 / 所在）→ 羁绊（关系称谓 + 双向好感）→ 武魂相关度 → 交集（共同势力 / 共同熟人）→ 查看 TA
+  const relDossier = (c, name) => {
+    const b = bondOf(c, name), o = b.o, a = o?.属性 || {}, src = c.avatarSrc(name);
+    const lv = o ? c.num(a.等级) : null, soul = o?.第1武魂?.表象名称 || o?.第1武魂?.名称;
+    const same = o && locSegs(c, o.状态?.位置) === locSegs(c, c.ch.状态?.位置) && !!locSegs(c, o.状态?.位置);
+    const role = b.mine?.对方身份 || o?.社交?.主身份 || '';
+    const myF = c.ch.社交?.势力 || {}, theirF = o?.社交?.势力 || {};
+    const facs = Object.keys(myF).filter(k => theirF[k]);
+    const mutual = Object.keys(c.ch.社交?.关系 || {}).filter(n => n !== name && o?.社交?.关系?.[n]);
+    const view = o ? `<button class="cta" type="button" data-view-char="${c.esc(name)}"><i class="fa-solid fa-eye"></i>查看 ${c.esc(name)}</button>` : '';
+    const hero = `<div class="rd-hero">
+        <span class="mini-ava rd-face">${src ? `<img src="${c.esc(src)}" alt="">` : c.esc(String(name).slice(-2, -1) || name[0])}</span>
+        <div class="rd-id">
+          <div class="rd-name"><strong>${c.esc(name)}</strong>${lv != null ? `<span class="rd-lv"><b>${lv}</b>级 · ${c.esc(c.rankTitle(lv))}</span>` : ''}</div>
+          <div class="rd-role" title="${c.esc(role)}">${c.esc(role || '—')}</div>
+          <div class="plaques">${soul ? `<span class="plq" style="--pc:#a98bff" data-hint="第一武魂">${c.esc(soul)}</span>` : ''}${o && !c.blank(a.年龄) ? `<span class="plq" style="--pc:#7fb0e0">${Math.floor(c.num(a.年龄))} 岁</span>` : ''}<span class="plq${same ? '' : ' dim'}" style="--pc:${same ? '#3fd58a' : '#8a9ab3'}" data-hint="${same ? '与你同在此地' : '所在'}"><i class="fa-solid fa-location-dot"></i> ${c.esc(locText(c, o?.状态?.位置))}</span></div>
+        </div>
+      </div>`;
+    const bond = b.mine ? (() => {
+      const s = syncOf(c, b.mine), P = c.P('社交', '关系', name);
+      return `<div class="rd-bond">
+          <div class="rd-tie"><small>关系</small><strong>${c.ed(b.mine.关系 || '', [...P, '关系'])}</strong>${b.theirs && b.theirs.关系 && b.theirs.关系 !== b.mine.关系 ? `<span class="rd-tie-back" data-hint="${c.esc(name)} 那边记的关系">TA 记作 ${c.esc(b.theirs.关系)}</span>` : ''}</div>
+          <div class="rd-gauges">${affGauge(c, `你对 ${name}`, b.aff, [...P, '好感度'])}${affGauge(c, `${name} 对你`, b.back, b.theirs ? ['char', name, '社交', '关系', c.name, '好感度'] : null)}</div>
+        </div>
+        <div class="rd-sync">
+          <div class="rd-sync-top"><small>武魂相关度</small><b>${s.total}</b><span class="rd-sync-eq">基础 ${c.ed(s.base == null ? '—' : String(s.base), [...P, '武魂相关度基础'], { kind: 'number', integer: true, min: 0, max: 100, raw: s.base ?? 0 })} + 好感加成 ${s.bonus}</span></div>
+          <div class="rd-sync-bar"><i style="width:${Math.min(100, s.total)}%"></i><span class="rd-sync-gate" style="left:70%" data-hint="武魂相关度 ≥70 时可触发武魂融合；好感每 10 点加 1，最多加 20"></span></div>
+        </div>`;
+    })() : `<div class="rd-bond rd-bond-none"><i class="fa-solid fa-user-plus"></i><span>尚未结识</span></div>`;
+    const chips = (arr, fn) => arr.length ? `<div class="rd-chips">${arr.map(fn).join('')}</div>` : '<span class="rd-nil">—</span>';
+    const shared = `<div class="rd-shared">
+        <div><small>共同势力</small>${chips(facs, k => `<span class="rd-chip" data-hint="你：${c.esc(myF[k]?.身份 || '—')}　${c.esc(name)}：${c.esc(theirF[k]?.身份 || '—')}"><i class="fa-solid fa-flag"></i>${c.esc(k)}<em>${c.esc(theirF[k]?.身份 || '')}</em></span>`)}</div>
+        <div><small>共同熟人</small>${chips(mutual, n => `<button type="button" class="rd-chip" data-set="relsel=${c.esc(n)}">${c.miniAva(n)}${c.esc(n)}</button>`)}</div>
+      </div>`;
+    return `${hero}${bond}${shared}${view ? `<div class="acts">${view}</div>` : ''}`;
   };
 
   // 身份：不是「列表选一项」的页，所以不拆左翼——左翼折成侧轨，主屏 = 身份名片（主身份 / 名望 / 家世）+ 势力与称号两栏

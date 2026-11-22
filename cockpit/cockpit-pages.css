@@ -71,20 +71,79 @@
 .rail-item b{font-family:Bahnschrift,sans-serif;font-size:1.2em;line-height:1}
 .rail-item small{font-size:max(10.5px,.72em);color:var(--ink3);font-weight:800;writing-mode:vertical-rl;letter-spacing:.2em}
 
-/* 关系星盘：圆形全息盘（边缘渐隐，无矩形边框），正方形坐标场，两条轨道 */
-.constellation.orbital{clip-path:none;box-shadow:none;background:none}
-.constellation.orbital::before{display:none}
-.orbitfield{position:absolute;left:50%;top:50%;height:100%;max-width:100%;aspect-ratio:1;translate:-50% -50%;border-radius:50%;background:radial-gradient(1px 1px at 22% 30%,#fff9,transparent),radial-gradient(1px 1px at 70% 22%,#fff7,transparent),radial-gradient(1.5px 1.5px at 36% 74%,#fff8,transparent),radial-gradient(1px 1px at 80% 64%,#fff6,transparent),radial-gradient(1px 1px at 58% 86%,#fff6,transparent),radial-gradient(closest-side,#1d3d76 0%,#152d59 62%,rgba(21,45,89,.92) 86%,rgba(21,45,89,0) 100%)}
-.orbitfield svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.orbit{fill:none;stroke:rgba(140,190,255,.38);stroke-width:.25;stroke-dasharray:1 1.6}
-.orbit.outer{stroke:rgba(140,190,255,.22)}
-.orbitfield .link{stroke-dasharray:1.4 1.8;vector-effect:none}
-.orbit-label{position:absolute;left:50%;translate:-50% -50%;font-size:max(10.5px,.66em);font-weight:800;letter-spacing:.14em;color:#9fc4ff;padding:.05em .6em;background:rgba(12,24,48,.85);box-shadow:inset 0 0 0 1px rgba(140,190,255,.3)}
-.orbit-label.dim{color:#7f96bb}
-.orbitfield .link-tag{font-family:Bahnschrift,sans-serif}
-.orbitfield .star small{color:#ffd9b8}
-.orbitfield .star.stranger small{color:#a9bcd9}
-.orbitfield .star small{white-space:nowrap}
+/* 关系页：左翼名单（双向好感）、右翼此地在场、主屏关系档案（名片 → 羁绊双槽 → 武魂相关度 → 交集） */
+.rel-legend i{width:auto;height:auto;margin:0;color:#c4621d}
+.rel-here{min-width:0;max-width:12em;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rel-list .rel-row small{-webkit-line-clamp:1}
+.rel-pair{display:flex;align-items:center;gap:.35em;font:800 .95em Bahnschrift,sans-serif;white-space:nowrap}
+.rel-pair i{font-size:.7em;color:var(--ink3)}
+.rel-pair .warm{color:#c4621d}.rel-pair .cold{color:#2f6fd0}.rel-pair .nil{color:var(--ink3)}
+.rel-tag{font-size:max(10.5px,.7em);font-weight:900;letter-spacing:.06em;padding:.18em .6em;color:#17794a;background:rgba(40,180,110,.12);box-shadow:inset 0 0 0 1px rgba(40,160,100,.4);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.rel-tag.dim{color:var(--ink3);background:rgba(120,135,160,.1);box-shadow:inset 0 0 0 1px rgba(120,135,160,.32)}
+.rel-row.stranger .mini-ava{filter:grayscale(.75) brightness(.95)}
+
+.rel-dossier{gap:1em}
+.rd-hero{display:flex;align-items:center;gap:1.1em;min-width:0}
+.rd-face{width:5.6em;height:5.6em;font-size:1.25em;box-shadow:none;filter:drop-shadow(0 0 0 #fff) drop-shadow(0 4px 10px rgba(20,40,80,.3))}
+.rd-face img{width:100%;height:100%;object-fit:cover}
+.rd-id{min-width:0;display:flex;flex-direction:column;gap:.4em}
+.rd-name{display:flex;align-items:baseline;gap:.7em;flex-wrap:wrap}
+.rd-name strong{font-size:1.55em;font-weight:900;letter-spacing:.06em;line-height:1.1}
+.rd-lv{font-size:.85em;font-weight:800;color:var(--ink2)}
+.rd-lv b{font:900 1.35em Bahnschrift,sans-serif;color:var(--blue);margin-right:.1em}
+.rd-role{font-size:.9em;font-weight:700;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-id .plaques{max-width:none}
+.rd-id .plq i{font-size:.85em}
+.rd-id .plq.dim{opacity:.75}
+
+/* 羁绊：深色数据牌，上方关系称谓，下方你→TA / TA→你 两条双极槽 */
+.rd-bond{display:flex;flex-direction:column;gap:.8em;padding:.9em 1.1em 1em;color:#e6edf9;background:linear-gradient(180deg,#1f2a42,#141c2f);clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.rd-tie{display:flex;align-items:baseline;gap:.7em;min-width:0;flex-wrap:wrap}
+.rd-tie small,.rd-gauge small,.rd-sync-top small,.rd-shared small{font-size:max(10.5px,.72em);font-weight:900;letter-spacing:.12em;color:#8fa3c4}
+.rd-tie strong{font-size:1.15em;font-weight:900;letter-spacing:.05em;min-width:0;overflow-wrap:anywhere}
+.rd-tie-back{font-size:max(10.5px,.78em);font-weight:700;color:#a9bad6;max-width:16em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2em}
+.rd-gauge{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:.35em .6em}
+.rd-gauge small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-gauge>b{font:900 1.5em Bahnschrift,sans-serif;line-height:1;color:#ffb27a;text-shadow:0 0 10px rgba(255,140,70,.45)}
+.rd-gauge.cold>b{color:#8cc0ff;text-shadow:0 0 10px rgba(90,160,255,.45)}
+.rd-gauge.none>b{color:#7f8ea8;text-shadow:none}
+.rd-bi{grid-column:1/-1;position:relative;height:10px;background:#1a2740;box-shadow:inset 0 0 0 1px #33415b}
+.rd-bi::before{content:"";position:absolute;z-index:2;left:50%;top:-3px;bottom:-3px;width:2px;translate:-50% 0;background:#a9b8d2}
+.rd-bi::after{content:"";position:absolute;z-index:1;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(5% - 2px),#0b1221 calc(5% - 2px) 5%)}
+.rd-bi i{position:absolute;top:1px;bottom:1px;background:linear-gradient(90deg,#ffb27a,#ff7a3d);box-shadow:0 0 8px rgba(255,130,60,.7)}
+.rd-gauge.cold .rd-bi i{background:linear-gradient(270deg,#8cc0ff,#3d7cff);box-shadow:0 0 8px rgba(80,140,255,.7)}
+.rd-bond-none{flex-direction:row;align-items:center;gap:.7em;font-weight:900;letter-spacing:.1em;color:#a9bad6}
+.rd-bond-none i{font-size:1.2em;color:#6fa4ff}
+
+/* 武魂相关度：0–100 槽，70 处是融合门槛刻线 */
+.rd-sync{display:flex;flex-direction:column;gap:.45em}
+.rd-sync-top{display:flex;align-items:baseline;gap:.7em;flex-wrap:wrap}
+.rd-sync-top small{color:var(--ink3)}
+.rd-sync-top>b{font:900 1.35em Bahnschrift,sans-serif;color:var(--ink)}
+.rd-sync-eq{margin-left:auto;font-size:max(10.5px,.8em);font-weight:700;color:var(--ink3)}
+.rd-sync-bar{position:relative;height:8px;background:#0f182a;box-shadow:inset 0 0 0 1px #33415b;clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}
+.rd-sync-bar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(180deg,#c3a6ff,#7a4cf0);box-shadow:0 0 8px rgba(140,90,255,.6)}
+.rd-sync-gate{position:absolute;top:0;bottom:0;width:10px;translate:-50% 0;cursor:help}
+.rd-sync-gate::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;translate:-50% 0;background:#ffd36b;box-shadow:0 0 6px #ffb020}
+
+/* 交集：共同势力 / 共同熟人 */
+.rd-shared{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1em}
+.rd-shared>div{display:flex;flex-direction:column;gap:.45em;min-width:0}
+.rd-shared small{color:var(--ink3)}
+.rd-chips{display:flex;flex-wrap:wrap;gap:.4em}
+.rd-chip{appearance:none;border:0;font:inherit;display:inline-flex;align-items:center;gap:.45em;max-width:100%;padding:.3em .7em;font-size:max(10.5px,.85em);font-weight:800;color:var(--ink);background:rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(30,48,80,.18);clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+button.rd-chip{cursor:pointer}
+button.rd-chip:hover,button.rd-chip:focus-visible{background:#fff;box-shadow:inset 0 0 0 1px rgba(47,124,246,.5)}
+.rd-chip i{color:var(--blue);font-size:.85em}
+.rd-chip em{font-style:normal;font-weight:700;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rd-chip .mini-ava{width:1.7em;height:1.7em;font-size:.7em}
+.rd-nil{font-weight:800;color:var(--ink3)}
+.rel-dossier>.acts{margin-top:auto}
+@container cockpit (max-width:700px){
+  .rd-face{width:4.4em;height:4.4em}
+  .rd-gauges,.rd-shared{grid-template-columns:1fr;gap:.8em}
+}
 
 /* 名望牌：深色数据牌，名望等级为主格（金字），其余为数字格 */
 .fame{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));background:linear-gradient(180deg,#1f2a42,#141c2f);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);color:#e6edf9}
@@ -510,8 +569,6 @@ div.spirit-link:hover .spirit-card,div.spirit-link.on .spirit-card{box-shadow:in
 .list-cap{display:block;margin:.35em 0 .1em;font-size:max(10.5px,.72em);font-weight:900;letter-spacing:.08em;color:var(--ink3)}
 .q-list .end.warm{color:#c4621d}
 .q-list .end.cold{color:#2f6fd0}
-.star.on .mini-ava{box-shadow:0 0 0 2px #5aa5ff,0 0 16px rgba(90,165,255,.85)}
-.star.on b{color:#fff;text-shadow:0 0 8px rgba(90,165,255,.9)}
 .rc.sel{box-shadow:inset 0 0 0 2px #e3a92b,inset 0 2px 0 #fff;transform:translateY(-3px)}
 .rc.on:not(.sel){box-shadow:inset 0 0 0 1px rgba(26,90,214,.45),inset 0 2px 0 #fff}
 button.tile{appearance:none;border:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
@@ -549,7 +606,6 @@ button.tile:hover{background:rgba(255,255,255,.85)}
 /* 2 叙述块并不都能点：只有带折叠的才给手型；关系星盘里的「自己」不是按钮 */
 .narr{cursor:auto}
 .narr[data-clamp],.narr.clamp{cursor:pointer}
-.star.self{cursor:default}
 /* 3 列表行的名称和副标题允许折成两行，不再用省略号吞字（截断过的：势力名、魂技消耗、货品分类、编年标题） */
 .q-list .row strong,.q-list .row small{white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 /* 窄翼里带魂环徽章的行（武魂页魂技列表）：徽章收小、去掉箭头，把宽度让给名称，五字魂技名不再断成「青竹·节 / 制」 */
