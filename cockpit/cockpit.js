@@ -254,7 +254,7 @@
     <nav class="arc" aria-label="状态栏领域"><div class="bz"><div class="b2"><div class="b3"><div class="track" id="ck-track"><span class="slider" aria-hidden="true"></span></div></div></div></div></nav>
     <div class="screens">
       <span class="hinge l" aria-hidden="true"></span><span class="hinge r" aria-hidden="true"></span>
-      <div class="wing l"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+      <div class="wing l"><div class="float"><button type="button" class="wing-toggle" aria-expanded="false"><span></span><i class="fa-solid fa-chevron-down"></i></button><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-L01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingL"></div></div>
       </div></div></div></div></div>
@@ -262,7 +262,7 @@
         <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-core"></div></div>
       </div></div></div></div></div>
-      <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+      <div class="wing r"><div class="float"><button type="button" class="wing-toggle" aria-expanded="false"><span></span><i class="fa-solid fa-chevron-down"></i></button><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingR"></div></div>
       </div></div></div></div></div>
@@ -308,6 +308,10 @@
     requestAnimationFrame(() => { relayoutQueued = false; api.relayout?.(); });
   }).observe($('.cockpit'));
   const isMobile = () => mobileNow;
+  // 手机布局（试行）：true = 上下排——左翼名单压成横向选择条放在主屏上方，其余侧屏收成主屏下方的折叠栏，座舱不再整屏横移；
+  // false = 退回三面横划轮播
+  const MOBILE_STACK = true;
+  const stacked = () => MOBILE_STACK && isMobile();
 
   // 存档里尚未生成的值（「待补全」「待生成」「待填写」，常带一段括号填写说明）：渲染后整段换成「—」占位，说明不显示。
   // 只改显示文字；可编辑值的原始内容在 data-ie-raw 里，点开编辑仍是完整原文
@@ -423,6 +427,7 @@
   let renderedWide = '', renderedMobile;
   const applyWide = () => {
     $('.cockpit').dataset.view = `${state.domain}/${state.page[state.domain] || domains[state.domain].keys[0].id}`;
+    if (!stacked()) $('.cockpit').classList.remove('stack');
     const wide = isMobile() ? '' : renderedWide;
     screens.classList.toggle('wide-l', wide === 'both' || wide === 'l');
     screens.classList.toggle('wide-r', wide === 'both' || wide === 'r');
@@ -435,7 +440,7 @@
   // 手机端三面切换的标签：页面可用 faces 指定；否则取该翼第一个标题（背包 / 钱包 …），只有侧轨时取侧轨小字，都没有才用通用名
   const faceLabel = (html, rail, dflt) => (String(html || '').match(/<h2 class="h"><span class="sock[^"]*"><i[^>]*><\/i><\/span>([^<]+)/) || [])[1]?.trim()
     || (!html && (String(rail || '').match(/<small>([^<]+)<\/small>/) || [])[1]?.trim()) || dflt;
-  const setFaceLabels = v => { const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
+  const setFaceLabels = v => { $('.wing-toggle span', wingEl.l).textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); $('.wing-toggle span', wingEl.r).textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
   let faceIdleTimer = 0;
   const beginFaceMotion = () => {
     clearTimeout(faceIdleTimer);
@@ -465,7 +470,7 @@
     scheduleCarouselFit();
   };
   const fitCarousel = () => {
-    if (!isMobile()) { screens.style.removeProperty('--carousel-h'); return; }
+    if (!isMobile() || stacked()) { screens.style.removeProperty('--carousel-h'); return; }
     const height = Math.max(320, currentPanel().scrollHeight) + 'px';
     if (screens.style.getPropertyValue('--carousel-h') !== height) screens.style.setProperty('--carousel-h', height);
   };
@@ -492,6 +497,21 @@
   };
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
+  // 手机上下排：两翼开合按「页面:侧」记住；名单型左翼（含列表行）做成横向选择条，选中项滚到条内可见处
+  const openWings = new Set();
+  const applyStack = () => {
+    $('.cockpit').classList.toggle('stack', stacked());
+    if (!stacked()) return;
+    const key = $('.cockpit').dataset.view;
+    for (const side of ['l', 'r']) {
+      const w = wingEl[side], h = host[side], strip = side === 'l' && !!h.querySelector('.list .row');
+      const open = strip || openWings.has(key + ':' + side);
+      w.classList.toggle('wing-strip', strip); w.classList.toggle('wing-none', !h.firstElementChild); w.classList.toggle('wing-open', open);
+      $('.wing-toggle', w).setAttribute('aria-expanded', String(open));
+      const on = strip && $('.list .row.on', h);
+      if (on) { const list = on.parentElement, lr = list.getBoundingClientRect(), r = on.getBoundingClientRect(); if (r.left < lr.left || r.right > lr.right) list.scrollLeft += r.left - lr.left - 12; }
+    }
+  };
   function renderPage(how) {
     const { d, page } = currentPage(), v = page.view(ctx());
     renderedWide = v.wide || '';
@@ -508,6 +528,7 @@
       mount(v, put(host.c, v.core, null, true, keepScroll));
       put(host.l, wingHtml(v, 'l'), null, true, keepScroll);
       put(host.r, wingHtml(v, 'r'), null, true, keepScroll);
+      applyStack();
       scheduleCarouselFit();
     } else if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
@@ -1058,7 +1079,8 @@
       // 手机端：在左翼列表里点选后转到主屏看详情；主屏里的选择（星图 / 竖牌）可用 data-face-after 指定转去哪一面
       if (isMobile()) {
         const f = t.dataset.faceAfter !== undefined ? Number(t.dataset.faceAfter) : t.closest('.wing.l') && t.matches('.row, .hpt, .tz') ? 0 : null;
-        if (f !== null && f !== state.face) setFace(f);
+        if (f !== null && stacked()) { const el = f === -1 ? wingEl.l : f === 1 ? wingEl.r : center, r = el.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * .6) el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); }
+        else if (f !== null && f !== state.face) setFace(f);
       }
       return;
     }
@@ -1076,10 +1098,15 @@
   // ---------- 手机：单屏横滑 ----------
   const dots = $('.dots');
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
+  for (const side of ['l', 'r']) $('.wing-toggle', wingEl[side]).addEventListener('click', () => {
+    const k = $('.cockpit').dataset.view + ':' + side;
+    if (openWings.has(k)) openWings.delete(k); else openWings.add(k);
+    applyStack();
+  });
   let drag = null;
   let suppressSwipeClick = false;
   screens.addEventListener('pointerdown', e => {
-    if (!isMobile() || !e.isPrimary || e.button !== 0) return;
+    if (!isMobile() || stacked() || !e.isPrimary || e.button !== 0) return;
     suppressSwipeClick = false;
     if (e.target.closest('input,select,textarea,label,[contenteditable],[data-table]')) return;
     if (e.pointerType === 'mouse' && e.target.closest('button,a')) return;

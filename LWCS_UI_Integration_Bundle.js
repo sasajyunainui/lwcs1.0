@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:8c3058f96b7ef254dd3028908b1dff72127408beb0e35fdaaf984e092a9e18df|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:d3c36a9c650e754819c5b07866556115cd0e14d376c651f4f1323e8ebcad12a5|cockpit/pages-role.js:c4b15fe2e8fbf950fb7a75783e0ea73c63fe36db47ccf07c90eb7c426ec8978a|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -49004,7 +49004,7 @@ ${播报文本}
     <nav class="arc" aria-label="状态栏领域"><div class="bz"><div class="b2"><div class="b3"><div class="track" id="ck-track"><span class="slider" aria-hidden="true"></span></div></div></div></div></nav>
     <div class="screens">
       <span class="hinge l" aria-hidden="true"></span><span class="hinge r" aria-hidden="true"></span>
-      <div class="wing l"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+      <div class="wing l"><div class="float"><button type="button" class="wing-toggle" aria-expanded="false"><span></span><i class="fa-solid fa-chevron-down"></i></button><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-L01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingL"></div></div>
       </div></div></div></div></div>
@@ -49012,7 +49012,7 @@ ${播报文本}
         <span class="tagline" aria-hidden="true" id="ck-coreTag">CORE</span><span class="led tr" aria-hidden="true"></span><span class="led bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span><span class="screw tl" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-core"></div></div>
       </div></div></div></div></div>
-      <div class="wing r"><div class="float"><div class="bz"><div class="b2"><div class="b3">
+      <div class="wing r"><div class="float"><button type="button" class="wing-toggle" aria-expanded="false"><span></span><i class="fa-solid fa-chevron-down"></i></button><div class="bz"><div class="b2"><div class="b3">
         <span class="tagline" aria-hidden="true">SM-R01</span><span class="led tr" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
         <div class="scr"><div class="host" id="ck-wingR"></div></div>
       </div></div></div></div></div>
@@ -49058,6 +49058,10 @@ ${播报文本}
     requestAnimationFrame(() => { relayoutQueued = false; api.relayout?.(); });
   }).observe($('.cockpit'));
   const isMobile = () => mobileNow;
+  // 手机布局（试行）：true = 上下排——左翼名单压成横向选择条放在主屏上方，其余侧屏收成主屏下方的折叠栏，座舱不再整屏横移；
+  // false = 退回三面横划轮播
+  const MOBILE_STACK = true;
+  const stacked = () => MOBILE_STACK && isMobile();
 
   // 存档里尚未生成的值（「待补全」「待生成」「待填写」，常带一段括号填写说明）：渲染后整段换成「—」占位，说明不显示。
   // 只改显示文字；可编辑值的原始内容在 data-ie-raw 里，点开编辑仍是完整原文
@@ -49173,6 +49177,7 @@ ${播报文本}
   let renderedWide = '', renderedMobile;
   const applyWide = () => {
     $('.cockpit').dataset.view = `${state.domain}/${state.page[state.domain] || domains[state.domain].keys[0].id}`;
+    if (!stacked()) $('.cockpit').classList.remove('stack');
     const wide = isMobile() ? '' : renderedWide;
     screens.classList.toggle('wide-l', wide === 'both' || wide === 'l');
     screens.classList.toggle('wide-r', wide === 'both' || wide === 'r');
@@ -49185,7 +49190,7 @@ ${播报文本}
   // 手机端三面切换的标签：页面可用 faces 指定；否则取该翼第一个标题（背包 / 钱包 …），只有侧轨时取侧轨小字，都没有才用通用名
   const faceLabel = (html, rail, dflt) => (String(html || '').match(/<h2 class="h"><span class="sock[^"]*"><i[^>]*><\/i><\/span>([^<]+)/) || [])[1]?.trim()
     || (!html && (String(rail || '').match(/<small>([^<]+)<\/small>/) || [])[1]?.trim()) || dflt;
-  const setFaceLabels = v => { const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
+  const setFaceLabels = v => { $('.wing-toggle span', wingEl.l).textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); $('.wing-toggle span', wingEl.r).textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); const [l, , r] = $$('.dots button'); if (l) l.textContent = v.faces?.l || faceLabel(v.left, v.railL, '根基'); if (r) r.textContent = v.faces?.r || faceLabel(v.right, v.railR, '详情'); };
   let faceIdleTimer = 0;
   const beginFaceMotion = () => {
     clearTimeout(faceIdleTimer);
@@ -49215,7 +49220,7 @@ ${播报文本}
     scheduleCarouselFit();
   };
   const fitCarousel = () => {
-    if (!isMobile()) { screens.style.removeProperty('--carousel-h'); return; }
+    if (!isMobile() || stacked()) { screens.style.removeProperty('--carousel-h'); return; }
     const height = Math.max(320, currentPanel().scrollHeight) + 'px';
     if (screens.style.getPropertyValue('--carousel-h') !== height) screens.style.setProperty('--carousel-h', height);
   };
@@ -49242,6 +49247,21 @@ ${播报文本}
   };
   // 页面可提供 mount(face, ctx) 挂交互（沙盘拖拽、缩放等），每次主屏换面后调用
   const mount = (v, face) => { if (face && typeof v.mount === 'function') try { v.mount(face, ctx()); } catch (err) { console.error(err); } };
+  // 手机上下排：两翼开合按「页面:侧」记住；名单型左翼（含列表行）做成横向选择条，选中项滚到条内可见处
+  const openWings = new Set();
+  const applyStack = () => {
+    $('.cockpit').classList.toggle('stack', stacked());
+    if (!stacked()) return;
+    const key = $('.cockpit').dataset.view;
+    for (const side of ['l', 'r']) {
+      const w = wingEl[side], h = host[side], strip = side === 'l' && !!h.querySelector('.list .row');
+      const open = strip || openWings.has(key + ':' + side);
+      w.classList.toggle('wing-strip', strip); w.classList.toggle('wing-none', !h.firstElementChild); w.classList.toggle('wing-open', open);
+      $('.wing-toggle', w).setAttribute('aria-expanded', String(open));
+      const on = strip && $('.list .row.on', h);
+      if (on) { const list = on.parentElement, lr = list.getBoundingClientRect(), r = on.getBoundingClientRect(); if (r.left < lr.left || r.right > lr.right) list.scrollLeft += r.left - lr.left - 12; }
+    }
+  };
   function renderPage(how) {
     const { d, page } = currentPage(), v = page.view(ctx());
     renderedWide = v.wide || '';
@@ -49258,6 +49278,7 @@ ${播报文本}
       mount(v, put(host.c, v.core, null, true, keepScroll));
       put(host.l, wingHtml(v, 'l'), null, true, keepScroll);
       put(host.r, wingHtml(v, 'r'), null, true, keepScroll);
+      applyStack();
       scheduleCarouselFit();
     } else if (how.kind === 'domain') {
       mount(v, put(host.c, v.core, { out: `translateX(${-how.dir * 9}%)`, in: `translateX(${how.dir * 9}%)` }));
@@ -49808,7 +49829,8 @@ ${播报文本}
       // 手机端：在左翼列表里点选后转到主屏看详情；主屏里的选择（星图 / 竖牌）可用 data-face-after 指定转去哪一面
       if (isMobile()) {
         const f = t.dataset.faceAfter !== undefined ? Number(t.dataset.faceAfter) : t.closest('.wing.l') && t.matches('.row, .hpt, .tz') ? 0 : null;
-        if (f !== null && f !== state.face) setFace(f);
+        if (f !== null && stacked()) { const el = f === -1 ? wingEl.l : f === 1 ? wingEl.r : center, r = el.getBoundingClientRect(); if (r.top < 0 || r.top > innerHeight * .6) el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); }
+        else if (f !== null && f !== state.face) setFace(f);
       }
       return;
     }
@@ -49826,10 +49848,15 @@ ${播报文本}
   // ---------- 手机：单屏横滑 ----------
   const dots = $('.dots');
   dots.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setFace(Number(b.dataset.face)); });
+  for (const side of ['l', 'r']) $('.wing-toggle', wingEl[side]).addEventListener('click', () => {
+    const k = $('.cockpit').dataset.view + ':' + side;
+    if (openWings.has(k)) openWings.delete(k); else openWings.add(k);
+    applyStack();
+  });
   let drag = null;
   let suppressSwipeClick = false;
   screens.addEventListener('pointerdown', e => {
-    if (!isMobile() || !e.isPrimary || e.button !== 0) return;
+    if (!isMobile() || stacked() || !e.isPrimary || e.button !== 0) return;
     suppressSwipeClick = false;
     if (e.target.closest('input,select,textarea,label,[contenteditable],[data-table]')) return;
     if (e.pointerType === 'mouse' && e.target.closest('button,a')) return;
@@ -50318,12 +50345,24 @@ ${播报文本}
           <div class="rd-sync-bar"><i style="width:${Math.min(100, s.total)}%"></i><span class="rd-sync-gate" style="left:70%" data-hint="武魂相关度 ≥70 时可触发武魂融合；好感每 10 点加 1，最多加 20"></span></div>
         </div>`;
     })() : `<div class="rd-bond rd-bond-none"><i class="fa-solid fa-user-plus"></i><span>尚未结识</span></div>`;
+    // 关系的实际作用（与各系统同一规则）：情报可见度（运行时判定）、交易成交率（基础 60% + 好感 × 0.25）、
+    // 私人代工（好感 ≥50 半价、≥80 免费，成功率每 10 点好感 +1，需同地）、交手记录（战斗历史按对手名记）
+    const vf = c.rt('判断运行时角色间情报可见度_V1'), vis = o && typeof vf === 'function' ? vf(c.ch, c.name, o, name) : null;
+    const af = b.aff ?? 0, trade = Math.floor(af * .25), fight = c.ch.战斗历史?.[name];
+    const jobs = c.entries(o?.副职业).filter(([, j]) => c.num(j?.等级) > 0);
+    const fee = af >= 80 ? '免费' : af >= 50 ? '半价' : '全额';
+    const effects = `<div class="tiles four rd-fx">
+        <div class="tile" data-hint="${c.esc(`决定剧情里你能掌握 ${name} 的哪些信息。${vis?.依据 ? `依据：${vis.依据}` : ''}`)}">${c.sock('eye')}<b>${c.esc(vis?.状态 || '—')}</b><small>情报</small></div>
+        <div class="tile" data-hint="与 ${c.esc(name)} 交易时成交率基础 60%，好感每 4 点 ±1%，再按出价高低增减，范围 5% ~ 95%">${c.sock('scale-balanced', 'gd')}<b>${sign(trade)}%</b><small>交易成交率</small></div>
+        <div class="tile${jobs.length ? '' : ' dim'}" data-hint="${jobs.length ? `请 ${c.esc(name)} 当面代工（需同在一地）：好感 ≥50 代工费减半，≥80 免费；成功率按好感每 10 点 +1` : `${c.esc(name)} 没有副职业，不能代工`}">${c.sock('hammer')}<b>${jobs.length ? `${fee} · ${sign(Math.floor(af / 10))}` : '—'}</b><small title="${c.esc(jobs.map(([k, j]) => `${k} ${c.num(j.等级)} 级`).join('、'))}">私人代工${jobs.length ? ` · ${c.esc(jobs.map(([k, j]) => `${k} ${c.num(j.等级)}级`).join('、'))}` : ''}</small></div>
+        <div class="tile${fight ? '' : ' dim'}">${c.sock('hand-fist', 'vp')}<b>${fight ? `${c.fmt(fight.次数)} 次` : '—'}</b><small>交手${fight && c.num(fight.最近tick) > 0 ? ` · 最近 ${c.esc(c.tickDate(fight.最近tick))}` : ''}</small></div>
+      </div>`;
     const chips = (arr, fn) => arr.length ? `<div class="rd-chips">${arr.map(fn).join('')}</div>` : '<span class="rd-nil">—</span>';
     const shared = `<div class="rd-shared">
         <div><small>共同势力</small>${chips(facs, k => `<span class="rd-chip" data-hint="你：${c.esc(myF[k]?.身份 || '—')}　${c.esc(name)}：${c.esc(theirF[k]?.身份 || '—')}"><i class="fa-solid fa-flag"></i>${c.esc(k)}<em>${c.esc(theirF[k]?.身份 || '')}</em></span>`)}</div>
         <div><small>共同熟人</small>${chips(mutual, n => `<button type="button" class="rd-chip" data-set="relsel=${c.esc(n)}">${c.miniAva(n)}${c.esc(n)}</button>`)}</div>
       </div>`;
-    return `${hero}${bond}${shared}${view ? `<div class="acts">${view}</div>` : ''}`;
+    return `${hero}${bond}${effects}${shared}${view ? `<div class="acts">${view}</div>` : ''}`;
   };
 
   // 身份：不是「列表选一项」的页，所以不拆左翼——左翼折成侧轨，主屏 = 身份名片（主身份 / 名望 / 家世）+ 势力与称号两栏

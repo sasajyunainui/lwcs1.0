@@ -318,12 +318,24 @@
           <div class="rd-sync-bar"><i style="width:${Math.min(100, s.total)}%"></i><span class="rd-sync-gate" style="left:70%" data-hint="武魂相关度 ≥70 时可触发武魂融合；好感每 10 点加 1，最多加 20"></span></div>
         </div>`;
     })() : `<div class="rd-bond rd-bond-none"><i class="fa-solid fa-user-plus"></i><span>尚未结识</span></div>`;
+    // 关系的实际作用（与各系统同一规则）：情报可见度（运行时判定）、交易成交率（基础 60% + 好感 × 0.25）、
+    // 私人代工（好感 ≥50 半价、≥80 免费，成功率每 10 点好感 +1，需同地）、交手记录（战斗历史按对手名记）
+    const vf = c.rt('判断运行时角色间情报可见度_V1'), vis = o && typeof vf === 'function' ? vf(c.ch, c.name, o, name) : null;
+    const af = b.aff ?? 0, trade = Math.floor(af * .25), fight = c.ch.战斗历史?.[name];
+    const jobs = c.entries(o?.副职业).filter(([, j]) => c.num(j?.等级) > 0);
+    const fee = af >= 80 ? '免费' : af >= 50 ? '半价' : '全额';
+    const effects = `<div class="tiles four rd-fx">
+        <div class="tile" data-hint="${c.esc(`决定剧情里你能掌握 ${name} 的哪些信息。${vis?.依据 ? `依据：${vis.依据}` : ''}`)}">${c.sock('eye')}<b>${c.esc(vis?.状态 || '—')}</b><small>情报</small></div>
+        <div class="tile" data-hint="与 ${c.esc(name)} 交易时成交率基础 60%，好感每 4 点 ±1%，再按出价高低增减，范围 5% ~ 95%">${c.sock('scale-balanced', 'gd')}<b>${sign(trade)}%</b><small>交易成交率</small></div>
+        <div class="tile${jobs.length ? '' : ' dim'}" data-hint="${jobs.length ? `请 ${c.esc(name)} 当面代工（需同在一地）：好感 ≥50 代工费减半，≥80 免费；成功率按好感每 10 点 +1` : `${c.esc(name)} 没有副职业，不能代工`}">${c.sock('hammer')}<b>${jobs.length ? `${fee} · ${sign(Math.floor(af / 10))}` : '—'}</b><small title="${c.esc(jobs.map(([k, j]) => `${k} ${c.num(j.等级)} 级`).join('、'))}">私人代工${jobs.length ? ` · ${c.esc(jobs.map(([k, j]) => `${k} ${c.num(j.等级)}级`).join('、'))}` : ''}</small></div>
+        <div class="tile${fight ? '' : ' dim'}">${c.sock('hand-fist', 'vp')}<b>${fight ? `${c.fmt(fight.次数)} 次` : '—'}</b><small>交手${fight && c.num(fight.最近tick) > 0 ? ` · 最近 ${c.esc(c.tickDate(fight.最近tick))}` : ''}</small></div>
+      </div>`;
     const chips = (arr, fn) => arr.length ? `<div class="rd-chips">${arr.map(fn).join('')}</div>` : '<span class="rd-nil">—</span>';
     const shared = `<div class="rd-shared">
         <div><small>共同势力</small>${chips(facs, k => `<span class="rd-chip" data-hint="你：${c.esc(myF[k]?.身份 || '—')}　${c.esc(name)}：${c.esc(theirF[k]?.身份 || '—')}"><i class="fa-solid fa-flag"></i>${c.esc(k)}<em>${c.esc(theirF[k]?.身份 || '')}</em></span>`)}</div>
         <div><small>共同熟人</small>${chips(mutual, n => `<button type="button" class="rd-chip" data-set="relsel=${c.esc(n)}">${c.miniAva(n)}${c.esc(n)}</button>`)}</div>
       </div>`;
-    return `${hero}${bond}${shared}${view ? `<div class="acts">${view}</div>` : ''}`;
+    return `${hero}${bond}${effects}${shared}${view ? `<div class="acts">${view}</div>` : ''}`;
   };
 
   // 身份：不是「列表选一项」的页，所以不拆左翼——左翼折成侧轨，主屏 = 身份名片（主身份 / 名望 / 家世）+ 势力与称号两栏

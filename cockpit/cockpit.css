@@ -325,5 +325,32 @@ button.tile{appearance:none;border:0;font:inherit;color:inherit;text-align:left;
   .dots button.on{color:#fff;box-shadow:inset 0 -2px 0 #5aa5ff}
 }
 
+/* ============ 手机：上下排（试行，cockpit.js 的 MOBILE_STACK）============ */
+/* 左翼名单压成横向选择条放在主屏上方（点选即换下方详情），其余侧屏收成主屏下方的折叠栏，座舱不再整屏横移 */
+.wing-toggle{display:none}
+.cockpit.stack .dots{display:none}
+.cockpit.stack .screens{display:flex;flex-direction:column;gap:8px;height:auto;transform:none!important;transition:none}
+.cockpit.stack .screens>.wing,.cockpit.stack .screens>.center{position:relative;top:auto;left:auto;width:94%;margin:0 auto;visibility:visible;--lwcs-cockpit-loop-state:inherit}
+.cockpit.stack .screens>:is(.wing,.center)>.float{flex:1 1 auto;min-width:0}
+.cockpit.stack .screens>.wing.l.wing-strip{order:0}
+.cockpit.stack .screens>.center{order:1}
+.cockpit.stack .screens>.wing.l:not(.wing-strip){order:2}
+.cockpit.stack .screens>.wing.r{order:3}
+.cockpit.stack .screens>.wing.wing-none{display:none}
+.cockpit.stack .wing:not(.wing-open)>.float>.bz{display:none}
+.cockpit.stack .wing:not(.wing-strip) .wing-toggle{display:flex;align-items:center;gap:.6em;width:100%;appearance:none;border:0;font:inherit;font-weight:900;letter-spacing:.1em;cursor:pointer;padding:.7em 1.1em;color:#e6edf9;background:linear-gradient(180deg,#2c3a56,#151e33);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(120,150,200,.35);clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.cockpit.stack .wing-toggle::before{content:"";width:3px;height:1em;background:#5fb0ff;box-shadow:0 0 6px #5fb0ff;transform:skewX(-18deg)}
+.cockpit.stack .wing-toggle i{margin-left:auto;font-size:.85em;color:#9fc4ff;transition:rotate .2s}
+.cockpit.stack .wing.wing-open .wing-toggle{margin-bottom:6px}
+.cockpit.stack .wing.wing-open .wing-toggle i{rotate:180deg}
+/* 选择条：列表横排、可横向滑动，行只留头像 + 名字 + 末尾数值 */
+.cockpit.stack .wing.wing-strip .pad{gap:.5em;padding:.75em .9em .7em}
+.cockpit.stack .wing.wing-strip .list{flex-direction:row;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;gap:.45em;padding-bottom:.15em;touch-action:pan-x pan-y}
+.cockpit.stack .wing.wing-strip .list::-webkit-scrollbar{display:none}
+.cockpit.stack .wing.wing-strip .list>:not(.row){display:none}
+.cockpit.stack .wing.wing-strip .list>.row{flex:none;width:auto;max-width:13em;gap:.5em;padding:.4em .7em}
+.cockpit.stack .wing.wing-strip .list>.row small{display:none}
+.cockpit.stack .wing.wing-strip .list>.row strong{white-space:nowrap;-webkit-line-clamp:unset;display:block;overflow:hidden;text-overflow:ellipsis}
+
 .ping{animation:ping 2.6s cubic-bezier(.2,.7,.3,1) infinite var(--lwcs-cockpit-loop-state,running)}
 @keyframes ping{from{transform:scale(.35);opacity:.9}to{transform:scale(1.5);opacity:0}}
