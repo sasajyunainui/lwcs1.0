@@ -2113,6 +2113,9 @@
       if (String(entry?.declaration?.actionKind || '').trim() === 'RELEASE_SKILL' && skill && typeof skill === 'object') seen.set(skillName(skill), skill);
     }
     for (const skill of known) if (skill && typeof skill === 'object' && !seen.has(skillName(skill))) seen.set(skillName(skill), skill);
+    // 正在蓄的那一招看得见（佯装没被看穿时对方也当真），同样算亮出的一招（11-22，检查目录第 36 题：对着蓄双倍大招的强攻系，系别仍按先验平均，威胁被估低）。
+    const charging = unit?.蓄力技能?.skill;
+    if (charging && typeof charging === 'object' && !seen.has(skillName(charging))) seen.set(skillName(charging), charging);
     for (const skill of seen.values()) {
       const kind = skillObservationClass(skill);
       let total = 0;
