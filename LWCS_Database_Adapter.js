@@ -1120,6 +1120,27 @@
     return `<battle_adjudication_result>\n状态：${状态}\n事实：${摘要}\n约束：后续剧情只承接该裁断结果，不要重复输出 <battle_adjudication>，不要重复结算同一场战斗。\n</battle_adjudication_result>`;
   }
 
+  // 模块路由的执行结果记到发起这一轮的玩家楼层（与 qrf_plot_tasks 同一楼），随聊天存档一起保存；推进终端「模块结果」读取显示。
+  // 状态口径与 构建模块路由运行事件 一致：待确认 / 执行失败 / 实时接管 / 已处理；整轮被接管（正文不生成）记为「已接管」
+  function 记录模块路由结果(决定 = {}, 路由块 = '') {
+    try {
+      const 用户楼 = 读取最新用户消息元信息(), 消息 = 读取聊天数组()[用户楼.消息索引];
+      if (!消息 || typeof 消息 !== 'object') return;
+      const 结果 = 决定.result && typeof 决定.result === 'object' ? 决定.result : null;
+      const 模块 = String(结果?.kind || '').trim() || (String(路由块).match(/模块\s*[：:]\s*(\S+)/) || [])[1] || 'unknown';
+      if (模块 === '未命中') return;
+      const 模式 = String(结果?.dispatchMode || '').trim();
+      const 状态 = 决定.action === 'blocked' ? '已接管'
+        : 模式 === 'pending_confirmation' || /opened_.*panel/.test(模式) ? '待确认'
+          : !结果 || 结果.handled === false || 模式 === 'failed_summary' ? '执行失败'
+            : /battle_takeover|battle_continuation/.test(模式) ? '实时接管'
+              : '已处理';
+      消息.lwcs_module_result = { 模块, 状态, 原因: String(结果?.reason || 决定.reason || '').trim(), 模式, 路由: String(路由块 || '').trim(), 记录时间: Date.now() };
+    } catch (错误) {
+      console.warn('[LWCS适配器] 记录模块路由结果失败:', 错误);
+    }
+  }
+
   function 限制模块路由接管表大小() {
     while (本轮模块路由接管表.size > 20) {
       const 首个键 = 本轮模块路由接管表.keys().next().value;
@@ -1209,6 +1230,7 @@
       }
       return { action: 'blocked', reason: 'module_route_handled', result: 结果 };
     })();
+    接管承诺.then(决定 => 记录模块路由结果(决定, 路由块));
     本轮模块路由接管表.set(接管键, 接管承诺);
     限制模块路由接管表大小();
     return await 接管承诺;

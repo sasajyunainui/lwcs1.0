@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const dir = __dirname;
 const target = path.join(dir, '..', 'regex-缝合怪東方花映塚剧情推进美化v1_0.json');
-const VERSION = '3.13.2';
+const VERSION = '3.13.3';
 // 每条用户消息都带一份完整的 replaceString（样式 + 脚本），酒馆助手再把它渲染成一个 iframe；体积直接决定消息 DOM 大小和每楼解析耗时。
 // 无损压缩：样式用 csso（restructure 关闭，不合并不重排规则）、脚本用 terser（只去空白注释、缩短局部变量名，不动全局名与属性名）。找不到压缩工具时原样输出
 const findTool = name => { const base = path.join(dir, '..', '..', 'node_modules', '.pnpm'); try { return require(name); } catch (e) {} try { const d = fs.readdirSync(base).find(x => x.startsWith(name + '@')); return d ? require(path.join(base, d, 'node_modules', name)) : null; } catch (e) { return null; } };

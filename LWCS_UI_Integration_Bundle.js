@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:67d1c2f63f2f5b2faf47f76af2209f76439454784b735f5c54e2a47c2611833b|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -1572,6 +1572,27 @@
     return `<battle_adjudication_result>\n状态：${状态}\n事实：${摘要}\n约束：后续剧情只承接该裁断结果，不要重复输出 <battle_adjudication>，不要重复结算同一场战斗。\n</battle_adjudication_result>`;
   }
 
+  // 模块路由的执行结果记到发起这一轮的玩家楼层（与 qrf_plot_tasks 同一楼），随聊天存档一起保存；推进终端「模块结果」读取显示。
+  // 状态口径与 构建模块路由运行事件 一致：待确认 / 执行失败 / 实时接管 / 已处理；整轮被接管（正文不生成）记为「已接管」
+  function 记录模块路由结果(决定 = {}, 路由块 = '') {
+    try {
+      const 用户楼 = 读取最新用户消息元信息(), 消息 = 读取聊天数组()[用户楼.消息索引];
+      if (!消息 || typeof 消息 !== 'object') return;
+      const 结果 = 决定.result && typeof 决定.result === 'object' ? 决定.result : null;
+      const 模块 = String(结果?.kind || '').trim() || (String(路由块).match(/模块\s*[：:]\s*(\S+)/) || [])[1] || 'unknown';
+      if (模块 === '未命中') return;
+      const 模式 = String(结果?.dispatchMode || '').trim();
+      const 状态 = 决定.action === 'blocked' ? '已接管'
+        : 模式 === 'pending_confirmation' || /opened_.*panel/.test(模式) ? '待确认'
+          : !结果 || 结果.handled === false || 模式 === 'failed_summary' ? '执行失败'
+            : /battle_takeover|battle_continuation/.test(模式) ? '实时接管'
+              : '已处理';
+      消息.lwcs_module_result = { 模块, 状态, 原因: String(结果?.reason || 决定.reason || '').trim(), 模式, 路由: String(路由块 || '').trim(), 记录时间: Date.now() };
+    } catch (错误) {
+      console.warn('[LWCS适配器] 记录模块路由结果失败:', 错误);
+    }
+  }
+
   function 限制模块路由接管表大小() {
     while (本轮模块路由接管表.size > 20) {
       const 首个键 = 本轮模块路由接管表.keys().next().value;
@@ -1661,6 +1682,7 @@
       }
       return { action: 'blocked', reason: 'module_route_handled', result: 结果 };
     })();
+    接管承诺.then(决定 => 记录模块路由结果(决定, 路由块));
     本轮模块路由接管表.set(接管键, 接管承诺);
     限制模块路由接管表大小();
     return await 接管承诺;
