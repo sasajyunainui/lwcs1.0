@@ -41216,6 +41216,19 @@
   const R20_NECESSITY_ON = root.__LWCS_TUNE__?.NECESSITY !== false;
   // 牵制配对（r20Race）：先默认关，测完再定。
   const R20_PAIRING_ON = root.__LWCS_TUNE__?.PAIRING === true;
+  /* 局部战团（用户 11-22 批准；方案 project-state 局部战团方案-20261122.md 第九、十节；原作七场团战笔记）：推演里「谁缠着谁」跨步保留
+     （bond）——真实缠斗、这个候选打了谁（plan.commit）连成战团；自由人按分工偏好（R20_GROUP_PREFER）挑一个敌人缠上，可以挑已在战团里的
+     （一人顶数人由此而来）；扑后排的近战会被对方自由的拦截者（前排或防御系，不以支援为主）截下。每人这一步能打的（reach）= 缠着的 +
+     落单者（不在战团、它那边也没有自由的拦截者）；远程能打全体（守护照旧转接）。出手价值 latent / worth、承压 pressed、实际打谁都只在
+     reach 里取。开关 LWCS_TUNE.GROUPS，先默认关。 */
+  const R20_GROUPS_ON = root.__LWCS_TUNE__?.GROUPS === true;
+  const R20_GROUP_PREFER = 1.5;
+  const r20RaceRoleCache = new WeakMap();
+  function r20RaceRoles(units = [], count = 0) {
+    let roles = Array.isArray(units) ? r20RaceRoleCache.get(units) : null;
+    if (!roles) { roles = (Array.isArray(units) ? units : []).map(unit => (unit ? r20UnitRole(unit) : '强攻')); if (Array.isArray(units)) r20RaceRoleCache.set(units, roles); }
+    return roles.length >= count ? roles : [...roles, ...new Array(count - roles.length).fill('强攻')];
+  }
   function r20NecessityPrune(request, candidateIds, frozenById) {
     if (!R20_NECESSITY_ON || !isPreparedDecisionRequest(request) || String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() !== 'ACTIVE') return null;
     const table = r20Facts(request), actorRow = table.index.get(String(request.actorId || ''));
@@ -41393,6 +41406,9 @@
     // latent[u]: what u brings once it acts again — the same cells, read whether or not it acts this step (held, charging, idle).
     const latent = new Array(count);
     let time = 0;
+    // 局部战团：跨步保留的「缠着谁」（bond[u] = 敌方行的集合，双向）。
+    const bond = R20_GROUPS_ON && new Set(sides).size === 2 ? Array.from({ length: count }, () => new Set()) : null;
+    const groupUnits = bond ? (facts.units || base.units || []) : null, groupRoles = bond ? r20RaceRoles(groupUnits, count) : null;
     for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
       r20Work.steps += 1;
       // Which cells a pair reads now: a unit the candidate brought, the candidate's; a unit it changed, the candidate's
@@ -41432,6 +41448,66 @@
       if (strikes && released < strikes.length) nextChange = Math.min(nextChange, Math.max(strikes[released].at, time + 1e-6));
       // A summon leaves with its host (BattleRuntime refreshSummonMentalLoad).
       if (host) for (let unit = 0; unit < count; unit += 1) if (host[unit] >= 0 && !(left[host[unit]] > 1e-9)) left[unit] = 0;
+      // 局部战团：这一步先更新谁缠着谁、给自由人分配对手，得出每人能打的范围 reach（null：不限）。
+      let reach = null;
+      if (bond) {
+        const alive = unit => left[unit] > 1e-9;
+        for (let unit = 0; unit < count; unit += 1) {
+          if (!alive(unit)) { for (const other of bond[unit]) bond[other].delete(unit); bond[unit].clear(); continue; }
+          for (const other of [...bond[unit]]) if (!alive(other)) bond[unit].delete(other);
+          const locked = facts.locked?.[unit];
+          if (locked) for (const other of locked) if (other < count && alive(other) && sides[other] !== sides[unit]) { bond[unit].add(other); bond[other].add(unit); }
+        }
+        if (step === 0 && plan?.commit && alive(plan.commit.row) && alive(plan.commit.to)) { bond[plan.commit.row].add(plan.commit.to); bond[plan.commit.to].add(plan.commit.row); }
+        const role = groupRoles, ranged = unit => role[unit] === '远程', supportFirst = unit => role[unit] === '支援';
+        const front = unit => groupUnits[unit]?.__battleRuntime?.position !== '后';
+        const canIntercept = unit => alive(unit) && striking(unit) && !bond[unit].size && !supportFirst(unit) && !ranged(unit) && (role[unit] === '防御' || front(unit));
+        const best = unit => { let most = 0; for (let other = 0; other < count; other += 1) if (sides[other] !== sides[unit] && alive(other)) most = Math.max(most, cells(unit, other).out[unit][other]); return most; };
+        const prefers = (unit, other) => {
+          switch (role[unit]) {
+            case '强攻': return front(other) || /强攻|防御/.test(role[other]);
+            case '敏攻': return !front(other) || /支援|控制/.test(role[other]);
+            case '控制': return /控制|远程|支援/.test(role[other]) || !!groupUnits[other]?.蓄力技能;
+            case '防御': return front(other);
+            default: return false;
+          }
+        };
+        const loners = [];
+        for (let unit = 0; unit < count; unit += 1) if (alive(unit) && striking(unit) && !bond[unit].size && !supportFirst(unit) && !ranged(unit)) loners.push(unit);
+        loners.sort((left, right) => best(right) - best(left));
+        for (const unit of loners) {
+          if (bond[unit].size) continue;
+          let pick = -1, value = 0;
+          for (let other = 0; other < count; other += 1) {
+            if (sides[other] === sides[unit] || !alive(other)) continue;
+            const v = cells(unit, other).out[unit][other] * (prefers(unit, other) ? R20_GROUP_PREFER : 1);
+            if (v > value) { value = v; pick = other; }
+          }
+          if (pick < 0) continue;
+          // 扑后排（或以支援为主的）：对方有自由的拦截者就截下（原作徐笠智截腾腾、乐正宇截腾腾、朱竹清截朱竹云）。
+          let to = pick;
+          if (!front(pick) || supportFirst(pick)) {
+            let guard = -1, most = -1;
+            for (let other = 0; other < count; other += 1) if (other !== pick && sides[other] === sides[pick] && canIntercept(other)) {
+              const v = cells(other, unit).out[other][unit]; if (v > most) { most = v; guard = other; }
+            }
+            if (guard >= 0) to = guard;
+          }
+          bond[unit].add(to); bond[to].add(unit);
+        }
+        // 落单：不在战团里，它那边也没有自由的拦截者。
+        const covered = row => { for (let other = 0; other < count; other += 1) if (other !== row && sides[other] === sides[row] && canIntercept(other)) return true; return false; };
+        const loose = [];
+        for (let other = 0; other < count; other += 1) if (alive(other) && !bond[other].size && !covered(other)) loose.push(other);
+        reach = new Array(count).fill(null);
+        for (let unit = 0; unit < count; unit += 1) {
+          if (!alive(unit) || ranged(unit)) continue;
+          const can = new Set(bond[unit]);
+          for (const other of loose) if (sides[other] !== sides[unit]) can.add(other);
+          reach[unit] = can;
+        }
+      }
+      const reaches = (unit, other) => !reach || !reach[unit] || reach[unit].has(other);
       // What each unit brings in a round, and what its enemies could land on it together.
       for (let unit = 0; unit < count; unit += 1) {
         worth[unit] = 0; latent[unit] = 0; pressed[unit] = 0; dealt[unit] = 0; mended[unit] = 0; hits[unit] = 0; aimed[unit] = -1; landed[unit] = 0;
@@ -41440,9 +41516,9 @@
         for (let other = 0; other < count; other += 1) {
           if (!(left[other] > 1e-9)) continue;
           if (sides[other] === sides[unit]) { latent[unit] = Math.max(latent[unit], cells(unit, other).support[unit][other]); if (striking(unit)) worth[unit] = latent[unit]; continue; }
-          latent[unit] = Math.max(latent[unit], cells(unit, other).out[unit][other]);
+          if (reaches(unit, other)) latent[unit] = Math.max(latent[unit], cells(unit, other).out[unit][other]);
           if (striking(unit)) worth[unit] = latent[unit];
-          if (striking(other)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
+          if (striking(other) && reaches(other, unit)) pressed[unit] += cells(other, unit).out[other][unit] * takes(cells(other, unit), unit, other);
         }
       }
       // 控制（11-16 行为检查目录第 58 题「面对控制先打控制者」：推演原先只按伤害与治疗出手，控制者只值它那点伤害）: a unit
@@ -41598,10 +41674,16 @@
       /* 牵制配对（用户 11-22「起码得落单才能集火吧？队友不可能什么都不做看着你被集火吧？」，批了配对模型）：这一步两边腾得出手的人
          （能出手、没和活着的敌人缠斗、不是以支援为主——对队友的支援格子高于对敌人的输出格子）先一对一互相牵制：按两人之间较大的
          那一下从大到小配，两人都还没配上才配。配上的人打自己的配对对象；配不上的（人多出来的一边）照旧打集火目标——对面腾得出手的
-         都被牵制住了，那个目标没人来拦，算落单。缠斗中的人照旧（默认打缠斗对手）。 */
+         都被牵制住了，那个目标没人来拦，算落单（有人守护的，这一下照旧落到守护者身上，struck）。缠斗中的人照旧（默认打缠斗对手）。
+         补全（用户 11-22「不实际约束那有什么意义呢？」「加上吧」）：
+         · 打谁就和谁缠上（plan.commit，r20Shadow）：这个候选用单体攻击打了一个敌人，行动者就缠上它、一直打到它倒下；它原来的配对
+           对象放了出来，按自由人重新配——「扔下对手去打别人」的代价进了估值，实际选择跟着推演走。
+         · 回援：配完后，对面有没被缠住的人在白打我方、而我方某人的配对对象威胁比他小，就换过来（缠住威胁大的，放出威胁小的）——
+           留出去没人管的总是对面威胁最小的那个（威胁：它对我方任一人的输出格子的最大值）。 */
       let paired = null;
       if (R20_PAIRING_ON && sideNames.length === 2) {
         paired = new Array(count).fill(-1);
+        const commit = plan?.commit && left[plan.commit.row] > 1e-9 && left[plan.commit.to] > 1e-9 ? plan.commit : null;
         const engagedNow = unit => !!facts.locked?.[unit] && [...facts.locked[unit]].some(row => left[row] > 1e-9);
         const supportFirst = unit => {
           let give = 0, hit = 0;
@@ -41613,12 +41695,33 @@
           return give > hit;
         };
         const freeOf = side => { const list = []; for (let unit = 0; unit < count; unit += 1) if (sides[unit] === side && striking(unit) && !engagedNow(unit) && !supportFirst(unit)) list.push(unit); return list; };
-        const one = freeOf(sideNames[0]), two = freeOf(sideNames[1]);
+        let one = freeOf(sideNames[0]), two = freeOf(sideNames[1]);
+        // 行动者缠上的目标（这一步它在出手前摇里也算缠着）：它若是自由人，就是行动者的对手、不再和别人配。
+        if (commit) {
+          paired[commit.row] = commit.to;
+          if ([...one, ...two].includes(commit.to)) paired[commit.to] = commit.row;
+          one = one.filter(unit => unit !== commit.row && paired[unit] < 0); two = two.filter(unit => unit !== commit.row && paired[unit] < 0);
+        }
         if (one.length && two.length) {
           const pairs = [];
           for (const a of one) for (const b of two) pairs.push({ a, b, value: Math.max(cells(a, b).out[a][b], cells(b, a).out[b][a]) });
           pairs.sort((x, y) => y.value - x.value);
           for (const { a, b } of pairs) if (paired[a] < 0 && paired[b] < 0) { paired[a] = b; paired[b] = a; }
+        }
+        // 回援：一边的自由人配完还有剩（白打对面），对面配上了对、对手威胁比剩下那个小的人换过去。
+        const threat = unit => { let most = 0; for (let other = 0; other < count; other += 1) if (sides[other] !== sides[unit] && left[other] > 1e-9) most = Math.max(most, cells(unit, other).out[unit][other]); return most; };
+        for (const [mine, theirs] of [[one, two], [two, one]]) {
+          const loose = theirs.filter(unit => paired[unit] < 0);
+          if (!loose.length) continue;
+          for (const unit of mine) {
+            const partner = paired[unit];
+            if (partner < 0 || (commit && unit === commit.row)) continue;
+            let pick = -1, most = threat(partner) + 1e-9;
+            for (const other of loose) { const t = threat(other); if (t > most) { most = t; pick = other; } }
+            if (pick < 0) continue;
+            paired[unit] = pick; paired[pick] = unit; paired[partner] = -1;
+            loose.splice(loose.indexOf(pick), 1, partner);
+          }
         }
       }
       for (let unit = 0; unit < count; unit += 1) {
@@ -41640,6 +41743,19 @@
             if (value > bestValue) { bestValue = value; best = other; }
           }
           if (best >= 0 && !(strike - switchCost(target) > bestValue)) { target = best; strike = bestValue; }
+        }
+        // 局部战团：打的人不在能打的范围里（集火目标在别的战团、又不落单），改打范围里最划算的。
+        if (reach && reach[unit]) {
+          const redirect = row => { const by = cover?.[row]; return by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) && (!by.guard || time < 1 - 1e-9 || endangered(row)) ? by.row : row; };
+          if (!reach[unit].has(target) && ![...reach[unit]].some(row => redirect(row) === target)) {
+            let pick = -1, value = 0;
+            for (const row of reach[unit]) {
+              if (!(left[row] > 1e-9)) continue;
+              const other = struck(row), v = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
+              if (v > value) { value = v; pick = other; }
+            }
+            if (pick >= 0) { target = pick; strike = value; }
+          }
         }
         if (paired && paired[unit] >= 0 && left[paired[unit]] > 1e-9) {
           const other = struck(paired[unit]);
@@ -43071,7 +43187,11 @@
     // not — 115 rounds where the old valuation took 4).
     const idle = actorRow !== undefined && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE'
       ? table.sides.map((side, row) => (row === actorRow ? 1 : 0)) : null;
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, ...(trace ? { falls: [] } : {}) };
+    // 牵制配对（r20Race）：主动出手用单体攻击打一个敌人，行动者就缠上它（plan.commit）。
+    const declaredNow = candidate?.declaration || {}, commitRow = Array.isArray(declaredNow.targetIds) && declaredNow.targetIds.length === 1 ? table.index.get(String(declaredNow.targetIds[0])) : undefined;
+    const commit = (R20_PAIRING_ON || R20_GROUPS_ON) && idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] &&
+      ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaredNow.actionKind || '').toUpperCase()) ? { row: actorRow, to: commitRow } : null;
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.

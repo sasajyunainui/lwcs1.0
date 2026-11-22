@@ -10684,6 +10684,23 @@
           isUnitIdentityMatch(unit.__宿主, actor) && previewRuntime.readHp(unit) > 0);
         if (standing) { summons.push(standing); continue; }
       }
+      // 同技能不叠加（叠加规则「同技能不叠加」）：同一宿主的同名召唤物（同一招的同一只，数量 > 1 时名字带 #序号）还在场，再放这一招只刷新
+      // 它的持续回合，不再多一只。11-22：幻魔分影（魂骨技，前摇 0、无消耗）在应对里一回合连放 8 次，分身越攒越多，宿主主动出手时全体协同，
+      // 援护链堆出 ACTION_QUEUE_NODE_LIMIT_EXCEEDED（cp7|35|强攻系|召唤系|2|PLAYER）。
+      if (!bonded) {
+        const standing = Object.values(table).find(unit => unit && unit.已消散 !== true && String(unit.名称 || unit.name || '').trim() === displayName &&
+          isUnitIdentityMatch(unit.__宿主, actor) && previewRuntime.readHp(unit) > 0);
+        if (standing) {
+          const window = ensureSummonWindowRuntime(standing);
+          window.remainingWindows = Math.max(Number(window.remainingWindows) || 0, duration);
+          standing.剩余窗口 = window.remainingWindows;
+          const kept = actor.状态效果?.[`召唤:${displayName}`];
+          if (kept && typeof kept === 'object') kept.duration = Math.max(Number(kept.duration) || 0, duration);
+          syncSummonMirror(standing);
+          summons.push(standing);
+          continue;
+        }
+      }
       const levelPanel = bonded && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(summonLevel) || null : null;
       const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
         : resource === 'hp' ? previewRuntime.readHpMax(actor) : resource === 'stat' ? previewRuntime.readCombatStat(actor, key) : previewRuntime.readResourceMax(actor, resource);

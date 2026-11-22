@@ -17081,6 +17081,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const summonDefinitions = [];
         for (let index = 0; index < count; index += 1) {
           const displayName = count > 1 ? `${summonName}#${index + 1}` : summonName;
+          // 同技能不叠加（与 BattleRuntime 召唤生成一致，11-22）：同一宿主的同名召唤物还在场，这一招只刷新它的持续回合、不再多一只——预演不能
+          // 再算成多一只，否则估值以为重放有利，强攻系对元素系每回合重放幻魔分影打满 400 回合。
+          const hostId = unitId(actor), hostName = unitName(actor);
+          if (listUnits(context.worldSnapshot).some(entry => isSummonUnit(entry.unit) && entry.unit.已消散 !== true && readHp(entry.unit) > 0 &&
+            String(entry.unit.名称 || entry.unit.name || '').trim() === displayName &&
+            (String(entry.unit.宿主ID || '').trim() === hostId || String(entry.unit.宿主名 || '').trim() === hostName))) continue;
           // B1-P0：预演侧召唤 id 统一带 preview-summon: 前缀——战报脱敏
           // （internalSummonIdPattern）与依赖过滤立即覆盖，且不可能与真实单位撞名。
           // 运行时车道（commitStructuredSummon）的主键不变，另计 previewSummonKey 别名。
