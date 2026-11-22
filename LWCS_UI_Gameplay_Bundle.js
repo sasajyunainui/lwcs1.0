@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:153dc877ccd6ddc3238588c7e32cd37ede3bd15bd6a8b6853346ca6afe5d7fdf|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:5c25f1b2ff619cdd2e0662fa0e7ef446853b47ce32393d0c966afca82c935cdd|BattleRuntime_Module.js:63941f19d3519d3a8ee3fe093a312e8178e0fe31c7bcb5cd909b2b2999d0bcbc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:153dc877ccd6ddc3238588c7e32cd37ede3bd15bd6a8b6853346ca6afe5d7fdf|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:096632f1a8b6749fb9f751dae9cfb870a4a1a618a96fc85dda886306a20cc123|BattleRuntime_Module.js:63941f19d3519d3a8ee3fe093a312e8178e0fe31c7bcb5cd909b2b2999d0bcbc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -43982,6 +43982,30 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return cached.bySide.get(side) || new Map();
   }
 
+  // 看见的消耗：一个单位这一战放过的魂技（事件账本 action_start / RELEASE_SKILL，看得见）的启动消耗，按它的上限折成份额累加
+  // { 魂力, 精神力 }；没有账本时 null。
+  const observedSpendCache = new WeakMap();
+  function observedSpentShares(world = {}, unit = {}) {
+    const ledger = Array.isArray(world?.__battleEventLedger) ? world.__battleEventLedger : null;
+    if (!ledger) return null;
+    let cached = observedSpendCache.get(ledger);
+    if (!cached || cached.length !== ledger.length) { cached = { length: ledger.length, byActor: new Map() }; observedSpendCache.set(ledger, cached); }
+    const id = String(preview.unitId(unit) || '').trim();
+    if (cached.byActor.has(id)) return cached.byActor.get(id);
+    const skills = new Map(preparedSkillProfiles(unit).map(profile => [String(profile.skill?.魂技名 || profile.skill?.name || '').trim(), profile.skill]));
+    const spent = { 魂力: 0, 精神力: 0 };
+    for (const event of ledger) {
+      if (event?.eventKind !== 'action_start' || String(event.actionType || '').toUpperCase() !== 'RELEASE_SKILL' || String(event.actorId || '').trim() !== id) continue;
+      const skill = skills.get(String(event.actionName || '').trim());
+      const start = skill ? preview.readSkillCostStages?.(skill, { costActor: unit })?.启动 || {} : {};
+      for (const resource of Object.keys(spent)) {
+        const maximum = preview.readResourceMax(unit, resource);
+        if (maximum > 0 && start[resource] !== undefined) spent[resource] += Math.max(0, Number(preview.resolveSkillResourceCost(unit, resource, start[resource])) || 0) / maximum;
+      }
+    }
+    cached.byActor.set(id, spent);
+    return spent;
+  }
   function buildDecisionWorldOutcomes(worldSnapshot = {}, actorId = '', beliefState = {}, alreadyPublic = false) {
     const sourceActor = findUnitInWorld(worldSnapshot, actorId);
     if (!sourceActor) throw new Error('battle_decision_projection_actor_missing');
@@ -44061,8 +44085,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // than half of its answers (2026-11-12).
       // Seen in exchanges (beliefExchangeCounts), it is drawn toward the unit's own share. 魂力波动（用户 2026-11-15 敌方资源可见：
       // 「精神力大于对面，且精神力超过1000」）: a sense that outreaches the unit (beliefSenses) reads how much it has left as it is.
+      // 看见的消耗（用户 11-22「就这样改吧」）：魂力、精神力从满额起算，扣掉看见它放过的魂技的启动消耗（observedSpentShares），加上回合末
+      // 的自然回复；原先取「自己的占比」，满资源的一方便以为对面也满——35 级控制对元素系，元素系前 5 回合连放魂技只剩 18%，控制系仍当它满、
+      // 不敢上前，对峙 75 回合（cp7|35|控制系|元素系|1|ENEMY 102 回合）。体力照旧（交手的体力消耗看不全）。
+      const observed = observedSpentShares(worldSnapshot, sourceUnit), natural = preview.naturalRecoveryRatios?.(sourceUnit) || {};
+      const elapsed = Math.max(0, Number(worldSnapshot?.回合 || 1) - 1);
+      const seenShare = { sp: observed ? clamp(1 - observed.魂力 + (Number(natural.魂力) || 0) * elapsed, 0, 1) : null,
+        men: observed ? clamp(1 - observed.精神力 + (Number(natural.精神力) || 0) * elapsed, 0, 1) : null };
+      // 体力看得见（用户 11-22「算吧」：喘息、脚步、出招变形都看得出来）——敌方体力取真实值。
       const unknownShare = resource => { const own = ratio(sourceActor, resource), truth = ratio(sourceUnit, resource);
-        return senses && Number.isFinite(truth) ? truth : toward(Number.isFinite(own) ? own : 0.5, truth); };
+        if (resource === 'vit' && Number.isFinite(truth)) return truth;
+        const start = Number.isFinite(seenShare[resource]) ? seenShare[resource] : Number.isFinite(own) ? own : 0.5;
+        return senses && Number.isFinite(truth) ? truth : toward(start, truth); };
       const soulMax = toward(baseStats.sp_max * typical.sp_max, preview.readResourceMax(sourceUnit, '魂力'));
       const spiritMax = toward(baseStats.men_max * typical.men_max, preview.readResourceMax(sourceUnit, '精神力'));
       const staminaMax = toward(baseStats.vit_max * typical.vit_max, preview.readResourceMax(sourceUnit, '体力'));
@@ -81570,6 +81604,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return Object.fromEntries(Object.entries(shares).map(([resource, share]) => [resource, share * Math.max(1, preview.readResourceMax(unit, resource))]));
   };
   // 跨场情报（信息模型 0c）: and the skills it showed in earlier battles (its picture's __exposedSkills, cost unknown).
+  // 蓄力迎击的那一招（chargeMeetSkill 生成：名字带「（佯装蓄力）」「（蓄力迎击）」、__chargeRelease；记进公开应对时内部标记可能丢失，按名字认）。
+  const r20ChargeMeetVariant = skill => !!skill && (skill.__chargeRelease === true || /（(佯装蓄力|蓄力迎击)）$/.test(String(skill.魂技名 || skill.name || '').trim()));
   const r20Shown = unit => {
     const shown = r20Belief?.publicResponses?.[preview.unitId(unit)];
     const known = Array.isArray(unit?.__exposedSkills) ? unit.__exposedSkills : [];
@@ -81580,13 +81616,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       // Not while what it has left (as the unit sees it) is less than the skill was seen to take.
       if (Object.entries(entry?.costShares || {}).some(([resource, share]) =>
         preview.readResource(unit, resource) / Math.max(1, preview.readResourceMax(unit, resource)) + 1e-9 < share)) continue;
+      // 蓄力迎击的那一招（BattlePreview chargeMeetSkill，__chargeRelease，前摇 0）只在蓄着力时有，不是它随时能放的技能（11-22：元素系一次佯装
+      // 蓄力迎击被记进公开应对，控制系便以为它随时能用前摇 0 的第 2 魂技对轰，任何出手都被判压回，对峙百余回合）。
+      if (r20ChargeMeetVariant(skill)) continue;
       if (skill && typeof skill === 'object' && Array.isArray(skill._效果数组) && !skills.includes(skill)) {
         skills.push(skill);
         if (entry?.costShares) r20ShownCosts.set(skill, entry.costShares);
       }
     }
     const names = new Set(skills.map(skill => skillName(skill)));
-    for (const skill of known) if (Array.isArray(skill?._效果数组) && !names.has(skillName(skill))) skills.push(skill);
+    for (const skill of known) if (Array.isArray(skill?._效果数组) && !r20ChargeMeetVariant(skill) && !names.has(skillName(skill))) skills.push(skill);
     return skills;
   };
   // The skills a unit has released in this battle (the ledger's action_start of RELEASE_SKILL), by name — the enemies present saw them.
@@ -82270,8 +82309,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // What is left of a unit, a share of its HP maximum: HP and the shield that holds against the enemies it faces.
   const r20Left = (unit, known, foes = null) => (Math.max(0, preview.readHp(unit) - r20Floor(unit)) + r20Shield(unit, foes)) / Math.max(1, preview.readHpMax(unit));
   // A unit's stamina, a share of its maximum (null: it has none to run out of). A hit drains it by the HP share it takes,
-  // healing gives none back, and an exhausted unit is out (W8, W14) — so it runs beside the HP in the race. Only for the
-  // deciding side's own units: an enemy as believed carries none to trust.
+  // healing gives none back, and an exhausted unit is out (W8, W14) — so it runs beside the HP in the race. For both sides
+  // (11-22 用户「算吧」：体力看得见，敌方的疲态照真实值；原先只算本方、敌方当无限，满资源的一方在长局里总以为自己先被拖垮)。
   const r20Stamina = unit => { const maximum = preview.readResourceMax(unit, '体力'); return maximum > 0 ? preview.readResource(unit, '体力') / maximum : null; };
   // 接战链 阶段一 (BattlePreview: the guard by the weight of the hit, evading by the move's windup and reach, striking back
   // only out of an answer that worked and then by catching the opening). A unit's basic answers to another's hits, read
@@ -82665,6 +82704,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (!acts[row]) { cells.keep[row][other] = 1; cells.keepBack[row][other] = 1; cells.answer[row][other] = 0; cells.answerOpen[row][other] = 0; return; }
     const stand = r20Stand(units[row], units[other]);
     const opening = r20Meet(stand, r20Weight(cells.out[other][row])), struck = r20Meet(stand, r20Weight(cells.back[other][row]));
+    // Development hook (absent in play): which answer a pair's opening hit meets, with the stand it was weighed on.
+    root.__LWCS_DECISION_DEBUG__?.onFillPair?.({ units, row, other, stand, opening, weight: r20Weight(cells.out[other][row]) });
     cells.keep[row][other] = opening.keep; cells.answerOpen[row][other] = opening.answer;
     cells.keepBack[row][other] = struck.keep; cells.answer[row][other] = struck.answer;
   }
@@ -83731,8 +83772,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const table = { request, world, contexts, units, cellUnits, ids, index: new Map(ids.map((id, row) => [id, row])), sides, acts, bound, out, support, stop, control, keep, keepBack, answer, answerOpen, back, turn, late, bare, stateEnds, against,
       held: units.map(unit => r20Held(unit)),
       remaining: units.map((unit, row) => r20Left(unit, sides[row] === request.actorSide, against[sides[row]])),
-      stamina: units.map((unit, row) => sides[row] === request.actorSide ? r20Stamina(unit) : null),
-      shieldLeft: units.map((unit, row) => sides[row] === request.actorSide ? r20Shield(unit, against[sides[row]]) / Math.max(1, preview.readHpMax(unit)) : 0),
+      stamina: units.map(unit => r20Stamina(unit)),
+      // 护盾与体力一样双方都算（11-22：敌方体力进推演后，敌方「还剩」= min(生命+盾, 体力+盾)，盾只算本方时打在敌盾上的伤害被体力上限吞掉、计 0 分）。
+      shieldLeft: units.map((unit, row) => r20Shield(unit, against[sides[row]]) / Math.max(1, preview.readHpMax(unit))),
       alive: new Array(count).fill(1), guard: units.map(unit => r20Guard(unit)), revive: units.map(unit => r20Revive(unit)),
       cover: units.map((unit, row) => r20Cover(unit, units, sides, row)),
       // The deciding unit: its action this round is the one being valued (r20Race keeps it from keeping a change up before 1).
@@ -84118,7 +84160,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (next === prior) continue;
       remaining[row] = r20Left(next, table.sides[row] === request.actorSide, table.against[table.sides[row]]);
       if (typeof stamina[row] === 'number') { const now = r20Stamina(next); if (now !== null) stamina[row] = now; }
-      if (table.sides[row] === request.actorSide) shieldLeft[row] = r20Shield(next, table.against[table.sides[row]]) / Math.max(1, preview.readHpMax(next));
+      shieldLeft[row] = r20Shield(next, table.against[table.sides[row]]) / Math.max(1, preview.readHpMax(next));
       guard[row] = r20Guard(next); revive[row] = r20Revive(next); drain[row] = r20Absorb(next).dealt;
       tick[row] = r20Tick(request, next); tickRounds[row] = r20TickRounds(next);
       reflect[row] = preview.counterDamageRatio(next);
@@ -84413,7 +84455,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const created = (result.contributions || []).find(entry => entry.outcomeKind === 'SUMMON_WINDOW' && String(entry.targetId) === id);
         remaining.push(r20Left(unit, sidesNow[row] === request.actorSide, table.against[sidesNow[row]])); alive.push(created ? clamp(preview.contributionProbability(created), 0, 1) : 1);
         guard.push(r20Guard(unit)); tick.push(0); denied.push(0); until.push(Infinity); revive.push(r20Revive(unit)); drain.push(r20Absorb(unit).dealt);
-        stamina.push(sidesNow[row] === request.actorSide ? r20Stamina(unit) : null);
+        stamina.push(r20Stamina(unit));
         if (busy) busy.push(0);
         reflect.push(preview.counterDamageRatio(unit)); hpMax.push(Math.max(1, preview.readHpMax(unit)));
         const windows = Number(unit.剩余窗口 ?? unit.remainingWindows);
@@ -87138,6 +87180,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       } catch (error) {
         reasonRecord = Object.freeze({ schemaVersion: 'r20-reason-1', error: String(error?.message || error).slice(0, 200) });
       }
+      // Development hook (absent in play): the reason record of each outermost decision (选中与第二名的各项得失).
+      root.__LWCS_DECISION_DEBUG__?.onReason?.({ request, reasonRecord,
+        explain: id => frozenById.get(id) && valued[id] ? r20ReasonRecord(request, [{ candidate: frozenById.get(id), result: valued[id] }], { passBase }) : null });
     }
     const decisionAudit = deepFreeze({
       ...(reasonRecord ? { reasonRecord } : {}),
