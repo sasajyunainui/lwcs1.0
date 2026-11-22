@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:c5b9fcd0fdb8a24bda9d9432830a5e13b5a4eedb4fb45bdc9b2e9acf012ba147|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:55a0535a2ae4a9d49b8c7d6bd0a130c64e16c279b1c9885a7a885582cf6acc28|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:c5b9fcd0fdb8a24bda9d9432830a5e13b5a4eedb4fb45bdc9b2e9acf012ba147|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:0eff11d13c655f203238691aa877575d6e2d673a3d7cc78f48fee9a13dfafb18|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -58495,6 +58495,25 @@ class ProfessionUIComponent {
       });
     });
   }
+  // 热区没有时问运行时视图（商店模板、当前时代内置物品库），与交易模块同一口径
+  查找运行时物品定义(物品名 = '') {
+    const 名称 = String(物品名 || '').trim();
+    if (!名称) return null;
+    const 热区定义 = this.查找物品定义(名称);
+    if (热区定义) return 热区定义;
+    const 窗口列表 = [window];
+    try { if (window.parent && window.parent !== window) 窗口列表.push(window.parent); } catch (错误) {}
+    try { if (window.top && window.top !== window) 窗口列表.push(window.top); } catch (错误) {}
+    for (const 当前窗口 of 窗口列表) {
+      try {
+        const 查找函数 = 当前窗口?.__LWCS_MVU_RUNTIME_VIEW__?.查找运行时物品定义;
+        if (typeof 查找函数 !== 'function') continue;
+        const 命中 = 查找函数(this.rootData, 名称);
+        if (命中 && 命中.定义 && typeof 命中.定义 === 'object') return 命中;
+      } catch (错误) {}
+    }
+    return null;
+  }
   查找物品定义(物品名 = '') {
     const 名称 = String(物品名 || '').trim();
     if (!名称) return null;
@@ -59178,7 +59197,7 @@ class ProfessionUIComponent {
 
   读取名称魂导等级(targetName = '', materialNames = []) {
     const 名称 = String(targetName || '').trim();
-    const 定义 = this.查找物品定义(名称)?.定义 || {};
+    const 定义 = this.查找运行时物品定义(名称)?.定义 || {};
     const 判定文本 = `${名称} ${定义.描述 || ''}`;
     if (!/魂导|奶瓶|定装|炮弹|炸弹/.test(判定文本) && !(Number(定义.魂导等级 || 0) > 0)) return 0;
     const 定义等级 = Math.max(0, Math.floor(Number(定义.魂导等级 || 0)));
@@ -59274,6 +59293,10 @@ class ProfessionUIComponent {
 
   getManufactureOutputMeta(targetName, materialNames, tier) {
     const 魂导等级 = this.读取目标魂导等级(targetName, materialNames);
+    const 库物品 = this.查找运行时物品定义(targetName);
+    if (库物品 && 副职业物品定义分类集合.has(库物品.分类) && !['斗铠部件', '机甲机体', '锻造金属', '设计图纸'].includes(库物品.分类)) {
+      return { name: targetName, 分类: 库物品.分类, 魂导等级: Math.max(0, Math.floor(Number(库物品.定义?.魂导等级 || 0))) || 魂导等级 };
+    }
     if (魂导等级 > 0) {
       if (/奶瓶|定装|炮弹|炸弹/.test(targetName)) return { name: targetName, 分类: '一次性道具', 魂导等级 };
       if (/防具|护具|护罩|护盾|屏障|生命维持/.test(targetName)) return { name: targetName, 分类: '防具装备', 魂导等级 };
@@ -59350,6 +59373,19 @@ class ProfessionUIComponent {
     const 目标基础金属 = (上下文.基础金属列表.length === 1 ? 上下文.基础金属列表[0] : '') || 上下文.目标金属;
     if (分类 === '锻造金属') 输出.阶位 = Math.max(1, Math.min(5, 强度));
     if (目标基础金属 && (分类 === '锻造金属' || /金属块/.test(targetName))) 输出.基础金属 = 目标基础金属;
+    if (!['锻造金属', '设计图纸', '斗铠部件', '机甲机体'].includes(分类)) {
+      const 库定义 = this.查找运行时物品定义(targetName)?.定义;
+      const 有现成效果 = 库定义 && ((Array.isArray(库定义.使用效果) && 库定义.使用效果.length) || 库定义.属性加成 || (Array.isArray(库定义.加成方向) && 库定义.加成方向.length) || 库定义.装备技能 || 库定义.附带魂技);
+      if (有现成效果) {
+        // 名字对上物品库的现成物品（如原作魂导器）：效果照库，数值由运行时按品质与品质系数结算；批次只记耐久 / 次数
+        ['品质', '描述', '基础价格', '默认货币', '装备槽位', '加成方向', '属性加成', '装备技能', '附带魂技', '使用效果', '副作用列表', '魂导等级'].forEach(字段 => {
+          if (库定义[字段] !== undefined) 输出[字段] = this.复制JSON(库定义[字段], 库定义[字段]);
+        });
+        if (Number(库定义.基础耐久 || 0) > 0) { 输出.基础耐久 = Math.floor(Number(库定义.基础耐久)); 输出.耐久 = 输出.基础耐久; }
+        if (Number(库定义.基础使用次数 || 0) > 0) { 输出.基础使用次数 = Math.floor(Number(库定义.基础使用次数)); 输出.剩余使用次数 = 输出.基础使用次数; }
+        return 输出;
+      }
+    }
     if (!特性集合.size) return Object.keys(输出).length ? 输出 : {};
 
     const 质量倍率 = Math.max(0.8, Math.min(2, Number(品质系数 || 1)));
@@ -59368,7 +59404,8 @@ class ProfessionUIComponent {
       const 耐久加成 = ['高硬度', '极限硬度', '高韧性', '高坚固', '合金强化', '高密度', '龙鳞化'].filter(特性 => 特性集合.has(特性)).length;
       输出.基础耐久 = Math.max(100, Math.round((100 + 强度 * 80 + 耐久加成 * 40) * 质量倍率));
       输出.耐久 = 输出.基础耐久;
-      if (Object.keys(属性加成).length) 输出.属性加成 = 属性加成;
+      // 加成数值不自拟：金属特性只决定加成方向，数值由运行时按品质（档位）与品质系数从基础属性表算
+      if (Object.keys(属性加成).length) 输出.加成方向 = Object.keys(属性加成);
       if (分类 === '近战武器') {
         输出.装备槽位 = '武器';
         const 装备技能 = this.构建金属特性装备技能(特性集合, 强度);
@@ -60382,13 +60419,15 @@ class ProfessionUIComponent {
       默认货币: safeItem.默认货币 || this.getLegalCurrency(),
     };
     if (Number(safeItem.魂导等级 || 0) > 0) definition.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(safeItem.魂导等级 || 0))));
-    if (!批次派生字段 && Number(safeItem.基础使用次数 || 0) > 0) definition.基础使用次数 = Math.max(1, Math.floor(Number(safeItem.基础使用次数 || 1)));
+    // 效果、基础耐久 / 次数写进定义（同名物品只登记一次）；批次只放品质系数、当前耐久、剩余次数。批次派生字段 只表示批次另有记录
+    if (Number(safeItem.基础使用次数 || 0) > 0) definition.基础使用次数 = Math.max(1, Math.floor(Number(safeItem.基础使用次数 || 1)));
     const 是魂导器 = Number(safeItem.魂导等级 || 0) > 0 && !/奶瓶|定装|炮弹|炸弹/.test(itemName);
     if (副职业装备物品分类集合.has(分类) || 是魂导器) {
       if (safeItem.装备槽位) definition.装备槽位 = safeItem.装备槽位;
     }
-    if (!批次派生字段 && (副职业装备物品分类集合.has(分类) || 是魂导器)) {
+    if (副职业装备物品分类集合.has(分类) || 是魂导器) {
       if (Number(safeItem.基础耐久 || 0) > 0) definition.基础耐久 = Math.max(0, Math.floor(Number(safeItem.基础耐久 || 0)));
+      if (Array.isArray(safeItem.加成方向) && safeItem.加成方向.length) definition.加成方向 = safeItem.加成方向;
       if (safeItem.属性加成 && typeof safeItem.属性加成 === 'object' && !Array.isArray(safeItem.属性加成)) definition.属性加成 = safeItem.属性加成;
       if (safeItem.装备技能 && typeof safeItem.装备技能 === 'object' && !Array.isArray(safeItem.装备技能)) definition.装备技能 = safeItem.装备技能;
     }
@@ -60396,8 +60435,9 @@ class ProfessionUIComponent {
       definition.图纸目标 = safeItem.图纸目标 || itemName.replace(/设计图$/, '');
       if (safeItem.材料 !== undefined) definition.材料 = safeItem.材料;
     }
-    if (!批次派生字段 && Array.isArray(safeItem.使用效果) && safeItem.使用效果.length) definition.使用效果 = safeItem.使用效果;
-    if (!批次派生字段 && Array.isArray(safeItem.副作用列表) && safeItem.副作用列表.length) definition.副作用列表 = safeItem.副作用列表;
+    if (Array.isArray(safeItem.使用效果) && safeItem.使用效果.length) definition.使用效果 = safeItem.使用效果;
+    if (Array.isArray(safeItem.副作用列表) && safeItem.副作用列表.length) definition.副作用列表 = safeItem.副作用列表;
+    if (safeItem.附带魂技 && typeof safeItem.附带魂技 === 'object' && !Array.isArray(safeItem.附带魂技)) definition.附带魂技 = safeItem.附带魂技;
     if (safeItem.解锁内容 !== undefined) definition.解锁内容 = safeItem.解锁内容;
     if (分类 === '修炼秘籍') {
       if (safeItem.获取条件) definition.获取条件 = safeItem.获取条件;
