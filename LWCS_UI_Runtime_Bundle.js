@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:ba3747a2dee1252a9433213638b5373ad7873ac06a1bbe3b9723e4a8ae8fb9a3|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:f1da5e5bb37cb504d102f6cb91141cbd5a4ce2765118746ad3a55ef8657ee12b|mvu_logic_bridge.js:718fe86a69fe5118603b42f1d1f3b6786eaf5d88dd26ff675d1505215d8acc73|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:25c29baa1f83737bc5d5a8cbce13c143ef14ef60cc45112b79c4bc9b73863f34|cockpit/pages-role.js:009bcd8e8782aa39a237e2151e1944b90b8cb927276c3303b2822ace0e29fd84|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:022ab507ac10cce533d3babd95291a8f13120f25098ad99b520d4857c7ae65d3|cockpit/pages-supplies.js:d86f748d41b6e9f51d04dba8a483d5f50dd1aa4c646a25379a88880bee15148b|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:f3b4fddd74d1e739e746776e6a7d3a267f8b791e1e0097ce053f2719ef1559f9|TradeUI_Module.js:88c786757b48417ee048a9f02de9b545fd30cd1f8b49f6bc1130bd0e19109511|ProfessionUI_Module.js:121696c1481708bb05eaebf52d3f96efbeeac57ce6bc43311b2512fc2bda9596|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:2cb550d643bd8f36c17cadbd339fc490e96440c6f5bcd3166c29b37b398f585e|BattleRuntime_Module.js:62af09000c4cc8511c17683b52a012f3272add485766956e381fea8670d432d6|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:5e0db96d8b53e77d3c6169d38ead7aa477f9c3c90023621125d862c40a5ef06d|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -136891,6 +136891,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function r20Race(facts, own, plan = null) {
     r20Work.races += 1;
     const { sides, remaining, alive } = facts, count = sides.length, cover = facts.cover || null;
+    // 持续守护：被保护者危险与否读表里的压力与治疗（r20Derive），守护者 → 被保护者。
+    const pressureOf = facts.pressure || plan?.base?.pressure || null, mendOf = facts.mend || plan?.base?.mend || null;
+    const guardWard = new Array(count).fill(-1);
+    if (cover) cover.forEach((by, ward) => { if (by?.guard && by.row >= 0 && by.row < count) guardWard[by.row] = ward; });
     const left = remaining.map((value, index) => value * alive[index]), charges = facts.guard.slice();
     // Stamina beside HP (own units; Infinity where it is not known or there is none): it loses what the unit takes and is
     // not mended.
@@ -136941,7 +136945,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const cells = (unit, other) => unit >= held || other >= held ? facts
         : changed && (changed[unit] || changed[other]) ? (time < until[unit] && time < until[other] ? lasting : lapsed(unit, other)) : settled(unit, other);
       const acting = unit => left[unit] > 1e-9 && !(denied && time < denied[unit]) && !(busy && time < busy[unit]);
-      const striking = unit => acting(unit) && !(idle && time < idle[unit]);
+      // 持续守护（11-22）：第一回合照常护着；之后被保护者危险（照表里的压力，剩下的不到 R20_GUARD_DANGER_ROUNDS 回合）时掩护生效、守护者不出手，脱险了守护者照常打。
+      const endangered = row => { const net = (Number(pressureOf?.[row]) || 0) - (Number(mendOf?.[row]) || 0); return left[row] > 1e-9 && net > 1e-9 && left[row] / net < R20_GUARD_DANGER_ROUNDS; };
+      const guarding = unit => guardWard[unit] >= 0 && time >= 1 - 1e-9 && endangered(guardWard[unit]);
+      const striking = unit => acting(unit) && !(idle && time < idle[unit]) && !guarding(unit);
       // What a unit still does of its own actions (held by the enemies' controls, or spent keeping its own up).
       const free = unit => (1 - heldShare[unit]) * (1 - pace[unit]);
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
@@ -137121,7 +137128,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       // A hit on a unit under 护卫 lands on its guard while the guard stands, can act and the state lasts (r20Cover).
       const struck = row => { const by = cover?.[row];
-        return by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) ? by.row : row; };
+        return by && by.row >= 0 && time < by.until - 1e-9 && left[by.row] > 1e-9 && acting(by.row) && (!by.guard || time < 1 - 1e-9 || endangered(row)) ? by.row : row; };
       for (let unit = 0; unit < count; unit += 1) {
         if (!striking(unit)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), ally = focus[sides[unit]].unit;
@@ -137336,6 +137343,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 按对象的缓存就能命中；内容相同，算出的格子也相同。late（窗口视图）与当下分开记。
   // 第 7 项开关（对照用）：LWCS_TUNE.SAME_SIDE_REUSE = false 时同边对子照旧全部重算。
   const R20_SAME_SIDE_REUSE_ON = root.__LWCS_TUNE__?.SAME_SIDE_REUSE !== false;
+  const R20_GUARD_PERSIST = root.__LWCS_TUNE__?.GUARD_PERSIST !== false;
+  const R20_GUARD_DANGER_ROUNDS = Number(root.__LWCS_TUNE__?.GUARD_DANGER_ROUNDS ?? 2);
   const r20CanonicalUnits = new WeakMap(), r20OriginIds = new WeakMap();
   let r20OriginSequence = 0;
   function r20CanonicalUnit(table, unit, late) {
@@ -138500,10 +138509,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     for (let row = 0; row < remaining.length; row += 1) if (typeof stamina[row] === 'number') stamina[row] = Math.max(0, stamina[row] - r20Injury * Math.max(0, hpMark[row] - remaining[row]));
     const cover = (table.cover || []).slice();
-    // 守护: the ally it stands before is covered by the actor until the actor's next action (r20Race cover).
+    // 守护: the ally it stands before is covered by the actor (r20Race cover). 持续守护（用户 11-22 定：原作「站在队友身前」——守护的价值在
+    // 一直护着，队友越危险越值）：估值时守护者一直护着、这期间不出手（idle），直到它倒下或推演结束（被控制不能行动时掩护停，r20Race acting）；
+    // 此前只护到守护者下一次行动，之后照默认去打，守护只值「队友晚倒一回合」，与队友危不危险无关（检查目录第 34 题）。
+    // LWCS_TUNE.GUARD_PERSIST = false 回到只护一回合。
+    let guarding = false;
     if (String(candidate?.declaration?.actionKind || '').toUpperCase() === 'GUARD' && String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase() === 'ACTIVE' && actorRow !== undefined) {
       const ward = table.index.get(String(candidate.declaration.targetIds?.[0] || ''));
-      if (ward !== undefined && ward !== actorRow && table.sides[ward] === table.sides[actorRow]) { cover[ward] = { row: actorRow, until: 1 }; seen += 1; }
+      if (ward !== undefined && ward !== actorRow && table.sides[ward] === table.sides[actorRow]) { cover[ward] = R20_GUARD_PERSIST ? { row: actorRow, until: Infinity, guard: true } : { row: actorRow, until: 1 }; seen += 1; guarding = R20_GUARD_PERSIST; }
     }
     for (const [row, next] of rebuilt) cover[row] = r20Cover(next, table.units, table.sides, row);
     while (cover.length < sidesNow.length) cover.push(null);
