@@ -26869,6 +26869,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     SPIRIT_UNRELEASED_KEY,
     armourReleaseState,
     armourStateAtDurability,
+    armourDurabilityMax,
     settlementLinkPartners,
     damageTransferReceiver,
     withdrawalSucceeded,

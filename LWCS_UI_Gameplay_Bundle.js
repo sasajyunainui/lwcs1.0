@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:2577a021a2e3b72acc49dcb0545c626eb87b6e79233c38ae7ec6a3f8f9375c32|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:502310304887f1f921448994dadf945630690de3644ef923c365eb32e8621de8|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:69b544c92f5cd74f4813856b6e4cb738fad107257d201fdd31305b7c38fd9e83|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5a43736336bbb578498ec791ae4ec9229fa442bde67fd081c2895c7d9bbe0ee1|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -3465,7 +3465,7 @@ const PROFESSION_CONFIG = {
     materialHint: '设计工坊允许无材料起草，但选入模板/旧图纸会被视作协同设计材料。'
   },
   repair: {
-    mode: 'repair', jobName: '修理师', title: '修理工序', displayName: '机甲修理', actionLabel: '开始修理',
+    mode: 'repair', jobName: '修理师', title: '修理工序', displayName: '修理', actionLabel: '开始修理',
     requiresMaterials: false, supportsFusion: false,
     costs: { 1: [5, 10, 5], 2: [40, 80, 40], 3: [175, 350, 150], 4: [750, 1500, 500], 5: [4000, 8000, 2700] },
     expGain: { 1: 50, 2: 400, 3: 2000, 4: 10000, 5: 50000 },
@@ -3576,6 +3576,7 @@ class ProfessionUIComponent {
       btn.addEventListener('click', () => this.setActiveMode(btn.dataset.mode));
     });
     this.$('#prof-tier').addEventListener('change', () => {
+      if (this.activeMode === 'repair') this.同步修理目标名();
       this.autoGenerateTargetName();
       this.updatePreview();
     });
@@ -3597,6 +3598,7 @@ class ProfessionUIComponent {
     if (阶级值.startsWith('mech-')) { 解析阶级 = Number(阶级值.split('-')[1]); 子类型 = 'mech'; }
     else if (阶级值.startsWith('armor-')) { 解析阶级 = Number(阶级值.split('-')[1]); 子类型 = 'armor'; }
     else if (阶级值.startsWith('soul-')) { 魂导等级 = Number(阶级值.split('-')[1]) || 1; 解析阶级 = this.读取魂导器金属阶位(魂导等级); 子类型 = 'soul'; }
+    else if (阶级值.startsWith('repair|')) { 子类型 = 'repair'; 解析阶级 = Math.max(1, Math.min(5, Number(this.读取修理目标(阶级值)?.阶 || 1))); }
     const 数量原文 = this.$('#prof-cost')?.value || '1';
     const 数量数值 = Number(数量原文);
     return {
@@ -3604,6 +3606,7 @@ class ProfessionUIComponent {
       tier: 解析阶级 || 1,
       subtype: 子类型,
       魂导等级,
+      修理目标键: 子类型 === 'repair' ? 阶级值 : '',
       cost: 数量原文,
       数量: Number.isFinite(数量数值) && 数量数值 > 0 ? Math.max(1, Math.floor(数量数值)) : 1,
       target: this.$('#prof-target')?.value || '',
@@ -3638,6 +3641,7 @@ class ProfessionUIComponent {
     if (this.$('#prof-tier')) {
       if (this.activeMode !== 'forge') {
         if (state.subtype === 'soul' && state.魂导等级) this.$('#prof-tier').value = `soul-${state.魂导等级}`;
+        else if (state.subtype === 'repair' && state.修理目标键) this.$('#prof-tier').value = state.修理目标键;
         else if (state.subtype && state.tier) {
           this.$('#prof-tier').value = `${state.subtype}-${state.tier}`;
         }
@@ -3704,6 +3708,14 @@ class ProfessionUIComponent {
     const tier = Number(req.阶级 || req.等级 || 0);
     const 目标魂导等级 = this.activeMode === 'manufacture' ? this.读取名称魂导等级(String(req.目标 || req.物品 || req.产物 || '')) : 0;
     let value = '';
+    if (this.activeMode === 'repair') {
+      const 名称 = String(req.目标 || req.物品 || req.产物 || '').trim();
+      const 命中 = 名称 ? Array.from(tierSel.options || []).find(选项 => 选项.value === `repair|制作|${名称}`)?.value
+        || this.列出修理目标().find(目标 => 目标.名称 === 名称)?.键 : '';
+      if (命中) { tierSel.value = 命中; this.同步修理目标名(); }
+      this.syncCostInputState();
+      return;
+    }
     if (this.activeMode === 'manufacture' && (目标魂导等级 > 0 || /soul|魂导/.test(subtype))) {
       const 等级 = Math.min(10, 目标魂导等级 || tier);
       if (等级 > 0) value = `soul-${等级}`;
@@ -4158,36 +4170,6 @@ class ProfessionUIComponent {
     };
   }
 
-  构建修理目标背包状态(targetName = '', definition = {}, repairDesc = {}) {
-    const 现有记录 = this.currentInventory[targetName] && typeof this.currentInventory[targetName] === 'object' && !Array.isArray(this.currentInventory[targetName])
-      ? this.复制JSON(this.currentInventory[targetName], {})
-      : {};
-    const 基础耐久 = Math.max(100, Math.floor(Number(definition?.基础耐久 || 100)));
-    const 批次 = {
-      数量: Math.max(1, Math.floor(Number(现有记录.数量 || 1))),
-      品质: this.规范化物品经济品质(definition?.品质 || '普通', targetName, definition?.物品分类 || definition?.分类 || ''),
-      耐久: 基础耐久,
-    };
-    const 首批 = this.读取首个背包批次(现有记录);
-    if (首批?.品质系数 !== undefined) 批次.品质系数 = 首批.品质系数;
-    if (首批?.副职业参数?.融合参数) 批次.副职业参数 = { 融合参数: this.复制JSON(首批.副职业参数.融合参数, {}) };
-    if (首批?.绑定者) 批次.绑定者 = 首批.绑定者;
-    if (Number(首批?.有效期至tick || 0) > 0) 批次.有效期至tick = Number(首批.有效期至tick);
-    const 已有批次 = this.读取背包批次列表(现有记录).map(项 => this.复制JSON(项, {}));
-    if (已有批次.length) {
-      已有批次[0] = { ...已有批次[0], 耐久: 基础耐久 };
-      return { 数量: 0, 批次: 已有批次 };
-    }
-    return { 数量: 0, 批次: [批次] };
-  }
-
-  追加修理写回补丁(patchOps = [], targetName = '', definition = {}, repairDesc = {}) {
-    patchOps.push({
-      op: 'replace',
-      path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(targetName)}`,
-      value: this.构建修理目标背包状态(targetName, definition, repairDesc),
-    });
-  }
   get activeName() {
     const chars = this.allChars || {};
     const snapshotActive = String(this.snapshot?.activeName || '').trim();
@@ -4282,7 +4264,11 @@ class ProfessionUIComponent {
     if (!tierSel) return;
     const currentVal = tierSel.value;
     tierSel.innerHTML = '';
-    if (this.activeMode !== 'forge') {
+    const 阶位标签 = this.$('#tier-label');
+    if (阶位标签) 阶位标签.textContent = this.activeMode === 'repair' ? '修理对象' : '操作阶位';
+    if (this.activeMode === 'repair') {
+      tierSel.innerHTML = this.构建修理对象选项HTML();
+    } else if (this.activeMode !== 'forge') {
       const suffix = ({ manufacture: '制造', design: '设计', repair: '修理' })[this.activeMode] || '处理';
       tierSel.innerHTML = `
         <option value="mech-1">黄级机甲${suffix}</option>
@@ -4306,8 +4292,9 @@ class ProfessionUIComponent {
     if (Array.from(tierSel.options).some(o => o.value === currentVal)) {
       tierSel.value = currentVal;
     } else {
-      tierSel.selectedIndex = 0;
+      tierSel.selectedIndex = Math.max(0, Array.from(tierSel.options).findIndex(o => !o.disabled));
     }
+    if (this.activeMode === 'repair') this.同步修理目标名();
     this.syncCostInputState();
   }
 
@@ -4337,6 +4324,9 @@ class ProfessionUIComponent {
     return result.currency;
   }
   formatCurrency(amount) { return `${Number(amount || 0).toLocaleString()} ${this.getLegalCurrency()}`; }
+  escapeHtml(文本 = '') {
+    return String(文本 ?? '').replace(/[&<>"']/g, 字符 => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[字符]);
+  }
   escapeJsonPointer(str) { return String(str).replace(/~/g, '~0').replace(/\//g, '~1'); }
 
   读取核心技艺文本(副职业名, 等级) {
@@ -4823,37 +4813,6 @@ class ProfessionUIComponent {
     return /设计图|蓝图/.test(targetName) ? targetName : `${targetName}设计图`;
   }
 
-  getRepairDescriptor(materialNames) {
-    const names = materialNames.map(name => this.取材料原名(name));
-    if (names.some(name => /神级重塑核心/.test(name))) return { status: '神级重塑完成', desc: '借助神级重塑核心完成了整体重塑' };
-    if (names.some(name => /斗铠本源蕴养液/.test(name))) return { status: '本源修复', desc: '斗铠本源已得到充分蕴养与修复' };
-    if (names.some(name => /精密修复模块/.test(name))) return { status: '精密修复完成', desc: '关键结构已完成精密级修复与校准' };
-    if (names.some(name => /基础维护套件/.test(name))) return { status: '基础维护完成', desc: '已完成日常维护、除错与常规校准' };
-    return { status: '已检修', desc: '已完成标准检修' };
-  }
-
-  构建修理目标物品定义(targetName, definition = {}, repairDesc = {}) {
-    const 分类 = this.要求产物分类(targetName, definition, '功能道具');
-    const 新定义 = {
-      品质: definition.品质 || '普通',
-      描述: `${definition?.描述 ? definition.描述 + ' | ' : ''}${repairDesc.desc || '已完成标准检修'}`,
-      基础价格: Math.max(1, Math.floor(Number(definition.基础价格 || 1))),
-      默认货币: definition.默认货币 || this.getLegalCurrency(),
-      基础耐久: Math.max(100, Math.floor(Number(definition.基础耐久 || 100))),
-    };
-    if (副职业装备物品分类集合.has(分类)) {
-      if (definition.装备槽位) 新定义.装备槽位 = definition.装备槽位;
-      if (definition.属性加成 && typeof definition.属性加成 === 'object' && !Array.isArray(definition.属性加成)) 新定义.属性加成 = definition.属性加成;
-      if (definition.装备技能 && typeof definition.装备技能 === 'object' && !Array.isArray(definition.装备技能)) 新定义.装备技能 = definition.装备技能;
-    }
-    Object.keys(新定义).forEach(字段名 => {
-      const 值 = 新定义[字段名];
-      if (值 === undefined || 值 === null || 值 === '' || (Array.isArray(值) && !值.length)) delete 新定义[字段名];
-      else if (值 && typeof 值 === 'object' && !Array.isArray(值) && !Object.keys(值).length) delete 新定义[字段名];
-    });
-    return { 分类, 定义: 新定义 };
-  }
-
   // 修理师产出修复道具（用户 11-19「也可以设计该级别修理师所生产的道具」）：修理工序里目标填修复道具的名字、背包里又没有时，按制作处理。
   // 档位按修理师等级（1～2 级一档、3～4 二档、5～6 三档、7～8 四档、9 五档）：基础维护套件 一档、精密修复模块 二档、斗铠本源蕴养液 四档、
   // 神级重塑核心 五档（不含神器——神器只能自身温养）。不是修复道具返回 null。
@@ -4867,38 +4826,182 @@ class ProfessionUIComponent {
     return { 名称, 需要档位, 修理师等级, error: 修理师档位 < 需要档位 ? `【${名称}】要 ${需要等级} 级以上的修理师才能做（现在是 ${修理师等级} 级）。` : '' };
   }
 
-  // 魂导器由对应级别的魂导师修（用户 11-19「魂导器的话由对应级别的魂导师修，按造价和修复比例支付代价」）：魂导师等级不低于魂导等级，
-  // 不用修理耗材，代价 = 基础价格 × 修复比例（1 − 耐久 ÷ 耐久上限），用该魂导器的默认货币（缺省法定货币）支付。不是魂导器返回 null。
-  读取魂导器修理计划(targetName = '') {
-    const 名称 = String(targetName || '').trim();
-    if (!名称) return null;
-    const item = this.resolveInventoryItem(名称);
-    const 魂导等级 = Math.max(0, Math.floor(Number(item?.魂导等级 || 0)));
-    if (!(魂导等级 > 0) && !/魂导器/.test(String(item?.物品分类 || item?.分类 || ''))) return null;
+  // ---------- 修理（11-22 重做）----------
+  // 修理对象 = 装备栏（武器、防具、斗铠、机甲、魂导器装配）＋背包里带耐久的装备批次。耐久上限与战斗同一公式（BattlePreview
+  // armourDurabilityMax：等效等级基础体力 × 品级 × 品质系数），不写回上限（随穿戴者等级变）。能修几阶看修理师等级（与制造、设计同一张
+  // 解锁表：1/3/5/7/9 级对应 1～5 阶，越一级成功率低）；阶位：斗铠 一字～四字＝2～5，机甲 黄～红＝1～4，其余装备按品质 普通～传说＝1～5。
+  // 损伤程度定要哪档材料、修回多少；魂导器仍归魂导师（11-19 定）。
+  读取战斗预览接口() {
+    for (const 窗口 of [window, (() => { try { return window.parent; } catch (错误) { return null; } })(), (() => { try { return window.top; } catch (错误) { return null; } })()]) {
+      try { if (窗口?.__LWCS_BATTLE_PREVIEW__) return 窗口.__LWCS_BATTLE_PREVIEW__; } catch (错误) {}
+    }
+    return null;
+  }
+  读取耐久上限(槽位类型 = '', item = {}) {
+    const 接口 = this.读取战斗预览接口();
+    if (typeof 接口?.armourDurabilityMax === 'function') return Math.max(1, Number(接口.armourDurabilityMax(this.charData, 槽位类型, item)) || 1);
+    const 声明 = Number(item?.耐久上限);
+    if (声明 > 0) return 声明;
+    const 等级 = Math.max(1, Math.floor(Number(槽位类型 === '斗铠' ? item?._属性加成?.等效等级 : 0) || Number(this.charData?.属性?.等级 || 1)));
+    const 基础 = Number((window.__LWCS_GET_BASE_STATS__ || window.parent?.__LWCS_GET_BASE_STATS__)?.(等级)?.vit_max) || Number(this.charData?.属性?.体力上限 || 1);
+    const 文本 = String(item?.等级 || '');
+    const 品级 = 槽位类型 === '斗铠' ? Math.max(1, Math.floor(Number(item?.等级) || 1)) : /神/.test(文本) ? 5 : /红/.test(文本) ? 4 : /黑/.test(文本) ? 3 : /紫/.test(文本) ? 2 : 1;
+    return Math.max(1, Math.round(基础 * 品级 * Math.max(0.1, Number(item?.品质系数) || 1)));
+  }
+  读取修理阶位(槽位类型 = '', item = {}, 名称 = '') {
+    const 品质 = this.规范化物品经济品质(item?.品质 || item?.品阶 || '普通', 名称, item?.物品分类 || '');
+    if (/神器/.test(品质)) return { 不可修: '神器以上无法外力修复，只能自身温养。' };
+    if (槽位类型 === '斗铠') {
+      const 字数 = Math.floor(Number(item?.等级) || 0) || Math.max(0, (this.getArmorTierFromName(名称) || 0) - 1);
+      if (字数 >= 5) return { 不可修: '五字以上斗铠无法外力修复，只能自身温养。' };
+      const 阶 = Math.max(2, Math.min(5, 字数 + 1));
+      return { 阶, 阶名: `${['', '一', '二', '三', '四'][阶 - 1] || ''}字斗铠` };
+    }
+    if (槽位类型 === '机甲') {
+      const 文本 = `${item?.等级 || ''} ${名称}`;
+      if (/神级|超神|规格外/.test(文本)) return { 不可修: '神级以上机甲无法外力修复。' };
+      const 阶 = /红级/.test(文本) ? 4 : /黑级/.test(文本) ? 3 : /紫级/.test(文本) ? 2 : 1;
+      return { 阶, 阶名: `${['黄', '紫', '黑', '红'][阶 - 1]}级机甲` };
+    }
+    const 阶 = Math.max(1, ['普通', '优秀', '稀有', '史诗', '传说'].indexOf(品质) + 1);
+    return { 阶, 阶名: `${品质}品质` };
+  }
+  判定修理损伤(耐久 = 0, 上限 = 1, 槽位类型 = '', 装备状态 = '') {
+    const 比例 = 上限 > 0 ? 耐久 / 上限 : 1;
+    if (耐久 <= 0 || /损毁/.test(String(装备状态 || ''))) return { 等级: 4, 标签: '彻底损毁' };
+    if (槽位类型 === '斗铠' && 比例 < 0.3) return { 等级: 3, 标签: '斗铠本源伤' };
+    if (比例 < 0.6) return { 等级: 2, 标签: '中重度损伤' };
+    return { 等级: 1, 标签: '轻度磨损' };
+  }
+  读取修理材料档(materialNames = []) {
+    const 档表 = [[/神级重塑核心/, 4], [/斗铠本源蕴养液/, 3], [/精密修复模块/, 2], [/基础维护套件/, 1]];
+    return materialNames.reduce((最高, 名称) => {
+      const 原名 = this.取材料原名(名称);
+      const 命中 = 档表.find(([规则]) => 规则.test(原名));
+      return Math.max(最高, 命中 ? 命中[1] : 0);
+    }, 0);
+  }
+  列出修理目标() {
+    const 列表 = [];
+    const 装备 = this.charData?.装备 && typeof this.charData.装备 === 'object' ? this.charData.装备 : {};
+    const 加入 = (键, 位置, 名称, 记录, 定义, 槽位类型, 路径, 批次索引 = -1) => {
+      const item = { ...(定义 || {}), ...(记录 || {}) };
+      const 魂导等级 = Math.max(0, Math.floor(Number(item.魂导等级 || 0)));
+      const 上限 = this.读取耐久上限(槽位类型, item);
+      const 耐久 = Number.isFinite(Number(记录?.耐久)) ? Math.max(0, Math.min(上限, Number(记录.耐久))) : 上限;
+      const 损毁 = /损毁/.test(String(记录?.装备状态 || ''));
+      if (耐久 >= 上限 && !损毁) return;
+      const 阶位 = 魂导等级 > 0 ? { 阶: Math.max(1, this.读取魂导器金属阶位(魂导等级)), 阶名: `${魂导等级}级魂导器` } : this.读取修理阶位(槽位类型, item, 名称);
+      列表.push({ 键, 位置, 名称, 记录, item, 槽位类型, 路径, 批次索引, 上限, 耐久, 魂导等级, ...阶位, 损伤: this.判定修理损伤(耐久, 上限, 槽位类型, 记录?.装备状态) });
+    };
+    const 槽表 = [['武器', '武器'], ['防具', '防具'], ['斗铠', '斗铠'], ['机甲', '机甲']];
+    槽表.forEach(([槽, 类型]) => {
+      const 记录 = 装备[槽];
+      if (!记录 || typeof 记录 !== 'object') return;
+      const 名称 = String(记录.名称 || '').trim();
+      if (类型 === '斗铠' ? !(Number(记录.等级 || 0) > 0) : (!名称 || 名称 === '无')) return;
+      const 显示名 = 名称 && 名称 !== '无' ? 名称 : `${['', '一', '二', '三', '四', '五', '六'][Math.floor(Number(记录.等级) || 0)] || ''}字斗铠`;
+      加入(`repair|装备|${槽}`, '装备', 显示名, 记录, this.查找运行时物品定义(名称)?.定义, 类型, `${this.activeCharBasePath}/装备/${this.escapeJsonPointer(槽)}`);
+    });
+    Object.entries(装备.魂导器?.装配 || {}).forEach(([槽, 记录]) => {
+      const 名称 = String(记录?.名称 || '').trim();
+      if (!名称 || 名称 === '无') return;
+      加入(`repair|装配|${槽}`, '装配', 名称, 记录, this.查找运行时物品定义(名称)?.定义, '魂导器', `${this.activeCharBasePath}/装备/魂导器/装配/${this.escapeJsonPointer(槽)}`);
+    });
+    const 类型表 = { 近战武器: '武器', 远程武器: '魂导器', 防具装备: '防具', 斗铠部件: '斗铠', 机甲机体: '机甲' };
+    Object.entries(this.currentInventory || {}).forEach(([名称, 记录]) => {
+      const 命中 = this.查找运行时物品定义(名称);
+      const 定义 = 命中?.定义 || {};
+      const 类型 = 类型表[命中?.分类] || (Number(定义.魂导等级 || 0) > 0 ? '魂导器' : '');
+      if (!类型) return;
+      (Array.isArray(记录?.批次) ? 记录.批次 : []).forEach((批次, 索引) => {
+        if (!批次 || 批次.耐久 === undefined || !(Number(批次.数量 || 0) > 0)) return;
+        加入(`repair|背包|${名称}|${索引}`, '背包', 名称, 批次, 定义, 类型, `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(名称)}`, 索引);
+      });
+    });
+    return 列表;
+  }
+  读取修理目标(键 = '') {
+    const 值 = String(键 || '');
+    if (!值.startsWith('repair|')) return null;
+    if (值.startsWith('repair|制作|')) {
+      const 名称 = 值.slice('repair|制作|'.length);
+      return { 键: 值, 制作: true, 名称, 阶: { 基础维护套件: 1, 精密修复模块: 2, 斗铠本源蕴养液: 4, 神级重塑核心: 5 }[名称] || 1 };
+    }
+    return this.列出修理目标().find(目标 => 目标.键 === 值) || null;
+  }
+  读取当前修理目标() {
+    return this.activeMode === 'repair' ? this.读取修理目标(this.$('#prof-tier')?.value || '') : null;
+  }
+  构建修理对象选项HTML() {
+    const 位置名 = { 装备: '装备中', 装配: '魂导器装配', 背包: '背包' };
+    const 修理项 = this.列出修理目标().map(目标 => `<option value="${this.escapeHtml(目标.键)}">${this.escapeHtml(`${目标.名称}（${位置名[目标.位置]}${目标.批次索引 >= 0 ? ` · 批次${目标.批次索引 + 1}` : ''}）· ${目标.阶名} · ${目标.损伤.标签} ${Math.round(目标.耐久)}/${Math.round(目标.上限)}`)}</option>`);
+    const 制作项 = ['基础维护套件', '精密修复模块', '斗铠本源蕴养液', '神级重塑核心'].map(名称 => `<option value="repair|制作|${名称}">制作修复道具：${名称}</option>`);
+    return [...(修理项.length ? 修理项 : ['<option value="" disabled>没有需要修理的装备</option>']), ...制作项].join('');
+  }
+  同步修理目标名() {
+    const 目标 = this.读取当前修理目标();
+    const 输入 = this.$('#prof-target');
+    if (输入 && 目标) 输入.value = 目标.名称;
+    if (目标) this.更新蓝图状态(目标.名称);
+  }
+  // 修理结果：带够档位的材料修满，不带材料只补一截（上限 ×（10% + 等级 × 5%），只限轻度、中重度）；彻底损毁修回来品质系数 ×0.85～0.95
+  //（9 级修理师或大成功原样复原）；魂导器由魂导师修满、按造价 × 修复比例付钱
+  构建修理结果补丁(目标 = null, materialNames = [], isGreatSuccess = false, runtime = {}) {
+    const patches = [];
+    if (!目标) return { patches, 文本: '没有修理对象' };
+    if (目标.制作) {
+      const 道具定义 = this.查找运行时物品定义(目标.名称)?.定义 || { 分类: '一次性道具', 品质: '普通', 描述: '修理师制作的修复道具。' };
+      patches.push(...this.buildInventoryAddPatches(目标.名称, { ...道具定义, 物品分类: '一次性道具', 数量: 1 }, 1, false));
+      return { patches, 文本: `制作了修复道具【${目标.名称}】` };
+    }
+    const 等级 = Math.max(0, Math.floor(Number(runtime?.lv || 0)));
+    let 新耐久 = 目标.上限, 说明 = '修复如初';
+    if (目标.魂导等级 > 0) {
+      const 计划 = this.读取魂导器修理代价(目标);
+      if (计划.代价 > 0) patches.push({ op: 'replace', path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(计划.货币)}`, value: Math.max(0, 计划.资金 - 计划.代价) });
+      说明 = `魂导师修复，代价 ${计划.代价} ${计划.货币}`;
+    } else if (this.读取修理材料档(materialNames) < 目标.损伤.等级) {
+      新耐久 = Math.min(目标.上限, Math.round(目标.耐久 + 目标.上限 * (0.1 + 等级 * 0.05)));
+      说明 = 新耐久 >= 目标.上限 ? '没带耗材，但损伤轻、补满了' : '没有对应耗材，只补了一截';
+    }
+    const 新记录 = this.复制JSON(目标.记录, {});
+    新记录.耐久 = Math.round(新耐久);
+    if (新耐久 > 0 && /损毁/.test(String(新记录.装备状态 || ''))) 新记录.装备状态 = '已装备';
+    if (目标.损伤.等级 >= 4 && !(等级 >= 9 || isGreatSuccess)) {
+      const 原品质 = Math.max(0.1, Number(新记录.品质系数 ?? 目标.item?.品质系数 ?? 1));
+      新记录.品质系数 = Number((原品质 * (0.85 + Math.random() * 0.1)).toFixed(2));
+      说明 += `，彻底损毁修回来品质系数 ${原品质.toFixed(2)}→${新记录.品质系数.toFixed(2)}`;
+    }
+    if (目标.位置 === '背包') {
+      const 背包记录 = this.复制JSON(this.currentInventory[目标.名称], {});
+      if (Array.isArray(背包记录.批次) && 背包记录.批次[目标.批次索引]) 背包记录.批次[目标.批次索引] = { ...背包记录.批次[目标.批次索引], ...新记录 };
+      patches.push({ op: 'replace', path: 目标.路径, value: 背包记录 });
+    } else {
+      patches.push({ op: 'replace', path: 目标.路径, value: 新记录 });
+    }
+    return { patches, 文本: `修理了【${目标.名称}】（${目标.阶名} · ${目标.损伤.标签}）：耐久 ${Math.round(目标.耐久)}→${Math.round(新耐久)} / ${Math.round(目标.上限)}，${说明}` };
+  }
+  读取魂导器修理代价(目标 = {}) {
     const 魂导师等级 = Math.max(0, Math.floor(Number(this.读取副职业认证运行时('魂导师')?.lv || 0)));
-    const 上限 = Math.max(1, Number(item?.耐久上限 || item?.基础耐久 || 100));
-    const 比例 = Math.max(0, Math.min(1, 1 - Math.max(0, Number(item?.耐久 ?? 上限)) / 上限));
-    const 货币 = String(item?.默认货币 || '').trim() || this.getLegalCurrency();
-    const 代价 = Math.ceil(Math.max(0, Number(item?.基础价格 || 0)) * 比例);
+    const 比例 = Math.max(0, Math.min(1, 1 - Number(目标.耐久 || 0) / Math.max(1, Number(目标.上限 || 1))));
+    const 货币 = String(目标.item?.默认货币 || '').trim() || this.getLegalCurrency();
+    const 代价 = Math.ceil(Math.max(0, Number(目标.item?.基础价格 || 0)) * 比例);
     const 资金 = Math.max(0, Number(this.charData?.财富?.[货币] || 0));
-    const error = 魂导师等级 < 魂导等级 ? `魂导器要由 ${魂导等级} 级以上的魂导师修（现在是 ${魂导师等级} 级魂导师）。`
-      : !(比例 > 0) ? '这件魂导器没有损伤。' : 资金 < 代价 ? `修理代价 ${代价} ${货币}，资金不足。` : '';
-    return { 魂导等级, 魂导师等级, 比例, 货币, 代价, 资金, error };
+    const error = 魂导师等级 < 目标.魂导等级 ? `魂导器要由 ${目标.魂导等级} 级以上的魂导师修（现在是 ${魂导师等级} 级魂导师）。` : 资金 < 代价 ? `修理代价 ${代价} ${货币}，资金不足。` : '';
+    return { 魂导师等级, 比例, 货币, 代价, 资金, error };
   }
-
-  getRepairRequirement(targetName) {
-    const item = this.resolveInventoryItem(targetName);
-    const durability = Number(item?.耐久 ?? item?.完整度 ?? 100);
-    const statusText = `${targetName} ${item?.描述 || ''}`;
-    if (/彻底损毁|完全损毁|报废|粉碎|崩毁|重塑/.test(statusText) || durability <= 0) return { label: '彻底损毁', required: '神级重塑核心', allows: [/神级重塑核心/] };
-    if (/斗铠/.test(targetName) && (/本源|根基|核心受损|灵性流失/.test(statusText) || (durability > 0 && durability < 30))) return { label: '斗铠本源伤', required: '斗铠本源蕴养液', allows: [/斗铠本源蕴养液/, /神级重塑核心/] };
-    if (/严重|中度|重伤|裂纹|断裂|破损|损坏|失衡/.test(statusText) || durability < 60) return { label: '中重度损伤', required: '精密修复模块', allows: [/精密修复模块/, /斗铠本源蕴养液/, /神级重塑核心/] };
-    return { label: '轻度磨损', required: '基础维护套件', allows: [/基础维护套件/, /精密修复模块/, /斗铠本源蕴养液/, /神级重塑核心/] };
-  }
-
-  getRepairRequirementSatisfied(materialNames, requirement) {
-    if (!requirement) return true;
-    return requirement.allows.some(pattern => materialNames.some(name => pattern.test(this.取材料原名(name))));
+  校验修理目标(目标 = null, materialNames = [], runtime = {}) {
+    if (!目标) return '先在「修理对象」里选一件要修的装备，或选一项修复道具制作。';
+    if (目标.制作) return this.读取修复道具制作计划(目标.名称)?.error || null;
+    if (目标.不可修) return 目标.不可修;
+    if (目标.魂导等级 > 0) return this.读取魂导器修理代价(目标).error || null;
+    const 等级 = Math.max(0, Math.floor(Number(runtime?.lv || 0)));
+    const 解锁 = this.getForgeUnlockLevel(目标.阶);
+    if (等级 < 解锁 && 解锁 !== 等级 + 1) return `修【${目标.名称}】（${目标.阶名}）需要 Lv.${解锁} 修理师（现在 Lv.${等级}）。`;
+    const 需要 = { 1: '基础维护套件', 2: '精密修复模块', 3: '斗铠本源蕴养液', 4: '神级重塑核心' }[目标.损伤.等级];
+    if (目标.损伤.等级 >= 3 && this.读取修理材料档(materialNames) < 目标.损伤.等级) return `【${目标.损伤.标签}】必须用【${需要}】（或更高档的修复道具）。`;
+    return null;
   }
 
   getProfessionCost(jobName, tier, qty = 1) {
@@ -5444,10 +5547,7 @@ class ProfessionUIComponent {
       this.更新蓝图状态(this.$('#prof-target').value);
       return;
     }
-    if (this.activeMode === 'repair' && !this.$('#prof-target').value.trim()) {
-      this.$('#prof-target').value = materials[0];
-      this.更新蓝图状态(this.$('#prof-target').value);
-    }
+    if (this.activeMode === 'repair') this.同步修理目标名();
   }
 
   getForgeFusionRate(runtime, materialNames) {
@@ -5526,6 +5626,7 @@ class ProfessionUIComponent {
         return null;
       }
     }
+    if (cfg.mode === 'repair') return this.校验修理目标(this.读取当前修理目标(), materialNames, runtime);
     const uLv = this.getForgeUnlockLevel(tier);
     if (runtime.lv < uLv && uLv !== runtime.lv + 1) return `${this.getTierDisplayName(cfg.mode, tier)}尚未解锁，需要 Lv.${uLv} ${jobDisplayName}。`;
     if (cfg.requiresMaterials && materialNames.length === 0) return `${cfg.displayName}至少需要选择一种材料。`;
@@ -5558,21 +5659,6 @@ class ProfessionUIComponent {
       if (/斗铠/.test(targetName) && tier < 2) return '斗铠设计图至少 2 阶。';
       const armorTier = this.getArmorTierFromName(targetName);
       if (armorTier && armorTier !== tier) return `目标阶位不匹配。`;
-    }
-    if (cfg.mode === 'repair') {
-      const 修复道具制作 = this.读取修复道具制作计划(targetName.trim());
-      if (修复道具制作) return 修复道具制作.error || null;
-      if (targetName.trim() && !this.currentInventory[targetName.trim()]) return '修现存物品必须在背包中。';
-      // 神器以上无法外力修复，只能自身温养（用户 11-19）。
-      const 修理目标定义 = targetName.trim() ? (this.currentInventory[targetName.trim()] || {}) : {};
-      if (/神器/.test(String(修理目标定义.品质 || 修理目标定义.品阶 || this.getItemDefinition?.(targetName.trim())?.品质 || ''))) return '神器以上无法外力修复，只能自身温养。';
-      const 魂导器修理 = this.读取魂导器修理计划(targetName.trim());
-      if (魂导器修理) { if (魂导器修理.error) return 魂导器修理.error; }
-      else {
-        const req = this.getRepairRequirement(targetName.trim());
-        if (materialNames.length === 0) return `至少需要【${req.required}】。`;
-        if (!this.getRepairRequirementSatisfied(materialNames, req)) return `当前损伤为【${req.label}】，至少需要【${req.required}】。`;
-      }
     }
     return null;
   }
@@ -5630,15 +5716,18 @@ class ProfessionUIComponent {
           if (recipe?.mode === 'mech' || recipe?.mode === 'armor') noteText = recipe.note;
           if (recipe?.mode === 'soul_tool') noteText = recipe.note;
         }
-        const 魂导器修理预览 = cfg.mode === 'repair' ? this.读取魂导器修理计划(targetName) : null;
-        const 修复道具预览 = cfg.mode === 'repair' ? this.读取修复道具制作计划(targetName) : null;
-        if (修复道具预览) {
+        const 修理目标预览 = cfg.mode === 'repair' ? this.读取当前修理目标() : null;
+        const 修复道具预览 = 修理目标预览?.制作 ? this.读取修复道具制作计划(修理目标预览.名称) : null;
+        if (修理目标预览 && !修理目标预览.制作) {
+          const 材料档 = this.读取修理材料档(materialNames);
+          const 需要 = { 1: '基础维护套件', 2: '精密修复模块', 3: '斗铠本源蕴养液', 4: '神级重塑核心' }[修理目标预览.损伤.等级];
+          noteText = 修理目标预览.魂导等级 > 0
+            ? `魂导器修理：${修理目标预览.魂导等级} 级魂导器，由魂导师修满，代价 ${this.读取魂导器修理代价(修理目标预览).代价}`
+            : `${修理目标预览.阶名} · ${修理目标预览.损伤.标签}（耐久 ${Math.round(修理目标预览.耐久)}/${Math.round(修理目标预览.上限)}）：${材料档 >= 修理目标预览.损伤.等级 ? '耗材够档，成功即修满' : 修理目标预览.损伤.等级 >= 3 ? `必须用【${需要}】` : `带【${需要}】可修满，不带只补一截`}`;
+        } else if (修复道具预览) {
           noteText = `制作修复道具【${修复道具预览.名称}】（${修复道具预览.需要档位} 档，修理师 ${修复道具预览.修理师等级} 级）`;
-        } else if (魂导器修理预览) {
-          noteText = `魂导器修理：${魂导器修理预览.魂导等级} 级魂导器，修复比例 ${Math.round(魂导器修理预览.比例 * 100)}%，代价 ${魂导器修理预览.代价} ${魂导器修理预览.货币}（魂导师 ${魂导器修理预览.魂导师等级} 级）`;
         } else if (cfg.mode === 'repair') {
-          const req = this.getRepairRequirement(targetName);
-          noteText = isComp ? `目标判定：${req.label} / 已选${materialNames.length}种修理耗材 / 要求：${req.required}` : `目标判定：${req.label} / 要求：${req.required}`;
+          noteText = '先在「修理对象」里选要修的装备，或选一项修复道具制作。';
         }
       }
     }
@@ -6021,6 +6110,11 @@ class ProfessionUIComponent {
       this.显示提示('对方提供的材料只够这一单，不能连续开工。');
       return;
     }
+    const 连续修理目标 = this.读取当前修理目标();
+    if (this.activeMode === 'repair' && !连续修理目标?.制作) {
+      this.显示提示('修理一次修一件，不能连续开工（制作修复道具可以）。');
+      return;
+    }
     const costs = this.getProfessionCost(cfg.jobName, tier, qty);
     const commissionCtx = this.getCommissionContext(cfg, runtime, tier, materialNames, targetName);
     const effectiveRuntime = commissionCtx.validationRuntime || runtime;
@@ -6185,26 +6279,9 @@ class ProfessionUIComponent {
       patchOps.push(...this.buildInventoryAddPatches(产物名, 物品数据, Number(数据.数量 || 1), Object.keys(批次数据).length > 0, patchOps));
     });
 
-    const 修复道具制作执行 = this.activeMode === 'repair' && 修理成功标记 ? this.读取修复道具制作计划(targetName) : null;
-    if (修复道具制作执行 && !修复道具制作执行.error) {
-      const 道具定义 = this.查找物品定义(修复道具制作执行.名称)?.定义 || { 分类: '一次性道具', 品质: '普通', 描述: '修理师制作的修复道具。' };
-      patchOps.push(...this.buildInventoryAddPatches(修复道具制作执行.名称, { ...道具定义, 数量: 1 }, 1, false));
-    } else if (this.activeMode === 'repair' && 修理成功标记) {
-      const 魂导器修理执行 = this.读取魂导器修理计划(targetName);
-      if (魂导器修理执行 && !魂导器修理执行.error && 魂导器修理执行.代价 > 0) {
-        patchOps.push({ op: 'replace', path: `${this.activeCharBasePath}/财富/${this.escapeJsonPointer(魂导器修理执行.货币)}`, value: Math.max(0, 魂导器修理执行.资金 - 魂导器修理执行.代价) });
-      }
-      const repairDesc = 魂导器修理执行 && !魂导器修理执行.error ? { status: '魂导师修理完成', desc: `由魂导师修复（代价 ${魂导器修理执行.代价} ${魂导器修理执行.货币}）` } : this.getRepairDescriptor(materialNames);
-      const definition = this.resolveInventoryItem(targetName);
-      if (!this.查找物品定义(targetName)) {
-        const 修理定义 = this.构建修理目标物品定义(targetName, definition, repairDesc);
-        patchOps.push({
-          op: 'replace',
-          path: `/物品/${this.escapeJsonPointer(修理定义.分类)}/${this.escapeJsonPointer(targetName)}`,
-          value: 修理定义.定义
-        });
-      }
-      this.追加修理写回补丁(patchOps, targetName, definition, repairDesc);
+    if (this.activeMode === 'repair' && 修理成功标记 && 连续修理目标?.制作) {
+      const 道具定义 = this.查找运行时物品定义(连续修理目标.名称)?.定义 || { 分类: '一次性道具', 品质: '普通', 描述: '修理师制作的修复道具。' };
+      patchOps.push(...this.buildInventoryAddPatches(连续修理目标.名称, { ...道具定义, 物品分类: '一次性道具', 数量: 统计.成功次数 }, 统计.成功次数, false));
     }
 
     if (!是否代工 && 统计.累计经验 > 0) {
@@ -6381,18 +6458,9 @@ class ProfessionUIComponent {
         patchOps.push(...this.buildInventoryAddPatches(mMeta.name, { 物品分类: mMeta.分类, 魂导等级: mMeta.魂导等级 || 0, 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: finalQ, 描述: `由${commissionCtx.executorName}完成${本次工序显示名}`, ...批次数据 }, 1, Object.keys(批次数据).length > 0));
         resultLog = `[${commissionCtx.isCommission ? '委托成功' : 本次工序显示名 + '成功'}] ${commissionCtx.executorName}完成了【${mMeta.name}】的制造，完成度系数 ${finalQ.toFixed(2)}。`;
       } else if (this.activeMode === 'repair') {
-        const definition = this.resolveInventoryItem(targetName);
-        const repairDesc = this.getRepairDescriptor(materialNames);
-        if (!this.查找物品定义(targetName)) {
-          const 修理定义 = this.构建修理目标物品定义(targetName, definition, repairDesc);
-          patchOps.push({
-            op: 'replace',
-            path: `/物品/${this.escapeJsonPointer(修理定义.分类)}/${this.escapeJsonPointer(targetName)}`,
-            value: 修理定义.定义
-          });
-        }
-        this.追加修理写回补丁(patchOps, targetName, definition, repairDesc);
-        resultLog = `[${commissionCtx.isCommission ? '委托成功' : 本次工序显示名 + '成功'}] ${commissionCtx.executorName}完成了对【${targetName}】的整备修理。当前状态：${repairDesc.status}。`;
+        const 修理 = this.构建修理结果补丁(this.读取当前修理目标(), materialNames, isGreatSuccess, commissionCtx.executorRuntime || runtime);
+        patchOps.push(...修理.patches);
+        resultLog = `[${commissionCtx.isCommission ? '委托成功' : 本次工序显示名 + '成功'}] ${commissionCtx.executorName}${修理.文本}。`;
       }
       if (!commissionCtx.isCommission) {
         const 进度副职业 = this.读取本次进度副职业(cfg, targetName, materialNames);
@@ -33504,6 +33572,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     SPIRIT_UNRELEASED_KEY,
     armourReleaseState,
     armourStateAtDurability,
+    armourDurabilityMax,
     settlementLinkPartners,
     damageTransferReceiver,
     withdrawalSucceeded,
