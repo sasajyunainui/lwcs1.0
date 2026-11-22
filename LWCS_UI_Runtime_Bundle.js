@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:31e87b50cc58bdfd00217e9547a034c4fd67e83d72165090dde824ec5405d3a8|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:ac03ca85786c26b54d3ee3c4088a92a92e7b09754abca129f50be3bc1267ad5e|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:56ac484d472c510850fb1aeba350fa5428128cbb7076150abf65f433a1cb72c3|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5a43736336bbb578498ec791ae4ec9229fa442bde67fd081c2895c7d9bbe0ee1|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:ac03ca85786c26b54d3ee3c4088a92a92e7b09754abca129f50be3bc1267ad5e|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:5a43736336bbb578498ec791ae4ec9229fa442bde67fd081c2895c7d9bbe0ee1|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:632153b682e98aec3ce323bc82c0e2637f68244e01ee25bd51d2cf28d6a8d2a5|BattleRuntime_Module.js:acd5ab4b09a7305e39bfbb07be5ce7da3e6ea98d24dcf9f12193a33000e0904b|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -34769,44 +34769,74 @@ ${播报文本}
       return 1;
     },
 
-    判定耐久损伤等级(物品名 = '', 物品数据 = {}, 当前耐久 = 100, 基础耐久 = 100) {
-      const 文本 = `${物品名} ${toText(物品数据.状态 || 物品数据.装备状态 || 物品数据.描述, '')}`;
-      const 比例 = 基础耐久 > 0 ? 当前耐久 / 基础耐久 : 1;
-      if (/彻底损毁|完全损毁|报废|粉碎|崩毁|重塑/.test(文本) || 当前耐久 <= 0) return { 标签: '彻底损毁', 等级: 4 };
-      if (/斗铠/.test(文本) && (/本源|根基|核心受损|灵性流失/.test(文本) || (当前耐久 > 0 && 比例 < 0.3))) return { 标签: '斗铠本源伤', 等级: 3 };
-      if (/严重|中度|重伤|裂纹|断裂|破损|损坏|失衡/.test(文本) || 比例 < 0.6) return { 标签: '中重度损伤', 等级: 2 };
+    判定耐久损伤等级(物品名 = '', 物品数据 = {}, 当前耐久 = 100, 上限 = 100, 槽位类型 = '') {
+      // 与工坊修理 判定修理损伤 一致：≥60% 轻度、<60% 中重度、斗铠 <30% 本源伤、0 / 损毁 彻底损毁
+      const 比例 = 上限 > 0 ? 当前耐久 / 上限 : 1;
+      if (当前耐久 <= 0 || /损毁/.test(toText(物品数据.装备状态, ''))) return { 标签: '彻底损毁', 等级: 4 };
+      if ((槽位类型 === '斗铠' || /斗铠/.test(物品名)) && 比例 < 0.3) return { 标签: '斗铠本源伤', 等级: 3 };
+      if (比例 < 0.6) return { 标签: '中重度损伤', 等级: 2 };
       return { 标签: '轻度磨损', 等级: 1 };
     },
 
-    读取耐久修复候选(statData = {}, inventory = {}, 修复等级 = '轻度磨损', 排除物品名 = '') {
+    // 耐久上限与战斗同一公式：优先用战斗预演接口的 armourDurabilityMax，没有就按同一公式算（MVU_Schema_Runtime 计算装备耐久上限_V1 同步）
+    读取装备耐久上限(charData = {}, 槽位类型 = '', item = {}) {
+      const 接口 = (() => { for (const 窗口 of [window, window.parent, window.top]) { try { if (窗口 && 窗口.__LWCS_BATTLE_PREVIEW__) return 窗口.__LWCS_BATTLE_PREVIEW__; } catch (错误) {} } return null; })();
+      if (接口 && typeof 接口.armourDurabilityMax === 'function') return Math.max(1, toNumber(接口.armourDurabilityMax(charData, 槽位类型, item), 1));
+      const 声明 = toNumber(item.耐久上限, 0);
+      if (声明 > 0) return 声明;
+      const 等级 = Math.max(1, Math.floor(toNumber(槽位类型 === '斗铠' ? item?._属性加成?.等效等级 : 0, 0) || toNumber(charData?.属性?.等级, 1)));
+      const 基础表 = (() => { for (const 窗口 of [window, window.parent, window.top]) { try { if (窗口 && typeof 窗口.__LWCS_GET_BASE_STATS__ === 'function') return 窗口.__LWCS_GET_BASE_STATS__; } catch (错误) {} } return null; })();
+      const 基础 = toNumber(基础表 ? 基础表(等级)?.vit_max : 0, 0) || toNumber(charData?.属性?.体力上限, 1);
+      const 文本 = toText(item.等级, '');
+      const 品级 = 槽位类型 === '斗铠' ? Math.max(1, Math.floor(toNumber(item.等级, 1))) : /神/.test(文本) ? 5 : /红/.test(文本) ? 4 : /黑/.test(文本) ? 3 : /紫/.test(文本) ? 2 : 1;
+      return Math.max(1, Math.round(基础 * 品级 * Math.max(0.1, toNumber(item.品质系数, 1))));
+    },
+
+    // 修复道具自用：装备栏（武器、防具、斗铠、机甲、魂导器装配）＋背包里带耐久的装备批次；道具档位够得着损伤等级才列出；神器只能温养
+    读取耐久修复候选(statData = {}, inventory = {}, 修复等级 = '轻度磨损', 排除物品名 = '', charData = {}) {
       const 能力等级 = this.读取耐久修复能力等级(修复等级);
-      return safeEntries(inventory).flatMap(([物品名, 背包状态]) => {
-        if (!物品名 || 物品名 === 排除物品名 || !背包状态 || typeof 背包状态 !== 'object' || Array.isArray(背包状态)) return [];
-        const 合并物品 = 合并物品定义与状态_桥接(statData, 物品名, 背包状态);
-        const 分类 = 规范化物品定义分类_桥接(合并物品.物品分类 || 合并物品.分类, '');
-        if (!['近战武器', '防具装备', '斗铠部件', '机甲机体'].includes(分类)) return [];
-        // 神器以上无法外力修复，只能自身温养（用户 11-19）。
-        if (/神器/.test(toText(合并物品.品质 || 合并物品.品阶, ''))) return [];
-        const 基础耐久 = Math.max(100, Math.floor(toNumber(合并物品.基础耐久, 100)));
-        const 候选列表 = [];
+      const 候选列表 = [];
+      const 加入 = (键, 名称, 位置文本, 记录, 定义, 槽位类型, 写回) => {
+        const item = { ...(定义 || {}), ...(记录 || {}) };
+        if (/神器/.test(toText(item.品质 || item.品阶, ''))) return;
+        const 上限 = this.读取装备耐久上限(charData, 槽位类型, item);
+        const 当前耐久 = Math.max(0, Math.min(上限, toNumber(记录?.耐久, 上限)));
+        const 损毁 = /损毁/.test(toText(记录?.装备状态, ''));
+        if (当前耐久 >= 上限 && !损毁) return;
+        const 损伤 = this.判定耐久损伤等级(名称, item, 当前耐久, 上限, 槽位类型);
+        if (损伤.等级 > 能力等级) return;
+        候选列表.push({ 键, 物品名: 名称, 名称: `${名称}（${位置文本}）· ${损伤.标签} · ${Math.round(当前耐久)}/${Math.round(上限)}`, 当前耐久, 上限, 基础耐久: 上限, 损伤, 记录, 写回 });
+      };
+      const 装备 = charData && charData.装备 && typeof charData.装备 === 'object' ? charData.装备 : {};
+      [['武器', '武器'], ['防具', '防具'], ['斗铠', '斗铠'], ['机甲', '机甲']].forEach(([槽, 类型]) => {
+        const 记录 = 装备[槽];
+        if (!记录 || typeof 记录 !== 'object') return;
+        const 名称 = toText(记录.名称, '').trim();
+        if (类型 === '斗铠' ? !(toNumber(记录.等级, 0) > 0) : (!名称 || 名称 === '无')) return;
+        const 显示名 = 名称 && 名称 !== '无' ? 名称 : '斗铠';
+        加入(`装备::${槽}`, 显示名, '装备中', 记录, 查找物品定义_桥接(statData, 名称)?.定义, 类型, 新记录 => { 装备[槽] = 新记录; });
+      });
+      Object.entries(装备.魂导器?.装配 || {}).forEach(([槽, 记录]) => {
+        const 名称 = toText(记录?.名称, '').trim();
+        if (!名称 || 名称 === '无') return;
+        加入(`装配::${槽}`, 名称, '魂导器装配', 记录, 查找物品定义_桥接(statData, 名称)?.定义, '魂导器', 新记录 => { 装备.魂导器.装配[槽] = 新记录; });
+      });
+      const 类型表 = { 近战武器: '武器', 远程武器: '魂导器', 防具装备: '防具', 斗铠部件: '斗铠', 机甲机体: '机甲' };
+      safeEntries(inventory).forEach(([物品名, 背包状态]) => {
+        if (!物品名 || 物品名 === 排除物品名 || !背包状态 || typeof 背包状态 !== 'object' || Array.isArray(背包状态)) return;
+        const 命中 = 查找物品定义_桥接(statData, 物品名);
+        const 分类 = 规范化物品定义分类_桥接(命中?.分类 || 背包状态.物品分类 || 背包状态.分类, '');
+        const 类型 = 类型表[分类];
+        if (!类型) return;
         读取背包批次列表_桥接(背包状态).forEach((批次, 批次索引) => {
           if (批次.耐久 === undefined) return;
-          const 当前耐久 = Math.max(0, Math.floor(toNumber(批次.耐久, 基础耐久)));
-          if (当前耐久 >= 基础耐久) return;
-          const 损伤 = this.判定耐久损伤等级(物品名, { ...合并物品, ...批次 }, 当前耐久, 基础耐久);
-          if (损伤.等级 > 能力等级) return;
-          候选列表.push({
-            键: `${物品名}::批次${批次索引}`,
-            物品名,
-            批次索引,
-            名称: `${物品名} · 批次${批次索引 + 1} · ${损伤.标签} · ${当前耐久}/${基础耐久}`,
-            当前耐久,
-            基础耐久,
-            损伤,
+          加入(`${物品名}::批次${批次索引}`, 物品名, `背包 · 批次${批次索引 + 1}`, 批次, 命中?.定义, 类型, 新记录 => {
+            const 背包项 = inventory[物品名];
+            if (背包项 && Array.isArray(背包项.批次) && 背包项.批次[批次索引]) 背包项.批次[批次索引] = 新记录;
           });
         });
-        return 候选列表;
       });
+      return 候选列表;
     },
 
     async 选择耐久修复目标(候选列表 = [], 物品名 = '修复道具') {
@@ -34818,15 +34848,21 @@ ${播报文本}
 
     async 结算背包耐久修复(statData = {}, charData = {}, inventory = {}, 修复效果 = {}, 物品名 = '修复道具', 日志列表 = []) {
       const 修复等级 = toText(修复效果?.value?.修复等级, '轻度磨损');
-      const 候选 = this.读取耐久修复候选(statData, inventory, 修复等级, 物品名);
-      const 目标 = await this.选择耐久修复目标(候选, 物品名);
-      if (!目标 || !目标.物品名 || !inventory[目标.物品名]) throw new Error('未选择可修复目标。');
       if (!charData.背包 || typeof charData.背包 !== 'object' || Array.isArray(charData.背包)) charData.背包 = inventory;
-      const 背包项 = charData.背包[目标.物品名];
-      if (目标.批次索引 < 0) throw new Error('修复目标必须是背包批次实例。');
-      if (!Array.isArray(背包项.批次) || !背包项.批次[目标.批次索引]) throw new Error('修复目标批次已不存在。');
-      背包项.批次[目标.批次索引].耐久 = 目标.基础耐久;
-      日志列表.push(`${目标.物品名}耐久恢复至${目标.基础耐久}`);
+      const 候选 = this.读取耐久修复候选(statData, inventory, 修复等级, 物品名, charData);
+      const 目标 = await this.选择耐久修复目标(候选, 物品名);
+      if (!目标 || typeof 目标.写回 !== 'function') throw new Error('未选择可修复目标。');
+      const 新记录 = cloneJsonValue(目标.记录, {});
+      新记录.耐久 = Math.round(目标.上限);
+      if (/损毁/.test(toText(新记录.装备状态, ''))) 新记录.装备状态 = '已装备';
+      let 品质文本 = '';
+      if (目标.损伤.等级 >= 4) {
+        const 原品质 = Math.max(0.1, toNumber(新记录.品质系数, 1));
+        新记录.品质系数 = Number((原品质 * (0.85 + Math.random() * 0.1)).toFixed(2));
+        品质文本 = `，品质系数 ${原品质.toFixed(2)}→${新记录.品质系数.toFixed(2)}`;
+      }
+      目标.写回(新记录);
+      日志列表.push(`${目标.物品名}耐久恢复至${Math.round(目标.上限)}${品质文本}`);
       return true;
     },
 
@@ -60505,6 +60541,27 @@ class ProfessionUIComponent {
       ? { op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}`, value: nextValue }
       : { op: 'remove', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}` });
   }
+  // 自制产物定价：库里没有价格的产物按品质取价格带（参照四库同类物品的价格分布），带内按品质系数 0.8～1.25 对数插值，再乘类别系数
+  //（兵器 / 防具 / 斗铠部件 1、功能道具 / 战术装备 0.5、图纸 0.3、一次性道具 0.2）。斗一斗二用金魂币一套带，斗三斗四用联邦币
+  计算品阶价格带价格(分类 = '', 品质 = '普通', 品质系数 = 1) {
+    const 货币 = this.getLegalCurrency();
+    const 带表 = 货币 === '金魂币'
+      ? { 普通: [50, 500], 优秀: [1000, 10000], 稀有: [10000, 100000], 史诗: [100000, 1000000], 传说: [1000000, 10000000] }
+      : { 普通: [20000, 100000], 优秀: [200000, 2000000], 稀有: [2000000, 20000000], 史诗: [20000000, 300000000], 传说: [300000000, 5000000000] };
+    const [下限, 上限] = 带表[this.规范化物品经济品质(品质, '', 分类)] || 带表.普通;
+    const 位置 = this.clamp((Number(品质系数 || 1) - 0.8) / 0.45, 0, 1);
+    const 类别系数 = { 功能道具: 0.5, 战术装备: 0.5, 设计图纸: 0.3, 一次性道具: 0.2 }[分类] || 1;
+    return Math.max(1, Math.round(下限 * (上限 / 下限) ** 位置 * 类别系数));
+  }
+  // 合金（融锻产物）按所用金属原料价的平均定价；阶位的加价由交易按批次阶位另算
+  读取材料原料均价(materialNames = []) {
+    const 价格 = materialNames
+      .map(名称 => this.读取材料基础金属名(名称) || this.取材料原名(名称))
+      .map(金属 => Number(this.查找运行时物品定义(金属)?.定义?.基础价格 || 0))
+      .filter(值 => 值 > 0);
+    return 价格.length ? Math.round(价格.reduce((总和, 值) => 总和 + 值, 0) / 价格.length) : 0;
+  }
+
   // 前置补丁：同一次提交里已经写过这个背包条目（例如单金属锻造产物与材料同名、材料刚被扣减），在那条写回的结果上追加，不能从旧库存覆盖
   buildInventoryAddPatches(itemName, itemData, amount = 1, 批次派生字段 = false, 前置补丁 = null) {
     if (this.本次材料提供方) {
@@ -60518,7 +60575,7 @@ class ProfessionUIComponent {
     const definition = {
       品质: this.规范化物品经济品质(safeItem.品质 || this.getTierQualityLabel(this.activeMode, this.getItemTier(itemName)), itemName, 分类),
       描述: safeItem.描述 || `副职业产物【${itemName}】`,
-      基础价格: Math.max(1, Math.floor(Number(safeItem.基础价格 || 1))),
+      基础价格: Number(safeItem.基础价格) > 0 ? Math.max(1, Math.floor(Number(safeItem.基础价格))) : 分类 === '锻造金属' ? 1 : this.计算品阶价格带价格(分类, safeItem.品质 || this.getTierQualityLabel(this.activeMode, this.getItemTier(itemName)), safeItem.品质系数),
       默认货币: safeItem.默认货币 || this.getLegalCurrency(),
     };
     if (Number(safeItem.魂导等级 || 0) > 0) definition.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(safeItem.魂导等级 || 0))));
@@ -60862,6 +60919,7 @@ class ProfessionUIComponent {
                 品质: this.getTierQualityLabel(cfg.mode, tier),
                 品质系数累计: 0,
                 副职业参数: 锻造是否融锻 ? { 融合参数: { 数量: 锻造复合数, 融合率: Math.floor(本次融合率) } } : null,
+                基础价格: 锻造是否融锻 ? this.读取材料原料均价(materialNames) : 0,
                 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}产物`,
               };
             }
@@ -60923,6 +60981,7 @@ class ProfessionUIComponent {
       };
       if (Number(数据.魂导等级 || 0) > 0) 物品数据.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(数据.魂导等级 || 0))));
       if (数据.副职业参数) 物品数据.副职业参数 = 数据.副职业参数;
+      if (Number(数据.基础价格 || 0) > 0) 物品数据.基础价格 = 数据.基础价格;
       patchOps.push(...this.buildInventoryAddPatches(产物名, 物品数据, Number(数据.数量 || 1), Object.keys(批次数据).length > 0, patchOps));
     });
 
@@ -61031,7 +61090,7 @@ class ProfessionUIComponent {
       const newItem = { 数量: 1, 物品分类: '锻造金属', 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: Number(finalQ.toFixed(2)), 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}产物` };
       const 批次数据 = this.构建工坊产物批次数据('锻造金属', targetName, materialNames, tier, Number(finalQ.toFixed(2)), 0);
       Object.assign(newItem, 批次数据);
-      if (isFusion) { newItem.副职业参数 = { 融合参数: { 数量: efc, 融合率: Math.floor(fusionRate) } }; newItem.描述 += ` (${efc}种金属融锻)`; }
+      if (isFusion) { newItem.副职业参数 = { 融合参数: { 数量: efc, 融合率: Math.floor(fusionRate) } }; newItem.描述 += ` (${efc}种金属融锻)`; newItem.基础价格 = this.读取材料原料均价(materialNames); }
       patchOps.push(...this.buildInventoryAddPatches(产物键, newItem, 1, Object.keys(批次数据).length > 0, patchOps));
       if (!commissionCtx.isCommission) {
         const progress = this.buildJobProgressPatches(cfg.jobName, expGain, this.读取本次作品认证等级(cfg.jobName, tier));

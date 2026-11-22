@@ -32919,44 +32919,74 @@ ${播报文本}
       return 1;
     },
 
-    判定耐久损伤等级(物品名 = '', 物品数据 = {}, 当前耐久 = 100, 基础耐久 = 100) {
-      const 文本 = `${物品名} ${toText(物品数据.状态 || 物品数据.装备状态 || 物品数据.描述, '')}`;
-      const 比例 = 基础耐久 > 0 ? 当前耐久 / 基础耐久 : 1;
-      if (/彻底损毁|完全损毁|报废|粉碎|崩毁|重塑/.test(文本) || 当前耐久 <= 0) return { 标签: '彻底损毁', 等级: 4 };
-      if (/斗铠/.test(文本) && (/本源|根基|核心受损|灵性流失/.test(文本) || (当前耐久 > 0 && 比例 < 0.3))) return { 标签: '斗铠本源伤', 等级: 3 };
-      if (/严重|中度|重伤|裂纹|断裂|破损|损坏|失衡/.test(文本) || 比例 < 0.6) return { 标签: '中重度损伤', 等级: 2 };
+    判定耐久损伤等级(物品名 = '', 物品数据 = {}, 当前耐久 = 100, 上限 = 100, 槽位类型 = '') {
+      // 与工坊修理 判定修理损伤 一致：≥60% 轻度、<60% 中重度、斗铠 <30% 本源伤、0 / 损毁 彻底损毁
+      const 比例 = 上限 > 0 ? 当前耐久 / 上限 : 1;
+      if (当前耐久 <= 0 || /损毁/.test(toText(物品数据.装备状态, ''))) return { 标签: '彻底损毁', 等级: 4 };
+      if ((槽位类型 === '斗铠' || /斗铠/.test(物品名)) && 比例 < 0.3) return { 标签: '斗铠本源伤', 等级: 3 };
+      if (比例 < 0.6) return { 标签: '中重度损伤', 等级: 2 };
       return { 标签: '轻度磨损', 等级: 1 };
     },
 
-    读取耐久修复候选(statData = {}, inventory = {}, 修复等级 = '轻度磨损', 排除物品名 = '') {
+    // 耐久上限与战斗同一公式：优先用战斗预演接口的 armourDurabilityMax，没有就按同一公式算（MVU_Schema_Runtime 计算装备耐久上限_V1 同步）
+    读取装备耐久上限(charData = {}, 槽位类型 = '', item = {}) {
+      const 接口 = (() => { for (const 窗口 of [window, window.parent, window.top]) { try { if (窗口 && 窗口.__LWCS_BATTLE_PREVIEW__) return 窗口.__LWCS_BATTLE_PREVIEW__; } catch (错误) {} } return null; })();
+      if (接口 && typeof 接口.armourDurabilityMax === 'function') return Math.max(1, toNumber(接口.armourDurabilityMax(charData, 槽位类型, item), 1));
+      const 声明 = toNumber(item.耐久上限, 0);
+      if (声明 > 0) return 声明;
+      const 等级 = Math.max(1, Math.floor(toNumber(槽位类型 === '斗铠' ? item?._属性加成?.等效等级 : 0, 0) || toNumber(charData?.属性?.等级, 1)));
+      const 基础表 = (() => { for (const 窗口 of [window, window.parent, window.top]) { try { if (窗口 && typeof 窗口.__LWCS_GET_BASE_STATS__ === 'function') return 窗口.__LWCS_GET_BASE_STATS__; } catch (错误) {} } return null; })();
+      const 基础 = toNumber(基础表 ? 基础表(等级)?.vit_max : 0, 0) || toNumber(charData?.属性?.体力上限, 1);
+      const 文本 = toText(item.等级, '');
+      const 品级 = 槽位类型 === '斗铠' ? Math.max(1, Math.floor(toNumber(item.等级, 1))) : /神/.test(文本) ? 5 : /红/.test(文本) ? 4 : /黑/.test(文本) ? 3 : /紫/.test(文本) ? 2 : 1;
+      return Math.max(1, Math.round(基础 * 品级 * Math.max(0.1, toNumber(item.品质系数, 1))));
+    },
+
+    // 修复道具自用：装备栏（武器、防具、斗铠、机甲、魂导器装配）＋背包里带耐久的装备批次；道具档位够得着损伤等级才列出；神器只能温养
+    读取耐久修复候选(statData = {}, inventory = {}, 修复等级 = '轻度磨损', 排除物品名 = '', charData = {}) {
       const 能力等级 = this.读取耐久修复能力等级(修复等级);
-      return safeEntries(inventory).flatMap(([物品名, 背包状态]) => {
-        if (!物品名 || 物品名 === 排除物品名 || !背包状态 || typeof 背包状态 !== 'object' || Array.isArray(背包状态)) return [];
-        const 合并物品 = 合并物品定义与状态_桥接(statData, 物品名, 背包状态);
-        const 分类 = 规范化物品定义分类_桥接(合并物品.物品分类 || 合并物品.分类, '');
-        if (!['近战武器', '防具装备', '斗铠部件', '机甲机体'].includes(分类)) return [];
-        // 神器以上无法外力修复，只能自身温养（用户 11-19）。
-        if (/神器/.test(toText(合并物品.品质 || 合并物品.品阶, ''))) return [];
-        const 基础耐久 = Math.max(100, Math.floor(toNumber(合并物品.基础耐久, 100)));
-        const 候选列表 = [];
+      const 候选列表 = [];
+      const 加入 = (键, 名称, 位置文本, 记录, 定义, 槽位类型, 写回) => {
+        const item = { ...(定义 || {}), ...(记录 || {}) };
+        if (/神器/.test(toText(item.品质 || item.品阶, ''))) return;
+        const 上限 = this.读取装备耐久上限(charData, 槽位类型, item);
+        const 当前耐久 = Math.max(0, Math.min(上限, toNumber(记录?.耐久, 上限)));
+        const 损毁 = /损毁/.test(toText(记录?.装备状态, ''));
+        if (当前耐久 >= 上限 && !损毁) return;
+        const 损伤 = this.判定耐久损伤等级(名称, item, 当前耐久, 上限, 槽位类型);
+        if (损伤.等级 > 能力等级) return;
+        候选列表.push({ 键, 物品名: 名称, 名称: `${名称}（${位置文本}）· ${损伤.标签} · ${Math.round(当前耐久)}/${Math.round(上限)}`, 当前耐久, 上限, 基础耐久: 上限, 损伤, 记录, 写回 });
+      };
+      const 装备 = charData && charData.装备 && typeof charData.装备 === 'object' ? charData.装备 : {};
+      [['武器', '武器'], ['防具', '防具'], ['斗铠', '斗铠'], ['机甲', '机甲']].forEach(([槽, 类型]) => {
+        const 记录 = 装备[槽];
+        if (!记录 || typeof 记录 !== 'object') return;
+        const 名称 = toText(记录.名称, '').trim();
+        if (类型 === '斗铠' ? !(toNumber(记录.等级, 0) > 0) : (!名称 || 名称 === '无')) return;
+        const 显示名 = 名称 && 名称 !== '无' ? 名称 : '斗铠';
+        加入(`装备::${槽}`, 显示名, '装备中', 记录, 查找物品定义_桥接(statData, 名称)?.定义, 类型, 新记录 => { 装备[槽] = 新记录; });
+      });
+      Object.entries(装备.魂导器?.装配 || {}).forEach(([槽, 记录]) => {
+        const 名称 = toText(记录?.名称, '').trim();
+        if (!名称 || 名称 === '无') return;
+        加入(`装配::${槽}`, 名称, '魂导器装配', 记录, 查找物品定义_桥接(statData, 名称)?.定义, '魂导器', 新记录 => { 装备.魂导器.装配[槽] = 新记录; });
+      });
+      const 类型表 = { 近战武器: '武器', 远程武器: '魂导器', 防具装备: '防具', 斗铠部件: '斗铠', 机甲机体: '机甲' };
+      safeEntries(inventory).forEach(([物品名, 背包状态]) => {
+        if (!物品名 || 物品名 === 排除物品名 || !背包状态 || typeof 背包状态 !== 'object' || Array.isArray(背包状态)) return;
+        const 命中 = 查找物品定义_桥接(statData, 物品名);
+        const 分类 = 规范化物品定义分类_桥接(命中?.分类 || 背包状态.物品分类 || 背包状态.分类, '');
+        const 类型 = 类型表[分类];
+        if (!类型) return;
         读取背包批次列表_桥接(背包状态).forEach((批次, 批次索引) => {
           if (批次.耐久 === undefined) return;
-          const 当前耐久 = Math.max(0, Math.floor(toNumber(批次.耐久, 基础耐久)));
-          if (当前耐久 >= 基础耐久) return;
-          const 损伤 = this.判定耐久损伤等级(物品名, { ...合并物品, ...批次 }, 当前耐久, 基础耐久);
-          if (损伤.等级 > 能力等级) return;
-          候选列表.push({
-            键: `${物品名}::批次${批次索引}`,
-            物品名,
-            批次索引,
-            名称: `${物品名} · 批次${批次索引 + 1} · ${损伤.标签} · ${当前耐久}/${基础耐久}`,
-            当前耐久,
-            基础耐久,
-            损伤,
+          加入(`${物品名}::批次${批次索引}`, 物品名, `背包 · 批次${批次索引 + 1}`, 批次, 命中?.定义, 类型, 新记录 => {
+            const 背包项 = inventory[物品名];
+            if (背包项 && Array.isArray(背包项.批次) && 背包项.批次[批次索引]) 背包项.批次[批次索引] = 新记录;
           });
         });
-        return 候选列表;
       });
+      return 候选列表;
     },
 
     async 选择耐久修复目标(候选列表 = [], 物品名 = '修复道具') {
@@ -32968,15 +32998,21 @@ ${播报文本}
 
     async 结算背包耐久修复(statData = {}, charData = {}, inventory = {}, 修复效果 = {}, 物品名 = '修复道具', 日志列表 = []) {
       const 修复等级 = toText(修复效果?.value?.修复等级, '轻度磨损');
-      const 候选 = this.读取耐久修复候选(statData, inventory, 修复等级, 物品名);
-      const 目标 = await this.选择耐久修复目标(候选, 物品名);
-      if (!目标 || !目标.物品名 || !inventory[目标.物品名]) throw new Error('未选择可修复目标。');
       if (!charData.背包 || typeof charData.背包 !== 'object' || Array.isArray(charData.背包)) charData.背包 = inventory;
-      const 背包项 = charData.背包[目标.物品名];
-      if (目标.批次索引 < 0) throw new Error('修复目标必须是背包批次实例。');
-      if (!Array.isArray(背包项.批次) || !背包项.批次[目标.批次索引]) throw new Error('修复目标批次已不存在。');
-      背包项.批次[目标.批次索引].耐久 = 目标.基础耐久;
-      日志列表.push(`${目标.物品名}耐久恢复至${目标.基础耐久}`);
+      const 候选 = this.读取耐久修复候选(statData, inventory, 修复等级, 物品名, charData);
+      const 目标 = await this.选择耐久修复目标(候选, 物品名);
+      if (!目标 || typeof 目标.写回 !== 'function') throw new Error('未选择可修复目标。');
+      const 新记录 = cloneJsonValue(目标.记录, {});
+      新记录.耐久 = Math.round(目标.上限);
+      if (/损毁/.test(toText(新记录.装备状态, ''))) 新记录.装备状态 = '已装备';
+      let 品质文本 = '';
+      if (目标.损伤.等级 >= 4) {
+        const 原品质 = Math.max(0.1, toNumber(新记录.品质系数, 1));
+        新记录.品质系数 = Number((原品质 * (0.85 + Math.random() * 0.1)).toFixed(2));
+        品质文本 = `，品质系数 ${原品质.toFixed(2)}→${新记录.品质系数.toFixed(2)}`;
+      }
+      目标.写回(新记录);
+      日志列表.push(`${目标.物品名}耐久恢复至${Math.round(目标.上限)}${品质文本}`);
       return true;
     },
 

@@ -3396,6 +3396,27 @@ class ProfessionUIComponent {
       ? { op: 'replace', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}`, value: nextValue }
       : { op: 'remove', path: `${this.activeCharBasePath}/背包/${this.escapeJsonPointer(name)}` });
   }
+  // 自制产物定价：库里没有价格的产物按品质取价格带（参照四库同类物品的价格分布），带内按品质系数 0.8～1.25 对数插值，再乘类别系数
+  //（兵器 / 防具 / 斗铠部件 1、功能道具 / 战术装备 0.5、图纸 0.3、一次性道具 0.2）。斗一斗二用金魂币一套带，斗三斗四用联邦币
+  计算品阶价格带价格(分类 = '', 品质 = '普通', 品质系数 = 1) {
+    const 货币 = this.getLegalCurrency();
+    const 带表 = 货币 === '金魂币'
+      ? { 普通: [50, 500], 优秀: [1000, 10000], 稀有: [10000, 100000], 史诗: [100000, 1000000], 传说: [1000000, 10000000] }
+      : { 普通: [20000, 100000], 优秀: [200000, 2000000], 稀有: [2000000, 20000000], 史诗: [20000000, 300000000], 传说: [300000000, 5000000000] };
+    const [下限, 上限] = 带表[this.规范化物品经济品质(品质, '', 分类)] || 带表.普通;
+    const 位置 = this.clamp((Number(品质系数 || 1) - 0.8) / 0.45, 0, 1);
+    const 类别系数 = { 功能道具: 0.5, 战术装备: 0.5, 设计图纸: 0.3, 一次性道具: 0.2 }[分类] || 1;
+    return Math.max(1, Math.round(下限 * (上限 / 下限) ** 位置 * 类别系数));
+  }
+  // 合金（融锻产物）按所用金属原料价的平均定价；阶位的加价由交易按批次阶位另算
+  读取材料原料均价(materialNames = []) {
+    const 价格 = materialNames
+      .map(名称 => this.读取材料基础金属名(名称) || this.取材料原名(名称))
+      .map(金属 => Number(this.查找运行时物品定义(金属)?.定义?.基础价格 || 0))
+      .filter(值 => 值 > 0);
+    return 价格.length ? Math.round(价格.reduce((总和, 值) => 总和 + 值, 0) / 价格.length) : 0;
+  }
+
   // 前置补丁：同一次提交里已经写过这个背包条目（例如单金属锻造产物与材料同名、材料刚被扣减），在那条写回的结果上追加，不能从旧库存覆盖
   buildInventoryAddPatches(itemName, itemData, amount = 1, 批次派生字段 = false, 前置补丁 = null) {
     if (this.本次材料提供方) {
@@ -3409,7 +3430,7 @@ class ProfessionUIComponent {
     const definition = {
       品质: this.规范化物品经济品质(safeItem.品质 || this.getTierQualityLabel(this.activeMode, this.getItemTier(itemName)), itemName, 分类),
       描述: safeItem.描述 || `副职业产物【${itemName}】`,
-      基础价格: Math.max(1, Math.floor(Number(safeItem.基础价格 || 1))),
+      基础价格: Number(safeItem.基础价格) > 0 ? Math.max(1, Math.floor(Number(safeItem.基础价格))) : 分类 === '锻造金属' ? 1 : this.计算品阶价格带价格(分类, safeItem.品质 || this.getTierQualityLabel(this.activeMode, this.getItemTier(itemName)), safeItem.品质系数),
       默认货币: safeItem.默认货币 || this.getLegalCurrency(),
     };
     if (Number(safeItem.魂导等级 || 0) > 0) definition.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(safeItem.魂导等级 || 0))));
@@ -3753,6 +3774,7 @@ class ProfessionUIComponent {
                 品质: this.getTierQualityLabel(cfg.mode, tier),
                 品质系数累计: 0,
                 副职业参数: 锻造是否融锻 ? { 融合参数: { 数量: 锻造复合数, 融合率: Math.floor(本次融合率) } } : null,
+                基础价格: 锻造是否融锻 ? this.读取材料原料均价(materialNames) : 0,
                 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}产物`,
               };
             }
@@ -3814,6 +3836,7 @@ class ProfessionUIComponent {
       };
       if (Number(数据.魂导等级 || 0) > 0) 物品数据.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(数据.魂导等级 || 0))));
       if (数据.副职业参数) 物品数据.副职业参数 = 数据.副职业参数;
+      if (Number(数据.基础价格 || 0) > 0) 物品数据.基础价格 = 数据.基础价格;
       patchOps.push(...this.buildInventoryAddPatches(产物名, 物品数据, Number(数据.数量 || 1), Object.keys(批次数据).length > 0, patchOps));
     });
 
@@ -3922,7 +3945,7 @@ class ProfessionUIComponent {
       const newItem = { 数量: 1, 物品分类: '锻造金属', 品质: this.getTierQualityLabel(cfg.mode, tier), 品质系数: Number(finalQ.toFixed(2)), 描述: `由${commissionCtx.executorName}完成的${cfg.jobName}产物` };
       const 批次数据 = this.构建工坊产物批次数据('锻造金属', targetName, materialNames, tier, Number(finalQ.toFixed(2)), 0);
       Object.assign(newItem, 批次数据);
-      if (isFusion) { newItem.副职业参数 = { 融合参数: { 数量: efc, 融合率: Math.floor(fusionRate) } }; newItem.描述 += ` (${efc}种金属融锻)`; }
+      if (isFusion) { newItem.副职业参数 = { 融合参数: { 数量: efc, 融合率: Math.floor(fusionRate) } }; newItem.描述 += ` (${efc}种金属融锻)`; newItem.基础价格 = this.读取材料原料均价(materialNames); }
       patchOps.push(...this.buildInventoryAddPatches(产物键, newItem, 1, Object.keys(批次数据).length > 0, patchOps));
       if (!commissionCtx.isCommission) {
         const progress = this.buildJobProgressPatches(cfg.jobName, expGain, this.读取本次作品认证等级(cfg.jobName, tier));

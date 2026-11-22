@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:9eaa7b3d6efaa33adc90ec32c37fc9bdf36858480de591b9cc68157df0106051|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:60305a52b4e92c94a632fdbed4015c63a60cd9f31a324d3caa4c5e87229c82e2 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:c62bc16776da627dfd28a22333e5aa25ea333178ce23cec5f9df8811bc27792d|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:60305a52b4e92c94a632fdbed4015c63a60cd9f31a324d3caa4c5e87229c82e2 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -37266,20 +37266,21 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       c.属性.魂力 = Math.min(c.属性.魂力上限, roundRuntimeGrowthValue_ACU(c.属性.魂力 + c.属性.魂力上限 * spRate * safeDelta));
 
       // 神器温养自愈（用户 11-19「神器以上的话无法外力修复，只能自身温养」）：品质含「神器」的装备与背包批次，耐久不满时每天自行回
-      // 基础耐久的 5%（每 tick 5% ÷ 144），回满后装备状态从「损毁」回到「已装备」。不论动作模式（战斗中也照常温养）。
+      // 耐久上限的 5%（每 tick 5% ÷ 144），回满后装备状态从「损毁」回到「已装备」。不论动作模式（战斗中也照常温养）。
+      // 上限与战斗同一公式（计算装备耐久上限_V1），此前用 耐久上限 || 基础耐久 || 100，回满只到 100、远低于战斗里的上限。
       {
         const 每tick回复 = 0.05 / 144 * safeDelta;
-        const 温养 = (item, 品质 = '') => {
+        const 温养 = (item, 品质 = '', 槽位类型 = '') => {
           if (!item || typeof item !== 'object' || Array.isArray(item) || !/神器/.test(String(品质 || item.品质 || item.品阶 || ''))) return;
-          const 上限 = Math.max(1, Number(item.耐久上限 || item.基础耐久 || 100));
+          const 上限 = 计算装备耐久上限_V1(c, 槽位类型, item);
           const 当前 = Number(item.耐久);
           if (!Number.isFinite(当前) || 当前 >= 上限) return;
           item.耐久 = Math.min(上限, roundRuntimeGrowthValue_ACU(当前 + 上限 * 每tick回复));
           if (item.耐久 >= 上限 && String(item.装备状态 || '').trim() === '损毁') item.装备状态 = '已装备';
         };
         const 装备 = c.装备 && typeof c.装备 === 'object' ? c.装备 : {};
-        ['武器', '防具', '饰品', '斗铠', '机甲'].forEach(槽 => 温养(装备[槽]));
-        Object.values(装备.魂导器?.装配 || {}).forEach(item => 温养(item));
+        ['武器', '防具', '饰品', '斗铠', '机甲'].forEach(槽 => 温养(装备[槽], '', 槽));
+        Object.values(装备.魂导器?.装配 || {}).forEach(item => 温养(item, '', '魂导器'));
         Object.values(c.背包 && typeof c.背包 === 'object' ? c.背包 : {}).forEach(项 => (Array.isArray(项?.批次) ? 项.批次 : []).forEach(批次 => 温养(批次, String(项?.品质 || 项?.品阶 || ''))));
       }
       const 血脉核心 = String(c.血脉之力?.核心 || '').trim();
@@ -42239,6 +42240,18 @@ function 迁移背包锻造金属_V1(char = {}) {
       并入(金属, [{ ...项, 阶位: Number(项.阶位 || 0) > 0 ? 项.阶位 : 解析.阶位, 基础金属: 金属 }]);
     });
   });
+}
+
+// 装备耐久上限，与战斗同一公式（BattlePreview armourDurabilityMax、工坊修理 读取耐久上限 同步）：声明了耐久上限就用；否则
+// 等效等级（斗铠取 _属性加成.等效等级，其余取持有者等级）的基础体力上限 × 品级（斗铠字数 / 机甲 黄紫黑红神 1～5 / 其余 1）× 品质系数
+function 计算装备耐久上限_V1(角色 = {}, 槽位类型 = '', 装备 = {}) {
+  const 声明 = Number(装备?.耐久上限);
+  if (声明 > 0) return 声明;
+  const 等级 = Math.max(1, Math.floor(Number(槽位类型 === '斗铠' ? 装备?._属性加成?.等效等级 : 0) || Number(角色?.属性?.等级 || 1)));
+  const 基础 = Number(getBaseStats(等级)?.vit_max) || Number(角色?.属性?.体力上限 || 1);
+  const 文本 = String(装备?.等级 || '');
+  const 品级 = 槽位类型 === '斗铠' ? Math.max(1, Math.floor(Number(装备?.等级) || 1)) : /神/.test(文本) ? 5 : /红/.test(文本) ? 4 : /黑/.test(文本) ? 3 : /紫/.test(文本) ? 2 : 1;
+  return Math.max(1, Math.round(基础 * 品级 * Math.max(0.1, Number(装备?.品质系数) || 1)));
 }
 
 function 规范化商店库存项Schema_V1(库存项) {
