@@ -541,7 +541,8 @@ button{font:inherit;color:inherit}
 .pt-app[data-width="compact"] .pt-duo,.pt-app[data-width="compact"] .pt-grid,.pt-app[data-width="compact"] .pt-grid-3{grid-template-columns:minmax(0,1fr)}
 .pt-app[data-width="compact"] .pt-dos-head .pt-hex{--s:48px}
 .pt-app[data-width="compact"] .pt-near li{grid-template-columns:minmax(0,1fr);gap:2px}
-.pt-app[data-width="compact"] .pt-settings-panel{right:-30px}
+.pt-app[data-width="compact"] .pt-settings{position:static}
+.pt-app[data-width="compact"] .pt-settings-panel{left:8px;right:8px;top:calc(100% + 4px);width:auto}
 @media(prefers-reduced-motion:reduce){.pt-app *,.pt-app *::before,.pt-app *::after{animation:none!important;transition:none!important}}
 .pt-brow>.pt-brow-st::before{display:none}
 .pt-brow>.pt-brow-st+span::before{display:none}
