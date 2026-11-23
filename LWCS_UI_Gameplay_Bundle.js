@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:80e3a99cd893478a307c43635c92aa5c89defa6176b99172a41c90a7455e60de|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:bb3c49e8c1cfd150a76f092432e3896910ba36d52716cfdc67c7da3ed24c3dcc|BattleRuntime_Module.js:cfde5f8d9e70644a6a227310e05cab7b09a18c296c8bf64febcc177058db79bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:eb01edb5fbcfc79d6865a868341cc8b2d6a4153fc37f4bbe1684c6321a827f86|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:bb3c49e8c1cfd150a76f092432e3896910ba36d52716cfdc67c7da3ed24c3dcc|BattleRuntime_Module.js:9a08c983fe32be2e8807cb17e10ee517e0ee9c93b14688c5df1b2e56e1aa1490|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -8280,6 +8280,14 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     unit.护盾 = unit.shield;
   }
 
+  // 这个魂技（declaration.skill）给 unit 上的护盾还剩着吗（BattleRuntime runtimeShieldStateName：护盾状态按魂技名）。
+  function sameSkillShieldActive(unit = {}, declaration = null) {
+    if (root.__LWCS_TUNE__?.SHIELD_STACK_LEGACY === true) return false;
+    const name = String(declaration?.skill?.魂技名 || declaration?.skill?.name || '').trim();
+    if (!name) return false;
+    const stateName = /护盾|屏障|结界/.test(name) ? name : `${name}护盾`;
+    return Number(unit?.状态效果?.[stateName]?.shield_value || 0) > 0;
+  }
   function calculateShieldGain(unit = {}, shieldAmount = 0) {
     const requested = Math.max(0, Math.floor(Number(shieldAmount || 0)));
     if (!(requested > 0)) return 0;
@@ -26180,7 +26188,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       if (String(effect?.原型 || '').trim() === '护盾变化') {
         const base = readHpMax(target || actor);
-        const realizedShield = Math.min(
+        // 同技能已生效时重施无效（BattleRuntime commitRuntimeShieldGain）：这个魂技的护盾还剩着就不值什么。
+        const realizedShield = sameSkillShieldActive(target || actor, declaration) ? 0 : Math.min(
           calculateShieldGain(target || actor, parseSignedValue(effect?.数值, base)),
           remainingShieldAbsorptionCap,
         );
@@ -88493,17 +88502,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const normalizedDuration = Number(duration);
     const timed = Number.isFinite(normalizedDuration) && normalizedDuration > 0;
     const existing = unit.状态效果[stateName];
+    // 同技能已生效时重施一律无效（设计规则：不补层数、不刷新持续时间）：这个魂技的护盾还剩着，再放不加也不刷新；打破了才能重新上。
+    // 长局诊断 11-23：同一护盾每回合（连续行动里一回合两次）往上叠，长局里防御系挨的伤害 74% 被护盾吸收（正常局 7%），对面整局打不进去。
+    // LWCS_TUNE.SHIELD_STACK_LEGACY 恢复旧的累加。
+    if (existing && Number(existing.shield_value || 0) > 0 && root.__LWCS_TUNE__?.SHIELD_STACK_LEGACY !== true) return 0;
     if (existing) {
       existing.状态 = String(existing.状态 || stateName).trim() || stateName;
       existing.状态名称 = String(existing.状态名称 || stateName).trim() || stateName;
       if (timed) existing.duration = Math.max(Number(existing.duration || 0), normalizedDuration);
       else delete existing.duration;
       existing.__本回合新附加 = true;
-      // 同技能不叠加（叠加规则「同技能不叠加」）试过（11-22，LWCS_TUNE.SHIELD_NO_STACK）：同一来源的护盾再上只刷新到这一次的量——元素系三放
-      // 第 3 魂技护盾叠到生命上限的 59%；但 3v3 退场校准随之出现 2～3 局打满 30 回合（疑似估值仍按技能写的护盾量计价、反复重放），待查，
-      // 默认仍累加。返回实际多出的量。
+      // 走到这里：旧的累加（SHIELD_STACK_LEGACY），或这个护盾已经打空（重新上）。11-22 试过的「刷新到这一次的量」引出的 3v3 打满，
+      // 根子是推演残局拖延（11-23 已修），估值也改成同技能护盾还在时计 0（BattlePreview calculateBaseActionValue）。返回实际多出的量。
       const before = Math.max(0, Number(existing.shield_value || 0));
-      existing.shield_value = root.__LWCS_TUNE__?.SHIELD_NO_STACK === true ? Math.max(before, amount) : before + amount;
+      existing.shield_value = before + amount;
       if (effect?.对应等级 !== undefined) existing.对应等级 = Math.max(0, Number(effect.对应等级 || 0));
       return existing.shield_value - before;
     } else {
