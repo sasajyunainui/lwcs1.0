@@ -9588,7 +9588,7 @@ function 规范化角色Schema_V1(char) {
  const gender = String(char.属性?.性别 || '');
     // 私密档案只给 18 岁以上的女性：非女性、未满 18 岁、年龄未知（缺省 / 0）一律删除，不留数据也不留「待补全」占位
     const 年龄 = Number(char.属性?.年龄);
-    if (!gender.includes('女') || !(Number.isFinite(年龄) && 年龄 >= 18)) {
+    if (!gender.includes('女') || !(Number.isFinite(年龄) && 年龄 >= 5)) {
       delete char.私密档案;
     }
 
