@@ -3487,7 +3487,60 @@ function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options 
     return { ...patch, op, path: 构建运行时JsonPointer路径_V1(路径) };
   });
   赛事权限预处理结果.UID分配器.提交();
-  return 输出;
+  return 限制新建玩家关系补丁_V1(输出, 根);
+}
+
+// 关系从 0 起步（用户 11-23「关系从0起步，没问题」）：模型写变量时，玩家与某个 NPC 之间（双向各一条）第一次写入关系——
+// 更新前没有这条，或只是「陌生、好感 0」——关系记「陌生」，好感从 0 起、这一轮最多 ±10；已有关系照常更新。
+// 座舱里玩家手动改关系不走这里
+function 限制新建玩家关系补丁_V1(patches = [], 根 = {}) {
+  const 玩家名 = 取运行时玩家名_V1(根);
+  if (!玩家名) return patches;
+  const 首轮上限 = 10;
+  const 夹好感 = 值 => Math.max(-首轮上限, Math.min(首轮上限, Number(值) || 0));
+  const 新建判定 = new Map();
+  const 是新建 = (甲, 乙) => {
+    const 键 = `${甲}\u0000${乙}`;
+    if (!新建判定.has(键)) {
+      const 原 = 根?.char?.[甲]?.社交?.关系?.[乙];
+      const 原关系 = String(原?.关系 || '').trim();
+      新建判定.set(键, !原 || typeof 原 !== 'object' || ((!原关系 || 原关系 === '陌生') && !(Number(原.好感度) || 0)));
+    }
+    return 新建判定.get(键);
+  };
+  const 本批好感 = new Map();
+  return patches.map(patch => {
+    if (!patch || !['add', 'replace', 'insert', 'delta'].includes(patch.op)) return patch;
+    const 路径 = 解码运行时JsonPointer路径_V1(patch.path);
+    if (路径[0] !== 'char' || 路径[2] !== '社交' || 路径[3] !== '关系') return patch;
+    // 写到整张关系表：逐个对象检查
+    if (路径.length === 4 && patch.value && typeof patch.value === 'object' && !Array.isArray(patch.value)) {
+      const 甲 = 路径[1];
+      const value = cloneJsonValue(patch.value, {});
+      Object.keys(value).forEach(乙 => {
+        if (甲 === 乙 || (甲 !== 玩家名 && 乙 !== 玩家名) || !是新建(甲, 乙) || !value[乙] || typeof value[乙] !== 'object') return;
+        value[乙] = { ...value[乙], 关系: '陌生', 好感度: 夹好感(value[乙].好感度) };
+      });
+      return { ...patch, value };
+    }
+    const [, 甲, , , 乙, 字段, ...余下] = 路径;
+    if (!乙 || 甲 === 乙 || (甲 !== 玩家名 && 乙 !== 玩家名) || 余下.length || !是新建(甲, 乙)) return patch;
+    const 键 = `${甲}\u0000${乙}`;
+    if (字段 === undefined) {
+      if (!patch.value || typeof patch.value !== 'object' || Array.isArray(patch.value)) return patch;
+      const 好感 = 夹好感(patch.value.好感度);
+      本批好感.set(键, 好感);
+      return { ...patch, value: { ...patch.value, 关系: '陌生', 好感度: 好感 } };
+    }
+    if (字段 === '关系') return patch.op === 'delta' ? patch : { ...patch, value: '陌生' };
+    if (字段 === '好感度') {
+      const 当前 = 本批好感.has(键) ? 本批好感.get(键) : 0;
+      const 目标 = 夹好感(patch.op === 'delta' ? 当前 + (Number(patch.value) || 0) : patch.value);
+      本批好感.set(键, 目标);
+      return { ...patch, op: patch.op === 'delta' ? 'replace' : patch.op, value: 目标 };
+    }
+    return patch;
+  });
 }
 
 function 替换AIJsonPatch文本块_V1(文本 = '', patches = []) {

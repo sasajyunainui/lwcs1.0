@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1cd35199ed8f2f6c4e7e315f1b9a3966230b7554c1498f5c5eb0c048365c98cd */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -46751,7 +46751,60 @@ function 规范化AIJsonPatch列表_V1(patches = [], 数据输入 = {}, options 
     return { ...patch, op, path: 构建运行时JsonPointer路径_V1(路径) };
   });
   赛事权限预处理结果.UID分配器.提交();
-  return 输出;
+  return 限制新建玩家关系补丁_V1(输出, 根);
+}
+
+// 关系从 0 起步（用户 11-23「关系从0起步，没问题」）：模型写变量时，玩家与某个 NPC 之间（双向各一条）第一次写入关系——
+// 更新前没有这条，或只是「陌生、好感 0」——关系记「陌生」，好感从 0 起、这一轮最多 ±10；已有关系照常更新。
+// 座舱里玩家手动改关系不走这里
+function 限制新建玩家关系补丁_V1(patches = [], 根 = {}) {
+  const 玩家名 = 取运行时玩家名_V1(根);
+  if (!玩家名) return patches;
+  const 首轮上限 = 10;
+  const 夹好感 = 值 => Math.max(-首轮上限, Math.min(首轮上限, Number(值) || 0));
+  const 新建判定 = new Map();
+  const 是新建 = (甲, 乙) => {
+    const 键 = `${甲}\u0000${乙}`;
+    if (!新建判定.has(键)) {
+      const 原 = 根?.char?.[甲]?.社交?.关系?.[乙];
+      const 原关系 = String(原?.关系 || '').trim();
+      新建判定.set(键, !原 || typeof 原 !== 'object' || ((!原关系 || 原关系 === '陌生') && !(Number(原.好感度) || 0)));
+    }
+    return 新建判定.get(键);
+  };
+  const 本批好感 = new Map();
+  return patches.map(patch => {
+    if (!patch || !['add', 'replace', 'insert', 'delta'].includes(patch.op)) return patch;
+    const 路径 = 解码运行时JsonPointer路径_V1(patch.path);
+    if (路径[0] !== 'char' || 路径[2] !== '社交' || 路径[3] !== '关系') return patch;
+    // 写到整张关系表：逐个对象检查
+    if (路径.length === 4 && patch.value && typeof patch.value === 'object' && !Array.isArray(patch.value)) {
+      const 甲 = 路径[1];
+      const value = cloneJsonValue(patch.value, {});
+      Object.keys(value).forEach(乙 => {
+        if (甲 === 乙 || (甲 !== 玩家名 && 乙 !== 玩家名) || !是新建(甲, 乙) || !value[乙] || typeof value[乙] !== 'object') return;
+        value[乙] = { ...value[乙], 关系: '陌生', 好感度: 夹好感(value[乙].好感度) };
+      });
+      return { ...patch, value };
+    }
+    const [, 甲, , , 乙, 字段, ...余下] = 路径;
+    if (!乙 || 甲 === 乙 || (甲 !== 玩家名 && 乙 !== 玩家名) || 余下.length || !是新建(甲, 乙)) return patch;
+    const 键 = `${甲}\u0000${乙}`;
+    if (字段 === undefined) {
+      if (!patch.value || typeof patch.value !== 'object' || Array.isArray(patch.value)) return patch;
+      const 好感 = 夹好感(patch.value.好感度);
+      本批好感.set(键, 好感);
+      return { ...patch, value: { ...patch.value, 关系: '陌生', 好感度: 好感 } };
+    }
+    if (字段 === '关系') return patch.op === 'delta' ? patch : { ...patch, value: '陌生' };
+    if (字段 === '好感度') {
+      const 当前 = 本批好感.has(键) ? 本批好感.get(键) : 0;
+      const 目标 = 夹好感(patch.op === 'delta' ? 当前 + (Number(patch.value) || 0) : patch.value);
+      本批好感.set(键, 目标);
+      return { ...patch, op: patch.op === 'delta' ? 'replace' : patch.op, value: 目标 };
+    }
+    return patch;
+  });
 }
 
 function 替换AIJsonPatch文本块_V1(文本 = '', patches = []) {
