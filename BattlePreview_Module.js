@@ -2349,6 +2349,31 @@
         String(state?.来源角色 || '').trim() === name && (HUMAN_SHIELD_HOLDS.test(stateName(state)) || isEntityControl(state)) &&
         Number(state.duration ?? state.持续回合 ?? 1) > 0)).map(entry => entry.unit);
   }
+  /* 围攻与压制（用户 11-23「想制造集火局面最重要的不就是围攻吗」「1v1 也可以全场压制得对方难有主动出手机会」）：BattleRuntime 在
+     __battleRuntime.pressure 记下目标自上次主动行动以来应对过的攻击者（by）与被占用的时间（used），目标主动行动时清空。
+     围攻：第 k 个不同攻击者（k ≥ 2）来袭时应对 ×BESIEGE_KEEP^(k−1)——闪避、卸力、抓反击空当、防御减伤，对轰按应对窗口缩短；夹击照旧另算。
+     压制：每应对一次占用 = 来袭前摇 × 速度比（出手者有效敏捷 ÷ 应对者，夹 PRESS_SPEED_MIN～MAX）× PRESS_SHARE，应对后的反击再加它自己的
+     前摇；下一次主动行动只剩 CONTINUOUS_ACTION_BUDGET − 占用（不够一记普攻就失去这次行动，魂技前摇超出的走蓄力）。都是起始值，实测校准。 */
+  const BESIEGE_KEEP = Number(root.__LWCS_TUNE__?.BESIEGE_KEEP ?? 0.7), PRESS_SHARE = Number(root.__LWCS_TUNE__?.PRESS_SHARE ?? 0.5),
+    PRESS_SPEED_MIN = 0.5, PRESS_SPEED_MAX = 2;
+  function besiegeFactor(reactor = {}, attacker = {}) {
+    if (root.__LWCS_TUNE__?.PRESSURE_OFF === true) return 1;
+    const by = reactor?.__battleRuntime?.pressure?.by;
+    if (!Array.isArray(by) || !by.length) return 1;
+    const self = String(unitId(attacker)), others = by.filter(id => String(id) !== self).length;
+    return others > 0 ? BESIEGE_KEEP ** others : 1;
+  }
+  // 应对一次来袭占用的时间（见上）。
+  function pressTime(attacker = {}, declaration = {}, reactor = {}) {
+    const own = Number(naturalActionOrderProfile(reactor).effectiveAgility), theirs = Number(naturalActionOrderProfile(attacker).effectiveAgility);
+    const speed = own > 0 && theirs > 0 ? clamp(theirs / own, PRESS_SPEED_MIN, PRESS_SPEED_MAX) : 1;
+    return Math.max(0, actionWindup(attacker, declaration, { travel: false })) * speed * PRESS_SHARE;
+  }
+  // 这个单位下一次主动行动还剩的时间。
+  function pressedBudget(unit = {}) {
+    const used = root.__LWCS_TUNE__?.PRESSURE_OFF === true ? 0 : Math.max(0, Number(unit?.__battleRuntime?.pressure?.used) || 0);
+    return Math.max(0, CONTINUOUS_ACTION_BUDGET - used);
+  }
   // 夹击：同一回合里这个单位挨过 attacker 一方别人的近身攻击。
   function pincerCut(reactor = {}, attacker = {}, round = null) {
     const struck = reactor?.__battleRuntime?.closeStruck;
@@ -2717,7 +2742,9 @@
     });
   }
   function clashTiming(attacker = {}, incomingDeclaration = {}, reactor = {}, declaration = {}, options = {}, pair = null) {
-    const window = pair && options?.intercept !== true ? pair.window : clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
+    // 围攻：来得及应对的时间 ×besiegeFactor（拦截者不是被围的人，不打折）。
+    const rawWindow = pair && options?.intercept !== true ? pair.window : clashWindupBudget(attacker, incomingDeclaration, reactor, options), own = answerOwnWindup(reactor, declaration);
+    const besieged = options?.intercept === true ? 1 : besiegeFactor(reactor, attacker), window = rawWindow > 0 && besieged < 1 ? rawWindow * besieged : rawWindow;
     // 晚出手（CLASH_LATE_LIMIT）以内也算对上：把握按「晚到上限还剩多少余地」算，即余地整体右移 CLASH_LATE_LIMIT。
     const late = own > 0 ? clamp((own - window) / own, 0, 1) : 0;
     const margin = own > 0 ? (window - own) / own + CLASH_LATE_LIMIT : window >= 0 ? Infinity : -Infinity;
@@ -26106,7 +26133,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const multiplier = prepared ? ordinary - (ordinary - Math.max(0.35, ordinary * 0.8)) * passiveStreakFactor(reactor) : ordinary;
     const opening = attackOpeningOf(reactor), slow = slowGuardCut(reactor);
     const opened = opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
-    return slow > 0 ? 1 - (1 - opened) * (1 - slow) : opened;
+    const guarded = slow > 0 ? 1 - (1 - opened) * (1 - slow) : opened;
+    // 围攻：挡下的那份 ×besiegeFactor。
+    const besieged = besiegeFactor(reactor, sourceActor);
+    return besieged < 1 ? 1 - (1 - guarded) * besieged : guarded;
   }
   // 迟缓削弱防御（用户 2026-11-14「丙吧」：硬控提到 25，迟缓也削弱防御）: a slowed unit guards late — what its guard keeps off
   // is cut by the slow's strength (迟缓/减速 states: their reaction_penalty, the 数值 they were laid with; the strongest).
@@ -26184,7 +26214,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const ratio = Math.max(0, Number(readCombatStat(reactor, 'str')) || 0) / deflectForce(sourceActor, incoming);
     const art = deflectArt(reactor);
     const failed = ratio < DEFLECT_FAIL_RATIO - art * DEFLECT_ART_FAIL;
-    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio + art * DEFLECT_ART_SHARE, 0, DEFLECT_CAP);
+    // 围攻：卸开的那份 ×besiegeFactor。
+    const deflected = failed ? 0 : clamp(DEFLECT_SHARE_AT_PAR * ratio + art * DEFLECT_ART_SHARE, 0, DEFLECT_CAP) * besiegeFactor(reactor, sourceActor);
     const melee = declarationDamageClass(incomingMove(incoming)) === 'MELEE';
     return Object.freeze({ multiplier: 1 - deflected, deflected, ratio, failed, unbalance: !failed && melee ? DEFLECT_UNBALANCE : 0, art: art > 0, artLevel: art });
   }
@@ -26214,7 +26245,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 闪避方 dodge_bonus − max(dodge_penalty, lock_level)，攻击方 − (hit_bonus − hit_penalty)。没有这些状态时不变。
     // 夹击（T30）：同一回合里挨过对方另一人的近身攻击，这一击闪避 −PINCER_DODGE_CUT（近身来招才算）。
     const adjustment = reactionDodgeStateAdjustment(reactor, sourceActor) - (strikeClass === 'MELEE' ? pincerCut(reactor, sourceActor) : 0);
-    return adjustment ? clamp(opened + adjustment, DODGE_FLOOR, 0.95) : opened;
+    // 围攻：闪避 ×besiegeFactor（在下限之后乘，围得够多可以低于下限）。
+    return (adjustment ? clamp(opened + adjustment, DODGE_FLOOR, 0.95) : opened) * besiegeFactor(reactor, sourceActor);
   }
 
   function reactionDodgeStateAdjustment(reactor = {}, sourceActor = {}) {
@@ -26243,7 +26275,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       (options?.prepared === true ? COUNTER_STANCE_BONUS : 0) + unbalanced, COUNTER_FLOOR, COUNTER_CAP);
     // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
     const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
-    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) *
+    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) * besiegeFactor(reactor, sourceActor) *
       // 远程来招打折，但还手本身不靠近身的（元素系还手按远程、精神系按精神攻击，同 BattleRuntime 行为防反）不打折（11-15）。
       (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' && !/元素系|精神系/.test(String(reactor?.type || reactor?.系别 || '')) ? RANGED_COUNTER_MULT
         : declarationDamageClass(declaration) === 'MENTAL' ? MENTAL_COUNTER_MULT : 1);
@@ -26855,7 +26887,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionBlocksSkill,
     meditationOptions,
     // 两档距离（T25）
-    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
+    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, besiegeFactor, pressTime, pressedBudget, BESIEGE_KEEP, PRESS_SHARE, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,
     isFeint,
     feintRecord,

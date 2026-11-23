@@ -11451,6 +11451,15 @@
       actor.__battleRuntime = actor.__battleRuntime && typeof actor.__battleRuntime === 'object' ? actor.__battleRuntime : {};
       if (['DEFEND', 'EVADE', 'PASS_OPPORTUNITY'].includes(actionKind)) actor.__battleRuntime.passiveStreak = Math.max(0, Number(actor.__battleRuntime.passiveStreak || 0)) + 1;
       else if (['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(actionKind)) actor.__battleRuntime.passiveStreak = 0;
+      // 进攻倾向（推演—实际对账 11-23：推演把别人都当每回合进攻，实际常在等 → 互等）：最近 6 次主动行动是否对敌人出手（普攻或魂技），
+      // 公开可见，BattleDecision 推演按它折算别人的出手。
+      const actorSideNow = inferUnitSide(combatData, actor);
+      const hostile = ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(actionKind) && (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).some(id => {
+        const unit = listCombatUnits(combatData).find(entry => isUnitIdentityMatch(entry, id));
+        return !!unit && unit !== actor && inferUnitSide(combatData, unit) !== actorSideNow;
+      });
+      const log = Array.isArray(actor.__battleRuntime.attackLog) ? actor.__battleRuntime.attackLog : [];
+      actor.__battleRuntime.attackLog = [...log, hostile ? 1 : 0].slice(-6);
     }
     const useEffects = previewRuntime.inventoryUseEffects(actor, declaration, combatData, declaration?.skill?._效果数组);
     const explicitEffects = previewRuntime.withStrengthKnockback(actor, declaration, previewRuntime.releaseSkillEffects(actor, declaration,
@@ -18246,6 +18255,25 @@
             });
           });
         };
+        // 围攻与压制（用户 11-23，BattlePreview besiegeFactor / pressTime / pressedBudget）：应对一次敌方来袭，记下攻击者并占用自己下一次
+        // 主动行动的时间；反击另加它自己的前摇（addPressTime）。自己主动行动时清空（见主动机会开头）。
+        const recordPressure = (reactor, attacker, declaration) => {
+          if (!reactor || !attacker || reactor === attacker || inferUnitSide(combatData, reactor) === inferUnitSide(combatData, attacker)) return;
+          const before = reactor.__battleRuntime?.pressure, by = Array.isArray(before?.by) ? before.by : [], id = String(previewRuntime.unitId(attacker));
+          const used = Number(before?.used || 0) + Math.max(0, Number(previewRuntime.pressTime?.(attacker, declaration || {}, reactor)) || 0);
+          reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), pressure: { by: by.includes(id) ? by : [...by, id], used } };
+        };
+        const addPressTime = (unit, time) => {
+          if (!unit || !(Number(time) > 0)) return;
+          const before = unit.__battleRuntime?.pressure;
+          unit.__battleRuntime = { ...(unit.__battleRuntime || {}), pressure: { by: Array.isArray(before?.by) ? before.by : [], used: Number(before?.used || 0) + Number(time) } };
+        };
+        // 这次主动行动还剩的时间（压制：pressedTurn 只对它开头读出的那次自然主动机会算；蓄力往后的回合照满额）。
+        const turnBudgetOf = (actor, node) => {
+          const pressed = actor?.__battleRuntime?.pressedTurn;
+          return pressed && node?.nodeKind === 'ACTIVE' && String(pressed.grantId) === String(node?.grantId || '')
+            ? Math.max(0, naturalActionBudget - Number(pressed.used || 0)) : naturalActionBudget;
+        };
         const decideForNode = function* (actor, node, extras = {}) {
           const decisionStartedAt = performanceNow();
           let routeFactOwnershipSummary = {};
@@ -18289,6 +18317,7 @@
               pendingNaturalActorIds,
               pendingHostileActorIds,
               naturalActionBudget,
+              turnBudget: turnBudgetOf(actor, node),
               battleHorizon: {
                 currentRound: Number(combatData?.回合 || 0),
                 finalRound: battleFinalRound,
@@ -19141,8 +19170,33 @@
               consumeSummonWindow(combatData, actor, incapacityReasonText, node.grantId);
             }
             consumeAutonomousSummonWindow(actor, node);
+            // 压制：没能行动的这次主动机会也算轮过一次，围攻记录清空（被控期间挨的打不留到解控之后）。
+            if (node.nodeKind === 'ACTIVE' && actor?.__battleRuntime?.pressure) { const { pressure, ...rest } = actor.__battleRuntime; actor.__battleRuntime = rest; }
             queue.recordTrace('CANCELLED', node, { reason: incapacityReason || 'UNAVAILABLE' });
             continue;
+          }
+          // 压制（用户 11-23「1v1 也可以全场压制得对方难有主动出手机会」）：主动机会开始时读出被占用的时间并清空围攻记录（pressedTurn 记下这次
+          // 行动只剩多少，蓄力、施法与连续行动按它算）；剩下的不够一记普攻就失去这次行动——被压着打，没有出手机会。
+          if (node.nodeKind === 'ACTIVE' && node.actionRole === 'ACTIVE' && actor?.__battleRuntime?.pressure) {
+            const budget = typeof previewRuntime.pressedBudget === 'function' ? previewRuntime.pressedBudget(actor) : naturalActionBudget;
+            const { pressure, pressedTurn, ...rest } = actor.__battleRuntime;
+            actor.__battleRuntime = { ...rest, ...(budget < naturalActionBudget ? { pressedTurn: { grantId: String(node.grantId || ''), used: naturalActionBudget - budget } } : {}) };
+            if (budget < Math.max(1, Number(previewRuntime.basicAttackWindup?.(actor)) || 10)) {
+              if (naturalOpportunity && String(naturalOpportunity?.status || '').trim() === 'PENDING') { naturalOpportunity.status = 'LOST'; naturalOpportunity.reason = 'PRESSED'; }
+              writeLedgerEvent(combatData, {
+                eventKind: 'blocked_action', round: Number(combatData.回合 || 0),
+                actorId: previewRuntime.unitId(actor) || '', actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(actor) || '', targetName: previewRuntime.unitName(actor),
+                actionName: '失去行动', actionType: 'opportunity_cancelled', actorControl: node.actorControl, actionRole: node.actionRole,
+                sourceActionId: String(node.sourceActionId || '').trim(), opportunityId: String(node.opportunityId || node.grantId || '').trim(),
+                opportunitySequence: Math.max(0, Number(node.opportunitySequence || 0)), grantId: String(node.grantId || '').trim(),
+                result: 'cancelled', resultState: 'FAILURE', ruleCode: 'NATURAL_ACTION_OPPORTUNITY_CANCELLED',
+                meta: { source: 'structured_shadow', grantId: node.grantId, opportunityId: String(node.opportunityId || node.grantId || '').trim(),
+                  reasonCode: 'PRESSED', reasonText: '被压着打，没有出手机会', pressedUsed: naturalActionBudget - budget, pressedBy: Array.isArray(pressure?.by) ? pressure.by.slice() : [] },
+              });
+              consumeAutonomousSummonWindow(actor, node);
+              queue.recordTrace('CANCELLED', node, { reason: 'PRESSED' });
+              continue;
+            }
           }
           if (naturalOpportunity && String(naturalOpportunity?.status || '').trim() === 'PENDING') {
             naturalOpportunity.status = 'EXECUTING';
@@ -19169,6 +19223,7 @@
               const reactionTargetId = String(node?.state?.targetId || actorId).trim();
               const summonGuard = node?.state?.summonGuard === true && !!actor?.召唤键;
               const sourceActorId = previewRuntime.unitId(sourceActor);
+              recordPressure(actor, sourceActor, shared.declaration);
               const preparedDefense = actor?.__battleRuntime?.activeDefenseStance || null;
               const sourceActionEvent = shared?.actionContext?.actionEvent;
               const sourceActionId = String(sourceActionEvent?.actionId || '').trim();
@@ -19241,6 +19296,15 @@
                 : summonGuard
                   ? { actorId, actionKind: 'DEFEND', targetIds: [actorId] }
                   : feintMeet || cloneValue(decisionResult.selected.declaration);
+              // 接招习惯（推演—实际对账 11-23，用户定「按观察估对方应对」）：最近 8 次怎么接招，公开可见，BattleDecision r20Meet 按它估这人怎么接。
+              if (!summonGuard && node?.state?.intercept !== true) {
+                const kind = String(reactionDeclaration?.actionKind || '').trim().toUpperCase(), mode = String(reactionDeclaration?.engagement?.mode || '').trim().toUpperCase();
+                const answer = mode === 'CLASH' || mode === 'PREEMPT' ? mode : kind === 'DEFEND' && reactionDeclaration?.deflect === true ? 'DEFLECT'
+                  : kind === 'DEFEND' || kind === 'GUARD' ? 'DEFEND' : kind === 'EVADE' ? 'EVADE' : kind === 'RELEASE_SKILL' ? 'TRADE' : 'TAKE';
+                const log = Array.isArray(actor.__battleRuntime?.answerLog) ? actor.__battleRuntime.answerLog : [];
+                if (!actor.__battleRuntime || typeof actor.__battleRuntime !== 'object') actor.__battleRuntime = {};
+                actor.__battleRuntime.answerLog = [...log, answer].slice(-8);
+              }
               // 看穿来招：答的是一个照常来不及的魂技时记一笔（战报写「看穿来招，抢先出手」）。
               const answerWindupTaken = Math.max(0, Number(reactionDeclaration?.skill?.前摇 ?? reactionDeclaration?.skill?.cast_time ?? 0) || 0);
               if (foresaw && String(reactionDeclaration?.actionKind || '').toUpperCase() === 'RELEASE_SKILL' && answerWindupTaken > plainBudget) {
@@ -19679,7 +19743,8 @@
               // follows a hard control takes no windup of the turn, so what the control left of the budget still carries a skill.
               const freeWindup = node?.state?.freeWindup === true;
               const chainWindup = freeWindup ? 0 : previewRuntime.actionWindup(actor, shared.declaration);
-              const chainUsed = Number(node?.state?.windupUsed || 0) + chainWindup;
+              // 压制：自然主动机会开头被占掉的时间也算这回合用掉的（pressedTurn）。
+              const chainUsed = Number(node?.state?.windupUsed || 0) + chainWindup + (node.nodeKind === 'ACTIVE' ? naturalActionBudget - turnBudgetOf(actor, node) : 0);
               const hardControlled = node?.state?.freeWindup !== true && settlement.facts.some(event => {
                 if (event?.eventKind !== 'state_apply' || event?.result !== 'applied') return false;
                 if (!previewRuntime.structuredControlConsumesActiveOpportunity({ 状态: String(event?.meta?.stateName || '').trim() })) return false;
@@ -19896,8 +19961,9 @@
                 queue.recordTrace('EXECUTED', node, { result: 'charge_cancelled', reason: 'CAST_EXCEEDS_BATTLE_HORIZON' });
                 continue;
               }
-              if (remainingCastTime > naturalActionBudget) {
-                storedCharge.cast_time = remainingCastTime - naturalActionBudget;
+              const chargeBudget = turnBudgetOf(actor, node);
+              if (remainingCastTime > chargeBudget) {
+                storedCharge.cast_time = remainingCastTime - chargeBudget;
                 const remainingOpportunityCount = Math.ceil(
                   storedCharge.cast_time / Math.max(1, naturalActionBudget),
                 );
@@ -20303,7 +20369,10 @@
               combatData.佯装记录 = { ...shown, [feinterName]: Number(shown[feinterName] || 0) + 1 };
             }
             const castTime = previewRuntime.actionWindup(actor, declaration, { travel: false });
-            if (!storedCharge && (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && castTime > naturalActionBudget) {
+            // 压制：反击也花时间，记进反击者下一次主动行动的占用。
+            if (normalizeActionRole(node.actionRole) === 'COUNTER') addPressTime(actor, castTime);
+            const castBudget = turnBudgetOf(actor, node);
+            if (!storedCharge && (node.nodeKind === 'ACTIVE' || isCooperativeAssist) && castTime > castBudget) {
               // 融合蓄力: the partners must have this round's turn to give; they give it now and every turn until the release.
               const chargeFusion = node.nodeKind === 'ACTIVE' && String(declaration?.actionKind || '').trim() === 'RELEASE_SKILL'
                 ? previewRuntime.resolveFusionAction(combatData, actor, declaration?.skill || {}, { requirePendingOpportunity: true, ignoreResourceAvailability: true })
@@ -20315,7 +20384,7 @@
               const actionName = normalizeActionDisplayName(declaration?.skill?.name || declaration?.skill?.魂技名 || declaration?.actionKind || '蓄力行动');
               const chargeActionId = nextRuntimeId('battle-action');
               const remainingOpportunityCount = Math.ceil(
-                (castTime - naturalActionBudget) / Math.max(1, naturalActionBudget),
+                (castTime - castBudget) / Math.max(1, naturalActionBudget),
               );
               const chargeStart = writeLedgerEvent(combatData, {
                 eventKind: 'charge_start', round: Number(combatData.回合 || 0), actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor),
@@ -20332,7 +20401,7 @@
                    decisionCandidateId: String(decisionResult?.selected?.candidateId || '').trim(),
                    declaredTargetIds: declarationTargetIds,
                    resolvedTargetIds: resolvedHostileTargets.map(target => previewRuntime.unitId(target)).filter(Boolean),
-                   remainingCastTime: castTime - naturalActionBudget,
+                   remainingCastTime: castTime - castBudget,
                    remainingOpportunityCount,
                    opportunityId: node.opportunityId,
                    opportunitySequence: node.opportunitySequence,
@@ -20358,7 +20427,7 @@
               }
               actor.蓄力技能 = {
                 skill: chargeSkillPackage,
-                cast_time: castTime - naturalActionBudget,
+                cast_time: castTime - castBudget,
                 // The whole windup, for the share charged when it is cut short (BattlePreview hastyChargeScale).
                 total_cast_time: castTime,
                 targetIds: cloneValue(declaration.targetIds || []),
@@ -22445,6 +22514,7 @@
             /失去行动/.test(action) ||
             /UNCONSCIOUS|INCAPACITATED|CONTROLLED|DEAD/i.test(String(fact.reasonCode || ''))
           )) {
+            if (/PRESSED/.test(String(fact.reasonCode || fact.meta?.reasonCode || ''))) { push(`${actor}被压着打，没有出手机会`); return; }
             const reason = /UNCONSCIOUS/i.test(String(fact.reasonCode || '')) ? '昏迷' :
               /DEAD|INCAPACITATED/i.test(String(fact.reasonCode || '')) ? '失去战斗能力' :
                 /CONTROLLED/i.test(String(fact.reasonCode || '')) ? '受控制影响' : '当前状态限制';
