@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|BattlePreview_Module.js:eb01edb5fbcfc79d6865a868341cc8b2d6a4153fc37f4bbe1684c6321a827f86|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:bb3c49e8c1cfd150a76f092432e3896910ba36d52716cfdc67c7da3ed24c3dcc|BattleRuntime_Module.js:9a08c983fe32be2e8807cb17e10ee517e0ee9c93b14688c5df1b2e56e1aa1490 */
+/* sources-sha256: MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|BattlePreview_Module.js:eb01edb5fbcfc79d6865a868341cc8b2d6a4153fc37f4bbe1684c6321a827f86|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:0e2f8c7b5c7cf43b2986f00a202f617a64d748f70d0f7e82bdf25e9381883191|BattleRuntime_Module.js:431cd14cd217f82874ecdef6be7dd0f9a6de359076da57b0ce58359359521c8a */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -75311,7 +75311,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         // And who has been at it since it last acted and how much of its next action that took (围攻与压制 11-23, BattlePreview besiegeFactor / pressedBudget).
         ...(sourceUnit?.__battleRuntime?.lastReleasedSkill || Number(sourceUnit?.__battleRuntime?.passiveStreak) > 0 || sourceUnit?.__battleRuntime?.lowResourceStaminaCut ||
           sourceUnit?.__battleRuntime?.activeDefenseStance || sourceUnit?.__battleRuntime?.position || sourceUnit?.__battleRuntime?.closeStruck || sourceUnit?.__battleRuntime?.engaged ||
-          sourceUnit?.__battleRuntime?.pressure || sourceUnit?.__battleRuntime?.pressedTurn || sourceUnit?.__battleRuntime?.attackLog || sourceUnit?.__battleRuntime?.answerLog ? { __battleRuntime: {
+          sourceUnit?.__battleRuntime?.pressure || sourceUnit?.__battleRuntime?.pressedTurn || sourceUnit?.__battleRuntime?.attackLog || sourceUnit?.__battleRuntime?.answerLog || sourceUnit?.__battleRuntime?.counterLog ? { __battleRuntime: {
           ...(sourceUnit.__battleRuntime.position ? { position: sourceUnit.__battleRuntime.position } : {}),
           ...(sourceUnit.__battleRuntime.closeStruck ? { closeStruck: cloneValue(sourceUnit.__battleRuntime.closeStruck) } : {}),
           ...(sourceUnit.__battleRuntime.pressure ? { pressure: cloneValue(sourceUnit.__battleRuntime.pressure) } : {}),
@@ -75319,6 +75319,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           // 最近几次主动行动是否对敌出手（公开可见，r20AttackRate）。
           ...(Array.isArray(sourceUnit.__battleRuntime.attackLog) ? { attackLog: sourceUnit.__battleRuntime.attackLog.slice() } : {}),
           ...(Array.isArray(sourceUnit.__battleRuntime.answerLog) ? { answerLog: sourceUnit.__battleRuntime.answerLog.slice() } : {}),
+          ...(Array.isArray(sourceUnit.__battleRuntime.counterLog) ? { counterLog: sourceUnit.__battleRuntime.counterLog.slice() } : {}),
           ...(sourceUnit.__battleRuntime.engaged ? { engaged: { ...sourceUnit.__battleRuntime.engaged } } : {}),
           // 卖破绽（T32）: one that has not seen through it sees no stance, only the opening shown (BattlePreview BAIT_OPENING).
           ...(sourceUnit.__battleRuntime.activeDefenseStance?.bait === true && !seenThroughBy(worldSnapshot, actorId, sourceUnit.__battleRuntime.activeDefenseStance.seenBy, sourceUnit.__battleRuntime.activeDefenseStance.seenRound)
@@ -113487,6 +113488,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     hpMax: Math.max(1, preview.readHpMax(unit)), attackerHpMax: Math.max(1, preview.readHpMax(attacker)),
     // 接招习惯（BattleRuntime answerLog；摆好的姿态 prepared 不按习惯）。
     observed: prepared || !Array.isArray(unit?.__battleRuntime?.answerLog) ? null : unit.__battleRuntime.answerLog,
+    // 还手习惯（BattleRuntime counterLog：接招之后真还手了吗）。
+    counterObserved: !Array.isArray(unit?.__battleRuntime?.counterLog) ? null : unit.__battleRuntime.counterLog,
   });
   // 接战链 阶段 2c (方案 §9.2、§10.1: "应对的代价要算进去，且应对方真实的选择与出手方对它的预料用同一套算法"): what an answer costs
   // its unit — the 魂力 and 精神力 its skill's startup costs take and the stamina the runtime charges the action
@@ -113782,6 +113785,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 按观察估接招（推演—实际对账 11-23，用户定）：这人最近怎么接招（stand.observed，BattleRuntime answerLog）——每种接法取眼下这一种里
     // 最省的那项，按它出现的份额配上，余下 R20_ANSWER_PRIOR 份留给上面算出的最省一项。此前只取最省一项：推演估「对轰抵掉」47%，
     // 实际 9～13%，连带评估自己这一招也常被算成白打（控制系对召唤师：每个候选都是 0，让过 69 次）。硬吃（TAKE）是不挡、不还手。
+    // 还手按观察（同日）：这人接招后真还手的份额（stand.counterObserved），先验 R20_ANSWER_PRIOR 份按公式（各接法的抓空当概率）。
+    const counterSeen = Array.isArray(stand.counterObserved) && stand.counterObserved.length && root.__LWCS_TUNE__?.COUNTER_OBS_OFF !== true ? stand.counterObserved : null;
+    const withHabit = met => counterSeen ? { ...met, answer: (R20_ANSWER_PRIOR * met.answer + counterSeen.reduce((sum, value) => sum + (Number(value) > 0 ? 1 : 0), 0)) / (R20_ANSWER_PRIOR + counterSeen.length) } : met;
     const observed = Array.isArray(stand.observed) && root.__LWCS_TUNE__?.ANSWER_OBS_OFF !== true ? stand.observed : null;
     if (observed?.length) {
       const counts = {};
@@ -113798,12 +113804,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const mix = key => parts.reduce((sum, [option, weight]) => sum + (Number(option[key]) || 0) * weight, 0) / total;
       const blended = { ...best, keep: mix('keep'), share: mix('share'), lands: mix('lands'), answer: mix('answer'), back: mix('back'),
         observedMix: true, defendShare: parts.reduce((sum, [option, weight]) => sum + (option.kind === 'DEFEND' ? weight : 0), 0) / total };
-      if (stand.preempt > 0) { const left = 1 - stand.preempt; return { ...blended, keep: blended.keep * left, share: blended.share * left, lands: blended.lands * left, defends: best.kind === 'DEFEND' }; }
-      return { ...blended, defends: best.kind === 'DEFEND' };
+      if (stand.preempt > 0) { const left = 1 - stand.preempt; return withHabit({ ...blended, keep: blended.keep * left, share: blended.share * left, lands: blended.lands * left, defends: best.kind === 'DEFEND' }); }
+      return withHabit({ ...blended, defends: best.kind === 'DEFEND' });
     }
     // S84: an unseen 控制系 keeps off a share of the hit by a control thrown first, whatever else it would have done.
-    if (stand.preempt > 0) { const left = 1 - stand.preempt; return { ...best, keep: best.keep * left, share: best.share * left, lands: best.lands * left, defends: best.kind === 'DEFEND' }; }
-    return { ...best, defends: best.kind === 'DEFEND' };
+    if (stand.preempt > 0) { const left = 1 - stand.preempt; return withHabit({ ...best, keep: best.keep * left, share: best.share * left, lands: best.lands * left, defends: best.kind === 'DEFEND' }); }
+    return withHabit({ ...best, defends: best.kind === 'DEFEND' });
   };
   // 接战链 阶段 2c (方案 §9.3、§10.2: 姿态的价值按"对方此时确实会来打我"的可能折算): the chance `unit` turns its action of the
   // round on `target` — by its best action on the table as the race takes it (r20Race: a hit on an enemy worth what it
@@ -119592,6 +119598,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return applied;
   }
 
+  // 还手习惯：接招之后真还了手吗（最近 8 次，公开可见；BattleDecision r20Meet 按它估这人还手的概率）。
+  function recordCounterHabit(unit = {}, struck = 0) {
+    if (!unit || typeof unit !== 'object') return;
+    if (!unit.__battleRuntime || typeof unit.__battleRuntime !== 'object') unit.__battleRuntime = {};
+    const log = Array.isArray(unit.__battleRuntime.counterLog) ? unit.__battleRuntime.counterLog : [];
+    unit.__battleRuntime.counterLog = [...log, struck ? 1 : 0].slice(-8);
+  }
   function commitRuntimeShieldGain(unit = {}, amount = 0, duration = null, sourceName = '护盾', effect = {}) {
     if (!Number.isFinite(amount) || !(amount > 0)) return 0;
     if (!unit.状态效果) unit.状态效果 = {};
@@ -135179,6 +135192,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const roll = Math.random();
     const opened = (eligible || baited) && !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
     if (opened && baited) reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), baitCounter: true };
+    // 还手习惯（推演—实际对账 11-23：推演反击仍比实际高 1.5～2 倍）：没开出反击窗口记 0，开了的到反击决策再记（还手 1、放弃 0）。
+    if (!opened) recordCounterHabit(reactor, 0);
     const closedReason = !eligible ? reaction.evaded === true || !defended ? 'COUNTER_WINDOW_NOT_ELIGIBLE' : 'COUNTER_WINDOW_GUARD_BROKEN_THROUGH'
       : staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const event = writeLedgerEvent(combatData, {
@@ -139351,6 +139366,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               if (handleLostDecisionNode(decisionResult, node)) continue;
               declaration = cloneValue(decisionResult?.selected?.declaration || {});
               if (node?.state?.breakoutOnly === true) declaration.__breakout = true;
+              if (node.nodeKind === 'COUNTER') recordCounterHabit(actor, decisionResult?.selected?.counterDeclineFallback === true ? 0 : 1);
               // A strike back's stamina price is the runtime's to set (接战链 阶段一), whatever the declaration carried.
               if (node.nodeKind === 'COUNTER') declaration.staminaFactor = previewRuntime.counterStaminaFactor(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0);
               // The authoritative counterDeclineFallback flag is assembled by
