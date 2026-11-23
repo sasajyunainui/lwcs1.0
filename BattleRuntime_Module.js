@@ -452,17 +452,20 @@
     const normalizedDuration = Number(duration);
     const timed = Number.isFinite(normalizedDuration) && normalizedDuration > 0;
     const existing = unit.状态效果[stateName];
+    // 同技能已生效时重施一律无效（设计规则：不补层数、不刷新持续时间）：这个魂技的护盾还剩着，再放不加也不刷新；打破了才能重新上。
+    // 长局诊断 11-23：同一护盾每回合（连续行动里一回合两次）往上叠，长局里防御系挨的伤害 74% 被护盾吸收（正常局 7%），对面整局打不进去。
+    // LWCS_TUNE.SHIELD_STACK_LEGACY 恢复旧的累加。
+    if (existing && Number(existing.shield_value || 0) > 0 && root.__LWCS_TUNE__?.SHIELD_STACK_LEGACY !== true) return 0;
     if (existing) {
       existing.状态 = String(existing.状态 || stateName).trim() || stateName;
       existing.状态名称 = String(existing.状态名称 || stateName).trim() || stateName;
       if (timed) existing.duration = Math.max(Number(existing.duration || 0), normalizedDuration);
       else delete existing.duration;
       existing.__本回合新附加 = true;
-      // 同技能不叠加（叠加规则「同技能不叠加」）试过（11-22，LWCS_TUNE.SHIELD_NO_STACK）：同一来源的护盾再上只刷新到这一次的量——元素系三放
-      // 第 3 魂技护盾叠到生命上限的 59%；但 3v3 退场校准随之出现 2～3 局打满 30 回合（疑似估值仍按技能写的护盾量计价、反复重放），待查，
-      // 默认仍累加。返回实际多出的量。
+      // 走到这里：旧的累加（SHIELD_STACK_LEGACY），或这个护盾已经打空（重新上）。11-22 试过的「刷新到这一次的量」引出的 3v3 打满，
+      // 根子是推演残局拖延（11-23 已修），估值也改成同技能护盾还在时计 0（BattlePreview calculateBaseActionValue）。返回实际多出的量。
       const before = Math.max(0, Number(existing.shield_value || 0));
-      existing.shield_value = root.__LWCS_TUNE__?.SHIELD_NO_STACK === true ? Math.max(before, amount) : before + amount;
+      existing.shield_value = before + amount;
       if (effect?.对应等级 !== undefined) existing.对应等级 = Math.max(0, Number(effect.对应等级 || 0));
       return existing.shield_value - before;
     } else {

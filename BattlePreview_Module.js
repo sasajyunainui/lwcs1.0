@@ -1547,6 +1547,14 @@
     unit.护盾 = unit.shield;
   }
 
+  // 这个魂技（declaration.skill）给 unit 上的护盾还剩着吗（BattleRuntime runtimeShieldStateName：护盾状态按魂技名）。
+  function sameSkillShieldActive(unit = {}, declaration = null) {
+    if (root.__LWCS_TUNE__?.SHIELD_STACK_LEGACY === true) return false;
+    const name = String(declaration?.skill?.魂技名 || declaration?.skill?.name || '').trim();
+    if (!name) return false;
+    const stateName = /护盾|屏障|结界/.test(name) ? name : `${name}护盾`;
+    return Number(unit?.状态效果?.[stateName]?.shield_value || 0) > 0;
+  }
   function calculateShieldGain(unit = {}, shieldAmount = 0) {
     const requested = Math.max(0, Math.floor(Number(shieldAmount || 0)));
     if (!(requested > 0)) return 0;
@@ -19447,7 +19455,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       }
       if (String(effect?.原型 || '').trim() === '护盾变化') {
         const base = readHpMax(target || actor);
-        const realizedShield = Math.min(
+        // 同技能已生效时重施无效（BattleRuntime commitRuntimeShieldGain）：这个魂技的护盾还剩着就不值什么。
+        const realizedShield = sameSkillShieldActive(target || actor, declaration) ? 0 : Math.min(
           calculateShieldGain(target || actor, parseSignedValue(effect?.数值, base)),
           remainingShieldAbsorptionCap,
         );
