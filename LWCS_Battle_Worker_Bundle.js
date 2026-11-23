@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:c62bc16776da627dfd28a22333e5aa25ea333178ce23cec5f9df8811bc27792d|BattlePreview_Module.js:eb01edb5fbcfc79d6865a868341cc8b2d6a4153fc37f4bbe1684c6321a827f86|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:bb3c49e8c1cfd150a76f092432e3896910ba36d52716cfdc67c7da3ed24c3dcc|BattleRuntime_Module.js:9a08c983fe32be2e8807cb17e10ee517e0ee9c93b14688c5df1b2e56e1aa1490 */
+/* sources-sha256: MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|BattlePreview_Module.js:eb01edb5fbcfc79d6865a868341cc8b2d6a4153fc37f4bbe1684c6321a827f86|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:bb3c49e8c1cfd150a76f092432e3896910ba36d52716cfdc67c7da3ed24c3dcc|BattleRuntime_Module.js:9a08c983fe32be2e8807cb17e10ee517e0ee9c93b14688c5df1b2e56e1aa1490 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -37553,7 +37553,9 @@ function 规范化角色Schema_V1(char) {
     delete char.复制技能;
 
  const gender = String(char.属性?.性别 || '');
-    if (!gender.includes('女') && !gender.includes('待补全')) {
+    // 私密档案只给 18 岁以上的女性：非女性、未满 18 岁、年龄未知（缺省 / 0）一律删除，不留数据也不留「待补全」占位
+    const 年龄 = Number(char.属性?.年龄);
+    if (!gender.includes('女') || !(Number.isFinite(年龄) && 年龄 >= 18)) {
       delete char.私密档案;
     }
 

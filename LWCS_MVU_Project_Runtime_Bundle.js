@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:c62bc16776da627dfd28a22333e5aa25ea333178ce23cec5f9df8811bc27792d|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:60305a52b4e92c94a632fdbed4015c63a60cd9f31a324d3caa4c5e87229c82e2 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:59d1dc0bbb59a5fff295136b87cb4e9990d70b1bbdebe65dd887df9682575a23 */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -42183,7 +42183,9 @@ function 规范化角色Schema_V1(char) {
     delete char.复制技能;
 
  const gender = String(char.属性?.性别 || '');
-    if (!gender.includes('女') && !gender.includes('待补全')) {
+    // 私密档案只给 18 岁以上的女性：非女性、未满 18 岁、年龄未知（缺省 / 0）一律删除，不留数据也不留「待补全」占位
+    const 年龄 = Number(char.属性?.年龄);
+    if (!gender.includes('女') || !(Number.isFinite(年龄) && 年龄 >= 18)) {
       delete char.私密档案;
     }
 
@@ -49640,10 +49642,18 @@ function 构建MVU剧情角色简表_V1(数据根 = {}, userInput = '', 最后�
   const 角色名集合 = 取运行时剧情提示角色名集合_V1(数据根, userInput, 最后剧情文本);
   const 角色名列表 = 按玩家优先排序名称_V1(角色名集合, 取运行时玩家名_V1(数据根));
   const 当前tick = Number(数据根?.world?.时间?.tick || 0);
+  const 玩家名 = 取运行时玩家名_V1(数据根);
   const 命中角色表 = {};
   角色名列表.forEach(角色名 => {
     const 角色 = 构建MVU正文角色薄片_V1(数据根?.char?.[角色名], 当前tick);
     if (!角色 || typeof 角色 !== 'object') return;
+    // 与玩家的关系全由游玩建立：NPC 关系里没有玩家，就明写「陌生」（社交关系表本来只列有记录的，没写的模型不会当成没见过）。
+    // 只补在这份薄片上，不改存档；NPC 之间照旧只列有记录的（角色库资料不全，没写不代表不认识）
+    const 原关系 = 数据根?.char?.[角色名]?.社交?.关系;
+    if (玩家名 && 角色名 !== 玩家名 && !(原关系 && typeof 原关系 === 'object' && 原关系[玩家名])) {
+      角色.社交 = 角色.社交 && typeof 角色.社交 === 'object' ? 角色.社交 : {};
+      角色.社交.关系 = { ...(角色.社交.关系 && typeof 角色.社交.关系 === 'object' ? 角色.社交.关系 : {}), [玩家名]: { 关系: '陌生', 好感度: 0 } };
+    }
     命中角色表[角色名] = 角色;
   });
   const 主体段 = 构建MVU角色卡表格文本_V1(命中角色表, 当前tick);
@@ -50963,7 +50973,10 @@ function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, �
       添加MVU角色卡表格行_V1(表.战斗历史, { 角色: 角色名, 对象, 次数: 内容?.次数, 胜: 内容?.胜, 负: 内容?.负, 平: 内容?.平, 最近结果: 内容?.最近结果, 最近tick: 内容?.最近tick }, 覆盖器, []);
     });
     ['我的任务', '任务', '已掌握情报', '魂灵塔记录', '战斗历史'].forEach(字段 => 覆盖器.markSubtree(字段));
-    const 私密档案 = 角色?.私密档案 && typeof 角色.私密档案 === 'object' ? 角色.私密档案 : null;
+    // 私密档案只对 18 岁以上的女性输出（存档规范化也会删掉其余角色的；这里再拦一道，旧存档没规范化前也不进上下文）
+    const 私密档案年龄 = Number(角色?.属性?.年龄);
+    const 私密档案可输出 = /女/.test(String(角色?.属性?.性别 ?? '')) && Number.isFinite(私密档案年龄) && 私密档案年龄 >= 18;
+    const 私密档案 = 私密档案可输出 && 角色?.私密档案 && typeof 角色.私密档案 === 'object' ? 角色.私密档案 : null;
     if (私密档案) {
       添加MVU角色卡表格行_V1(表.私密档案, {
         角色: 角色名,
