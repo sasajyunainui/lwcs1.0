@@ -5995,10 +5995,17 @@
 
   // 冥想（BattlePreview interruptMeditation）: a hit that does damage breaks it. Returns the unit broken out of it (T26 第 2 批：
   // writeLedgerEvent 在这一击之后记 meditation_interrupted).
+  // 撑到下次行动的冥想（用户 11-23）：被敌人攻击就打断，中没中都算（旧规则 MEDITATION_LEGACY：打中有伤害才断）。
   function breakMeditationOnHit(combatData = {}, payload = {}) {
-    if (String(payload?.eventKind || '').trim() !== 'hit_result' || !(Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) > 0)) return null;
+    if (String(payload?.eventKind || '').trim() !== 'hit_result') return null;
+    const legacy = root.__LWCS_TUNE__?.MEDITATION_LEGACY === true;
+    if (legacy && !(Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) > 0)) return null;
     const targetId = String(payload.targetId || '').trim();
     const target = targetId ? listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)) : null;
+    if (!legacy && target) {
+      const attacker = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, String(payload.actorId || '')));
+      if (!attacker || inferUnitSide(combatData, attacker) === inferUnitSide(combatData, target)) return null;
+    }
     if (target && previewRuntime.meditating?.(target)) { previewRuntime.interruptMeditation(target); return target; }
     return null;
   }
@@ -19186,6 +19193,22 @@
             if (node.nodeKind === 'ACTIVE' && actor?.__battleRuntime?.pressure) { const { pressure, ...rest } = actor.__battleRuntime; actor.__battleRuntime = rest; }
             queue.recordTrace('CANCELLED', node, { reason: incapacityReason || 'UNAVAILABLE' });
             continue;
+          }
+          // 冥想撑到了下次行动（用户 11-23）：没被打断就在这时回魂力、精神力（精神力至多回到上限的 MENTAL_NATURAL_CEILING），状态撤掉。
+          if (node.nodeKind === 'ACTIVE' && node.actionRole === 'ACTIVE' && actor?.状态效果?.[previewRuntime.MEDITATION_KEY]?.__冥想) {
+            const meditation = actor.状态效果[previewRuntime.MEDITATION_KEY], owed = meditation.__冥想回复;
+            if (owed && meditation.__冥想中断 !== true) {
+              const pools = [['sp', '魂力', 1], ['men', '精神力', Number(owed.精神力上限比) || 1]];
+              for (const [key, name, ceiling] of pools) {
+                const maximum = Math.max(0, Number(previewRuntime.readResourceMax(actor, name)) || 0), now = Number(previewRuntime.readResource(actor, name)) || 0;
+                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0)));
+                if (target > now) {
+                  writeCombatResource(actor, key, target);
+                  writeRoundEndResourceEvent(combatData, actor, '冥想', key, target - now, { reasonCode: 'MEDITATION_RECOVERY', operation: 'RESTORE' });
+                }
+              }
+            }
+            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; }
           }
           // 压制（用户 11-23「1v1 也可以全场压制得对方难有主动出手机会」）：主动机会开始时读出被占用的时间并清空围攻记录（pressedTurn 记下这次
           // 行动只剩多少，蓄力、施法与连续行动按它算）；剩下的不够一记普攻就失去这次行动——被压着打，没有出手机会。

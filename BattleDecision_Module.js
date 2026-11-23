@@ -7693,7 +7693,7 @@
     // by postBattleCostShare in the valuation — not as the skill's side effects, which the runtime would settle in the battle too).
     // 冥想（BattlePreview meditationOptions）: the same path, taking the action.
     [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.lifeFireOptions?.(actor, worldSnapshot, input.battleIntent) || []),
-      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor) || []),
+      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor, worldSnapshot) || []),
       // 前压 / 后撤（两档距离 T25, BattlePreview positionOptions）: the same path, taking the action.
       ...(preview.positionOptions?.(actor) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
@@ -40071,6 +40071,12 @@
     let sp = base.sp, men = base.men;
     for (const state of Object.values(unit?.状态效果 || {})) {
       const effects = state?.战斗效果 || {}, rounds = Math.min(R20_HORIZON, Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0) || 0));
+      // 撑到下次行动的冥想（BattlePreview beginMeditation __冥想回复）：没被打断，下次行动时回一次。
+      if (state?.__冥想回复 && state.__冥想中断 !== true) {
+        sp += (Number(state.__冥想回复.魂力) || 0) * preview.readResourceMax(unit, '魂力');
+        men += (Number(state.__冥想回复.精神力) || 0) * preview.readResourceMax(unit, '精神力');
+        continue;
+      }
       if (!(rounds > 0)) continue;
       if (Number(effects.sp_gain_ratio) > 0) sp += Number(effects.sp_gain_ratio) * preview.readResourceMax(unit, '魂力') * rounds;
       if (Number(effects.men_gain_ratio) > 0) men += Number(effects.men_gain_ratio) * preview.readResourceMax(unit, '精神力') * rounds;
@@ -40083,6 +40089,7 @@
     let owed = 0;
     for (const state of Object.values(unit?.状态效果 || {})) {
       const effects = state?.战斗效果 || {}, rounds = Math.min(R20_HORIZON, Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0) || 0));
+      if (state?.__冥想回复 && state.__冥想中断 !== true) { owed += (Number(state.__冥想回复.魂力) || 0) + (Number(state.__冥想回复.精神力) || 0); continue; }
       if (rounds > 0) owed += (Math.max(0, Number(effects.sp_gain_ratio) || 0) + Math.max(0, Number(effects.men_gain_ratio) || 0)) * rounds;
     }
     return owed;
@@ -41563,9 +41570,11 @@
   // 进攻倾向（推演—实际对账 11-23）：推演把别人都当每回合进攻，实际对手常在等（1v1 长局控制系推演 96% 实际 21%）→ 双方互等。
   // 按它最近 6 次主动行动里对敌出手的份额折算，先验 R20_ATTACK_PRIOR 次「进攻」（没有记录时按 1）。
   const R20_ATTACK_PRIOR = 2;
-  function r20AttackRate(unit) {
+  // next: 再记一手（0 没打 / 1 打）再算——行动者候选「不出手」时用。
+  function r20AttackRate(unit, next) {
     if (root.__LWCS_TUNE__?.OPPONENT_RATE_OFF === true) return 1;
-    const log = unit?.__battleRuntime?.attackLog;
+    const recorded = unit?.__battleRuntime?.attackLog;
+    const log = next === undefined ? recorded : [...(Array.isArray(recorded) ? recorded : []), next].slice(-6);
     if (!Array.isArray(log) || !log.length) return 1;
     return (log.reduce((sum, value) => sum + (Number(value) > 0 ? 1 : 0), 0) + R20_ATTACK_PRIOR) / (log.length + R20_ATTACK_PRIOR);
   }
@@ -41652,7 +41661,11 @@
     // 这回合让过只晚一回合；对方打不疼我时晚一回合几乎没代价，于是每回合都让——落后方挨打才会打。最近一直在等的人，推演就不该当它以后会打）。
     // SELF_RATE_OFF 可关（行动者按 1）。
     const selfRate = root.__LWCS_TUNE__?.SELF_RATE_OFF !== true;
-    const attackRate = Array.from({ length: count }, (value, row) => rateUnits?.[row] && row < (plan?.baseCount ?? count) && (row !== rateActor || selfRate) ? r20AttackRate(rateUnits[row]) : 1);
+    // 按候选定行动者以后的份额（plan.selfRate，11-23 连续让过：A0 满血满资源、对手离出局只差一击，A0 连让 50 回合——让过几回合后份额跌到
+    // 0.25，推演当「我以后也少打」，这一击打不死，下一击要等 10 回合，打和不打终局一样，打还多挨一次反击，于是接着让，越让越低）：出手（普攻、
+    // 魂技）就是从这一手起按进攻算（1）；不出手按最近份额、这一手记作没打。SELF_POLICY_OFF 恢复只看记录。
+    const attackRate = Array.from({ length: count }, (value, row) => row === rateActor && selfRate && Number.isFinite(plan?.selfRate) ? plan.selfRate
+      : rateUnits?.[row] && row < (plan?.baseCount ?? count) && (row !== rateActor || selfRate) ? r20AttackRate(rateUnits[row]) : 1);
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
     // expired: the cells once a paid release lapses; cuts: stamina cuts put off until then ({ row, at, factor }).
     const expired = plan?.expired || null, cuts = plan?.cuts || null, cutDone = cuts ? cuts.map(() => false) : null;
@@ -42812,6 +42825,7 @@
     const spentBy = { 魂力: 0, 精神力: 0 };
     // 对账用（不进估值）: what the sheet read of an answer and of a stance, for checking against what the runtime settles.
     const diag = {};
+    let r20FreshRest = null;
     for (const id of touched) {
       const row = table.index.get(id);
       if (row === undefined) {
@@ -42836,12 +42850,24 @@
       denied[row] = r20Held(next);
       let changed = Object.keys(priorStates).some(key => !Object.hasOwn(nextStates, key)), lasting = 0;
       const onceDodges = [];
+      // 这一回合还剩多少（之后还要出手的人 ÷ 活着的人），给当回合新挂上的状态（见下）；至少多出一丝，让行动者下一次出手还在里面。
+      const freshRest = (r20FreshRest ??= (() => {
+        const alive = table.sides.reduce((sum, side, other) => sum + (table.remaining[other] > 0 ? 1 : 0), 0);
+        const pendingOthers = table.sides.reduce((sum, side, other) => sum + (other !== actorRow && table.pending?.[other] && table.remaining[other] > 0 ? 1 : 0), 0);
+        return pendingOthers / Math.max(1, alive) + 1e-3;
+      })());
       for (const [key, state] of Object.entries(nextStates)) {
         // A state the settlement only copied (the projection clones units) is no change: compared by what it holds, or
         // an equipment passive's 999941 rounds were read as how long a one-round debuff lasts (11-14: a 控制系 valued a
         // one-round 敏捷 debuff at half a battle won, and a 治疗系 its cleanse likewise, round after round).
         if (priorStates[key] === state || priorStates[key] && preview.stableHash(priorStates[key]) === preview.stableHash(state)) continue;
+        // 当回合新挂上的状态跳过这一回合末的扣减（BattleRuntime __本回合新附加）：写着 1 回合的，留到下一回合结束——盖得住施放者自己的
+        // 下一次行动。此前推演按 1 回合，到行动者下一次出手（时间 1）正好失效，「只起效一回合的自身增益」在推演里几乎一文不值
+        // （用户 11-23「只起效一回合的辅助类技能，目前是不是没有主动释放的意义？」）。新挂的多算这一回合剩下的部分（之后还要出手的人的份额）。
         let stateLasts = typeof state?.duration === 'number' ? Math.max(1, state.duration) : Infinity;
+        // 控制另算（抵掉一次行动就在那回合末解除，见 denied）。
+        if (Number.isFinite(stateLasts) && !Object.hasOwn(priorStates, key) && !preview.unitStateBlocksMove?.(state, null) &&
+          root.__LWCS_TUNE__?.FRESH_STATE_OFF !== true) stateLasts += freshRest;
         // 位移重做（S81）: a position state is one-shot (BattlePreview consumePositionOnce) — its dodge goes with the first attack
         // that comes at it (in a round where all its enemies turn on it, the first of them), the rest with its next action or
         // the round's end (counter window, cover). Read for its duration, a 瞬移 dodged every hit of the race's window.
@@ -43579,7 +43605,9 @@
     const declaredNow = candidate?.declaration || {}, commitRow = Array.isArray(declaredNow.targetIds) && declaredNow.targetIds.length === 1 ? table.index.get(String(declaredNow.targetIds[0])) : undefined;
     const commit = (R20_PAIRING_ON || R20_GROUPS_ON) && idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] &&
       ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaredNow.actionKind || '').toUpperCase()) ? { row: actorRow, to: commitRow } : null;
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
+    const selfRate = idle && root.__LWCS_TUNE__?.SELF_POLICY_OFF !== true && root.__LWCS_TUNE__?.OPPONENT_RATE_OFF !== true
+      ? (['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaredNow.actionKind || '').toUpperCase()) ? 1 : r20AttackRate(table.units[actorRow], 0)) : undefined;
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -43638,12 +43666,15 @@
     // 校准入口 __LWCS_TUNE__.MATCH_BUDGET = false：不分预算，花的全按后续场次加价（改前的口径）。
     const budgetLeft = followMatches > 0 && R20_MATCH_BUDGET_ON ? r20MatchBudgetLeft(request, table.units[actorRow], Number(follow.remaining) || 0) : null;
     const overBudget = budgetLeft ? ['魂力', '精神力'].reduce((sum, resource) => sum + Math.max(0, spentBy[resource] - budgetLeft[resource]), 0) : spent;
-    const cost = R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
+    // 对照实验（11-23 用户「先测再定」：强攻、敏攻省着用魂力会不会赢得更多）：LWCS_TUNE.RESOURCE_PRICE_TYPES { 系别: 倍数 } 只放大该系别行动者的单价。
+    const priceTypes = root.__LWCS_TUNE__?.RESOURCE_PRICE_TYPES, actorType = priceTypes ? String(table.units?.[actorRow]?.type || table.units?.[actorRow]?.系别 || '') : '';
+    const priceMult = priceTypes && Number(priceTypes[actorType]) > 0 ? Number(priceTypes[actorType]) : 1;
+    const cost = priceMult * R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
     // 逼对手花资源（用户 11-20「加上」，原作萧萧逼出薛兵的武魂真身）：有队友接着打这个对手（接续）时，这一手让对手花掉的资源
     // 按半份生命计（同认输估值 FOLLOW_RESOURCE_SHARE）。
     const foeDrain = followCarry && R20_FOE_DRAIN_ON ? R20_FOE_DRAIN_SHARE * foeSpent : 0;
     // What it gets back is worth what it would have cost — more when it has fights after this one (followKeep).
-    const regen = R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
+    const regen = priceMult * R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
     // not yet seen it costs a base share (R20_REVEAL_BASE) of what it stands to gain, more for a bigger card, at most R20_REVEAL_CAP.
     // 试探（用户 2026-11-15「在不清楚对方能力前，最重要的就是试探」「不能过多提高战局中普攻占比」）: a big card (the share of

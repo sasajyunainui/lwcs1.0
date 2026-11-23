@@ -9739,23 +9739,47 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const state = unit?.状态效果?.[MEDITATION_KEY];
     return !!state && state.__冥想中断 !== true;
   }
-  function meditationOptions(unit = {}) {
+  // 能不能坐下（用户 11-23「战斗时正常来说不可能有冥想机会」）：到自己下次行动前没有敌人打得到自己——每个敌人都被控住、在蓄力
+  // （disengageIsSafe），或正和别人缠着而没缠着自己；有队友守护着自己（护卫状态 __守护，守护者还能打）也算安全（原作检验题第 22 题
+  // 戴沐白透支后由朱竹清接住）。队友需不需要自己不设硬规则，交给估值比（用户同日定）。此前对手刚出完手就坐下、回合末回满，对手出过手的
+  // 回合里召唤系冥想 0% 被打断。MEDITATION_LEGACY 恢复旧规则。
+  function meditationSafe(unit = {}, worldSnapshot = null) {
+    if (!worldSnapshot || root.__LWCS_TUNE__?.MEDITATION_LEGACY === true) return true;
+    const own = sideOf(worldSnapshot, unit), id = String(unitId(unit));
+    const guarded = Object.values(unit?.状态效果 || {}).some(state => state?.__守护 && Number(state.duration ?? state.持续回合 ?? 1) > 0 &&
+      listUnits(worldSnapshot).some(entry => String(unitId(entry.unit)) === String(state.来源ID || '') && isBattleCapable(entry.unit)));
+    if (guarded) return true;
+    for (const { unit: other } of listUnits(worldSnapshot)) {
+      if (!other || other === unit || !isBattleCapable(other) || sideOf(worldSnapshot, other) === own) continue;
+      if (disengageIsSafe(worldSnapshot, unit, other)) continue;
+      const locked = lockedOpponentsOf(worldSnapshot, other);
+      if (locked.length && !locked.some(opponent => String(unitId(opponent)) === id)) continue;
+      return false;
+    }
+    return true;
+  }
+  function meditationOptions(unit = {}, worldSnapshot = null) {
     if (!unit || isSummonUnit(unit) || unit?.状态效果?.[MEDITATION_KEY]) return [];
     if (!['魂力', '精神力'].some(resource => readResource(unit, resource) < readResourceMax(unit, resource) * MEDITATION_SHORT)) return [];
+    if (!meditationSafe(unit, worldSnapshot)) return [];
     const natural = naturalRecoveryRatios(unit), percent = value => Math.round(value * MEDITATION_MULT * 1000) / 10;
     return [{ slot: '冥想', name: '冥想', windup: 10,
-      description: `坐下冥想：本回合末额外恢复魂力 ${percent(natural.魂力)}%、精神力 ${percent(natural.精神力)}%；冥想中不能应对，被打中就中断、只恢复一半。`,
+      description: `坐下冥想：撑到自己下次行动时恢复魂力 ${percent(natural.魂力)}%、精神力 ${percent(natural.精神力)}%；这期间不能应对，被攻击就打断、什么也不回。`,
       effect: { 原型: '状态施加', 目标: '自身', 状态: '冥想', 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }];
   }
   // Puts it on `unit` in place; false when it already sits in one this round.
   function beginMeditation(unit = {}) {
     if (unit?.状态效果?.[MEDITATION_KEY]) return false;
     const natural = naturalRecoveryRatios(unit);
-    unit.状态效果 = { ...(unit.状态效果 || {}), [MEDITATION_KEY]: { 状态: '冥想', 状态名称: '冥想', 类型: 'buff', duration: 1, 持续回合: 1,
-      描述: '冥想：回合末额外恢复魂力与精神力；冥想中不能应对，被打中就中断、只恢复一半', 面板修改比例: {}, 面板固定修正: {},
-      // cannot_react: no answer while it sits (BattleRuntime gives it no answer, the race's stand is blocked).
-      // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）：冥想回的精神力也到此为止。
-      战斗效果: { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, men_gain_ceiling: MENTAL_NATURAL_CEILING, cannot_react: true }, __冥想: true } };
+    // 撑到下次行动才回（同日用户定）：回复记在 __冥想回复，BattleRuntime 在它下一次主动行动开始时结算（没被打断才给），回合末不回；
+    // 持续到那时（duration 2）。cannot_react: no answer while it sits (BattleRuntime gives it no answer, the race's stand is blocked).
+    // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）：冥想回的精神力也到此为止。MEDITATION_LEGACY 恢复回合末回复。
+    const legacy = root.__LWCS_TUNE__?.MEDITATION_LEGACY === true;
+    unit.状态效果 = { ...(unit.状态效果 || {}), [MEDITATION_KEY]: { 状态: '冥想', 状态名称: '冥想', 类型: 'buff', duration: legacy ? 1 : 2, 持续回合: legacy ? 1 : 2,
+      描述: legacy ? '冥想：回合末额外恢复魂力与精神力；冥想中不能应对，被打中就中断、只恢复一半' : '冥想：撑到下次行动时恢复魂力与精神力；这期间不能应对，被攻击就打断、什么也不回',
+      面板修改比例: {}, 面板固定修正: {},
+      战斗效果: legacy ? { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, men_gain_ceiling: MENTAL_NATURAL_CEILING, cannot_react: true } : { cannot_react: true },
+      ...(legacy ? {} : { __冥想回复: { 魂力: natural.魂力 * MEDITATION_MULT, 精神力: natural.精神力 * MEDITATION_MULT, 精神力上限比: MENTAL_NATURAL_CEILING } }), __冥想: true } };
     return true;
   }
   // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
@@ -9763,6 +9787,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const state = unit?.状态效果?.[MEDITATION_KEY];
     if (!state || state.__冥想中断 === true) return false;
     const effects = state.战斗效果 || {};
+    if (state.__冥想回复) {
+      // 撑到下次行动的冥想：被攻击就打断，什么也不回，又能应对。
+      const { __冥想回复, ...rest } = state;
+      unit.状态效果 = { ...unit.状态效果, [MEDITATION_KEY]: { ...rest, __冥想中断: true, 描述: '冥想被打断：什么也没回', 战斗效果: { ...effects, cannot_react: false } } };
+      return true;
+    }
     unit.状态效果 = { ...unit.状态效果, [MEDITATION_KEY]: { ...state, __冥想中断: true, 描述: '冥想被打断：回合末只恢复一半',
       战斗效果: { ...effects, sp_gain_ratio: Number(effects.sp_gain_ratio || 0) / 2, men_gain_ratio: Number(effects.men_gain_ratio || 0) / 2, cannot_react: false } } };
     return true;
@@ -26894,7 +26924,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionStates,
     ringCapStates,
     suppressionBlocksSkill,
-    meditationOptions,
+    meditationOptions, meditationSafe, MEDITATION_KEY,
     // 两档距离（T25）
     POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, besiegeFactor, pressTime, pressedBudget, BESIEGE_KEEP, PRESS_SHARE, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,
