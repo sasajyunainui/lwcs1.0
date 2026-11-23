@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:59d1dc0bbb59a5fff295136b87cb4e9990d70b1bbdebe65dd887df9682575a23 */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5974b59c91f02b8e809e35a42b37779f9e5bf30267f56ec8d950b17e437580f5|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:1cd35199ed8f2f6c4e7e315f1b9a3966230b7554c1498f5c5eb0c048365c98cd */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -50628,6 +50628,22 @@ function 转义MVU角色卡表格单元_V1(值 = '') {
   return String(文本 || '').replace(/\|/g, '/').replace(/[\r\n]+/g, ' ').trim();
 }
 
+// 好感度 → 好感温度（推进人物关系规则里的阶梯：陌生 → 留意 → 有好感 → 信赖 → 在意 → 牵挂；负向 警惕 → 疏远 → 反感），
+// 代码算好写进社交关系表，模型不用自己猜一个数字算哪一档
+function 读取好感温度_V1(好感度 = 0) {
+  const 值 = Number(好感度);
+  if (!Number.isFinite(值)) return '';
+  if (值 <= -60) return '反感';
+  if (值 <= -30) return '疏远';
+  if (值 < 0) return '警惕';
+  if (值 < 10) return '陌生';
+  if (值 < 30) return '留意';
+  if (值 < 50) return '有好感';
+  if (值 < 70) return '信赖';
+  if (值 < 85) return '在意';
+  return '牵挂';
+}
+
 function 添加MVU角色卡表格行_V1(行列表 = [], 行 = {}, 覆盖器 = null, 路径列表 = []) {
   if (!行 || typeof 行 !== 'object') return false;
   const 有效 = Object.entries(行).some(([键, 值]) => 键 !== '角色' && 转义MVU角色卡表格单元_V1(值));
@@ -50938,7 +50954,7 @@ function 构建MVU角色卡表格数据_V1(角色表 = {}, 当前tick = null, �
     Object.entries(社交.关系 || {}).forEach(([对象, 关系]) => {
       添加MVU角色卡表格行_V1(
         表.关系,
-        { 角色: 角色名, 对象, 关系: 关系?.关系, 好感度: 关系?.好感度, 对方身份: 关系?.对方身份 },
+        { 角色: 角色名, 对象, 关系: 关系?.关系, 好感度: 关系?.好感度, 好感温度: 读取好感温度_V1(关系?.好感度), 对方身份: 关系?.对方身份 },
         覆盖器,
         [],
       );
@@ -51028,7 +51044,7 @@ function 构建MVU角色卡表格文本_V1(角色表 = {}, 当前tick = null, �
     渲染MVU角色卡表格_V1('精神领域表', ['角色', '领域', '描述', '详情'], 表.精神领域),
     渲染MVU角色卡表格_V1('复制效果表', ['角色', '复制项', '当前复制', '描述', '详情'], 表.复制效果),
     渲染MVU角色卡表格_V1('武魂融合技表', ['角色', '融合技', '详情'], 表.武魂融合技),
-    渲染MVU角色卡表格_V1('社交关系表', ['角色', '对象', '关系', '好感度', '对方身份'], 表.关系),
+    渲染MVU角色卡表格_V1('社交关系表', ['角色', '对象', '关系', '好感度', '好感温度', '对方身份'], 表.关系),
     渲染MVU角色卡表格_V1('势力身份表', ['角色', '势力', '身份', '权限'], 表.势力),
     渲染MVU角色卡表格_V1('称号表', ['角色', '称号', '来源', '声望加成'], 表.称号),
     渲染MVU角色卡表格_V1('装备表', ['角色', '装备槽', '装备状态', '等级', '品质', '名称', '详情', '定义'], 表.装备),
