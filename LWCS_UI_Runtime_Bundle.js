@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:eb01edb5fbcfc79d6865a868341cc8b2d6a4153fc37f4bbe1684c6321a827f86|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:0e2f8c7b5c7cf43b2986f00a202f617a64d748f70d0f7e82bdf25e9381883191|BattleRuntime_Module.js:431cd14cd217f82874ecdef6be7dd0f9a6de359076da57b0ce58359359521c8a|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:514dbb9abc404c2f5afaca0a99812e80b7e0d9c97a91eb8e1d743ea6694489ab|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:2ce3a633df8988fb10f2f7ea8e753c5e1b07cbcbcfec14873f909f16a64b33ea|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:17d69b74a4c30ea8458ee82a84a72c70948ea7f3fc4aff56a6dc5a4bae574c2b|BattleRuntime_Module.js:f845bbdf25bbc68d18ac6ecdd2a248a2346d757f56383df4431e410dfe345767|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -71166,23 +71166,47 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const state = unit?.状态效果?.[MEDITATION_KEY];
     return !!state && state.__冥想中断 !== true;
   }
-  function meditationOptions(unit = {}) {
+  // 能不能坐下（用户 11-23「战斗时正常来说不可能有冥想机会」）：到自己下次行动前没有敌人打得到自己——每个敌人都被控住、在蓄力
+  // （disengageIsSafe），或正和别人缠着而没缠着自己；有队友守护着自己（护卫状态 __守护，守护者还能打）也算安全（原作检验题第 22 题
+  // 戴沐白透支后由朱竹清接住）。队友需不需要自己不设硬规则，交给估值比（用户同日定）。此前对手刚出完手就坐下、回合末回满，对手出过手的
+  // 回合里召唤系冥想 0% 被打断。MEDITATION_LEGACY 恢复旧规则。
+  function meditationSafe(unit = {}, worldSnapshot = null) {
+    if (!worldSnapshot || root.__LWCS_TUNE__?.MEDITATION_LEGACY === true) return true;
+    const own = sideOf(worldSnapshot, unit), id = String(unitId(unit));
+    const guarded = Object.values(unit?.状态效果 || {}).some(state => state?.__守护 && Number(state.duration ?? state.持续回合 ?? 1) > 0 &&
+      listUnits(worldSnapshot).some(entry => String(unitId(entry.unit)) === String(state.来源ID || '') && isBattleCapable(entry.unit)));
+    if (guarded) return true;
+    for (const { unit: other } of listUnits(worldSnapshot)) {
+      if (!other || other === unit || !isBattleCapable(other) || sideOf(worldSnapshot, other) === own) continue;
+      if (disengageIsSafe(worldSnapshot, unit, other)) continue;
+      const locked = lockedOpponentsOf(worldSnapshot, other);
+      if (locked.length && !locked.some(opponent => String(unitId(opponent)) === id)) continue;
+      return false;
+    }
+    return true;
+  }
+  function meditationOptions(unit = {}, worldSnapshot = null) {
     if (!unit || isSummonUnit(unit) || unit?.状态效果?.[MEDITATION_KEY]) return [];
     if (!['魂力', '精神力'].some(resource => readResource(unit, resource) < readResourceMax(unit, resource) * MEDITATION_SHORT)) return [];
+    if (!meditationSafe(unit, worldSnapshot)) return [];
     const natural = naturalRecoveryRatios(unit), percent = value => Math.round(value * MEDITATION_MULT * 1000) / 10;
     return [{ slot: '冥想', name: '冥想', windup: 10,
-      description: `坐下冥想：本回合末额外恢复魂力 ${percent(natural.魂力)}%、精神力 ${percent(natural.精神力)}%；冥想中不能应对，被打中就中断、只恢复一半。`,
+      description: `坐下冥想：撑到自己下次行动时恢复魂力 ${percent(natural.魂力)}%、精神力 ${percent(natural.精神力)}%；这期间不能应对，被攻击就打断、什么也不回。`,
       effect: { 原型: '状态施加', 目标: '自身', 状态: '冥想', 持续回合: 1, 触发方式: '立即触发', 生效方式: '独立生效' } }];
   }
   // Puts it on `unit` in place; false when it already sits in one this round.
   function beginMeditation(unit = {}) {
     if (unit?.状态效果?.[MEDITATION_KEY]) return false;
     const natural = naturalRecoveryRatios(unit);
-    unit.状态效果 = { ...(unit.状态效果 || {}), [MEDITATION_KEY]: { 状态: '冥想', 状态名称: '冥想', 类型: 'buff', duration: 1, 持续回合: 1,
-      描述: '冥想：回合末额外恢复魂力与精神力；冥想中不能应对，被打中就中断、只恢复一半', 面板修改比例: {}, 面板固定修正: {},
-      // cannot_react: no answer while it sits (BattleRuntime gives it no answer, the race's stand is blocked).
-      // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）：冥想回的精神力也到此为止。
-      战斗效果: { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, men_gain_ceiling: MENTAL_NATURAL_CEILING, cannot_react: true }, __冥想: true } };
+    // 撑到下次行动才回（同日用户定）：回复记在 __冥想回复，BattleRuntime 在它下一次主动行动开始时结算（没被打断才给），回合末不回；
+    // 持续到那时（duration 2）。cannot_react: no answer while it sits (BattleRuntime gives it no answer, the race's stand is blocked).
+    // 精神力自然恢复最多回到 90%，只有睡觉能回满（用户 11-20）：冥想回的精神力也到此为止。MEDITATION_LEGACY 恢复回合末回复。
+    const legacy = root.__LWCS_TUNE__?.MEDITATION_LEGACY === true;
+    unit.状态效果 = { ...(unit.状态效果 || {}), [MEDITATION_KEY]: { 状态: '冥想', 状态名称: '冥想', 类型: 'buff', duration: legacy ? 1 : 2, 持续回合: legacy ? 1 : 2,
+      描述: legacy ? '冥想：回合末额外恢复魂力与精神力；冥想中不能应对，被打中就中断、只恢复一半' : '冥想：撑到下次行动时恢复魂力与精神力；这期间不能应对，被攻击就打断、什么也不回',
+      面板修改比例: {}, 面板固定修正: {},
+      战斗效果: legacy ? { sp_gain_ratio: natural.魂力 * MEDITATION_MULT, men_gain_ratio: natural.精神力 * MEDITATION_MULT, men_gain_ceiling: MENTAL_NATURAL_CEILING, cannot_react: true } : { cannot_react: true },
+      ...(legacy ? {} : { __冥想回复: { 魂力: natural.魂力 * MEDITATION_MULT, 精神力: natural.精神力 * MEDITATION_MULT, 精神力上限比: MENTAL_NATURAL_CEILING } }), __冥想: true } };
     return true;
   }
   // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
@@ -71190,6 +71214,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const state = unit?.状态效果?.[MEDITATION_KEY];
     if (!state || state.__冥想中断 === true) return false;
     const effects = state.战斗效果 || {};
+    if (state.__冥想回复) {
+      // 撑到下次行动的冥想：被攻击就打断，什么也不回，又能应对。
+      const { __冥想回复, ...rest } = state;
+      unit.状态效果 = { ...unit.状态效果, [MEDITATION_KEY]: { ...rest, __冥想中断: true, 描述: '冥想被打断：什么也没回', 战斗效果: { ...effects, cannot_react: false } } };
+      return true;
+    }
     unit.状态效果 = { ...unit.状态效果, [MEDITATION_KEY]: { ...state, __冥想中断: true, 描述: '冥想被打断：回合末只恢复一半',
       战斗效果: { ...effects, sp_gain_ratio: Number(effects.sp_gain_ratio || 0) / 2, men_gain_ratio: Number(effects.men_gain_ratio || 0) / 2, cannot_react: false } } };
     return true;
@@ -88321,7 +88351,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionStates,
     ringCapStates,
     suppressionBlocksSkill,
-    meditationOptions,
+    meditationOptions, meditationSafe, MEDITATION_KEY,
     // 两档距离（T25）
     POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, besiegeFactor, pressTime, pressedBudget, BESIEGE_KEEP, PRESS_SHARE, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,
@@ -104086,7 +104116,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // by postBattleCostShare in the valuation — not as the skill's side effects, which the runtime would settle in the battle too).
     // 冥想（BattlePreview meditationOptions）: the same path, taking the action.
     [...(preview.spiritReleaseOptions?.(actor) || []), ...(preview.lifeFireOptions?.(actor, worldSnapshot, input.battleIntent) || []),
-      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor) || []),
+      ...(preview.armourReleaseOptions?.(actor, worldSnapshot) || []), ...(preview.meditationOptions?.(actor, worldSnapshot) || []),
       // 前压 / 后撤（两档距离 T25, BattlePreview positionOptions）: the same path, taking the action.
       ...(preview.positionOptions?.(actor) || [])].forEach(option => {
       const id = `${actorId}:release:${option.slot}`;
@@ -136464,6 +136494,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let sp = base.sp, men = base.men;
     for (const state of Object.values(unit?.状态效果 || {})) {
       const effects = state?.战斗效果 || {}, rounds = Math.min(R20_HORIZON, Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0) || 0));
+      // 撑到下次行动的冥想（BattlePreview beginMeditation __冥想回复）：没被打断，下次行动时回一次。
+      if (state?.__冥想回复 && state.__冥想中断 !== true) {
+        sp += (Number(state.__冥想回复.魂力) || 0) * preview.readResourceMax(unit, '魂力');
+        men += (Number(state.__冥想回复.精神力) || 0) * preview.readResourceMax(unit, '精神力');
+        continue;
+      }
       if (!(rounds > 0)) continue;
       if (Number(effects.sp_gain_ratio) > 0) sp += Number(effects.sp_gain_ratio) * preview.readResourceMax(unit, '魂力') * rounds;
       if (Number(effects.men_gain_ratio) > 0) men += Number(effects.men_gain_ratio) * preview.readResourceMax(unit, '精神力') * rounds;
@@ -136476,6 +136512,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     let owed = 0;
     for (const state of Object.values(unit?.状态效果 || {})) {
       const effects = state?.战斗效果 || {}, rounds = Math.min(R20_HORIZON, Math.max(0, Number(state?.duration ?? state?.持续回合 ?? 0) || 0));
+      if (state?.__冥想回复 && state.__冥想中断 !== true) { owed += (Number(state.__冥想回复.魂力) || 0) + (Number(state.__冥想回复.精神力) || 0); continue; }
       if (rounds > 0) owed += (Math.max(0, Number(effects.sp_gain_ratio) || 0) + Math.max(0, Number(effects.men_gain_ratio) || 0)) * rounds;
     }
     return owed;
@@ -137956,9 +137993,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 进攻倾向（推演—实际对账 11-23）：推演把别人都当每回合进攻，实际对手常在等（1v1 长局控制系推演 96% 实际 21%）→ 双方互等。
   // 按它最近 6 次主动行动里对敌出手的份额折算，先验 R20_ATTACK_PRIOR 次「进攻」（没有记录时按 1）。
   const R20_ATTACK_PRIOR = 2;
-  function r20AttackRate(unit) {
+  // next: 再记一手（0 没打 / 1 打）再算——行动者候选「不出手」时用。
+  function r20AttackRate(unit, next) {
     if (root.__LWCS_TUNE__?.OPPONENT_RATE_OFF === true) return 1;
-    const log = unit?.__battleRuntime?.attackLog;
+    const recorded = unit?.__battleRuntime?.attackLog;
+    const log = next === undefined ? recorded : [...(Array.isArray(recorded) ? recorded : []), next].slice(-6);
     if (!Array.isArray(log) || !log.length) return 1;
     return (log.reduce((sum, value) => sum + (Number(value) > 0 ? 1 : 0), 0) + R20_ATTACK_PRIOR) / (log.length + R20_ATTACK_PRIOR);
   }
@@ -138045,7 +138084,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 这回合让过只晚一回合；对方打不疼我时晚一回合几乎没代价，于是每回合都让——落后方挨打才会打。最近一直在等的人，推演就不该当它以后会打）。
     // SELF_RATE_OFF 可关（行动者按 1）。
     const selfRate = root.__LWCS_TUNE__?.SELF_RATE_OFF !== true;
-    const attackRate = Array.from({ length: count }, (value, row) => rateUnits?.[row] && row < (plan?.baseCount ?? count) && (row !== rateActor || selfRate) ? r20AttackRate(rateUnits[row]) : 1);
+    // 按候选定行动者以后的份额（plan.selfRate，11-23 连续让过：A0 满血满资源、对手离出局只差一击，A0 连让 50 回合——让过几回合后份额跌到
+    // 0.25，推演当「我以后也少打」，这一击打不死，下一击要等 10 回合，打和不打终局一样，打还多挨一次反击，于是接着让，越让越低）：出手（普攻、
+    // 魂技）就是从这一手起按进攻算（1）；不出手按最近份额、这一手记作没打。SELF_POLICY_OFF 恢复只看记录。
+    const attackRate = Array.from({ length: count }, (value, row) => row === rateActor && selfRate && Number.isFinite(plan?.selfRate) ? plan.selfRate
+      : rateUnits?.[row] && row < (plan?.baseCount ?? count) && (row !== rateActor || selfRate) ? r20AttackRate(rateUnits[row]) : 1);
     const leaves = plan?.leaves || null, held = plan?.baseCount ?? count, changed = plan?.changed || null;
     // expired: the cells once a paid release lapses; cuts: stamina cuts put off until then ({ row, at, factor }).
     const expired = plan?.expired || null, cuts = plan?.cuts || null, cutDone = cuts ? cuts.map(() => false) : null;
@@ -139205,6 +139248,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const spentBy = { 魂力: 0, 精神力: 0 };
     // 对账用（不进估值）: what the sheet read of an answer and of a stance, for checking against what the runtime settles.
     const diag = {};
+    let r20FreshRest = null;
     for (const id of touched) {
       const row = table.index.get(id);
       if (row === undefined) {
@@ -139229,12 +139273,24 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       denied[row] = r20Held(next);
       let changed = Object.keys(priorStates).some(key => !Object.hasOwn(nextStates, key)), lasting = 0;
       const onceDodges = [];
+      // 这一回合还剩多少（之后还要出手的人 ÷ 活着的人），给当回合新挂上的状态（见下）；至少多出一丝，让行动者下一次出手还在里面。
+      const freshRest = (r20FreshRest ??= (() => {
+        const alive = table.sides.reduce((sum, side, other) => sum + (table.remaining[other] > 0 ? 1 : 0), 0);
+        const pendingOthers = table.sides.reduce((sum, side, other) => sum + (other !== actorRow && table.pending?.[other] && table.remaining[other] > 0 ? 1 : 0), 0);
+        return pendingOthers / Math.max(1, alive) + 1e-3;
+      })());
       for (const [key, state] of Object.entries(nextStates)) {
         // A state the settlement only copied (the projection clones units) is no change: compared by what it holds, or
         // an equipment passive's 999941 rounds were read as how long a one-round debuff lasts (11-14: a 控制系 valued a
         // one-round 敏捷 debuff at half a battle won, and a 治疗系 its cleanse likewise, round after round).
         if (priorStates[key] === state || priorStates[key] && preview.stableHash(priorStates[key]) === preview.stableHash(state)) continue;
+        // 当回合新挂上的状态跳过这一回合末的扣减（BattleRuntime __本回合新附加）：写着 1 回合的，留到下一回合结束——盖得住施放者自己的
+        // 下一次行动。此前推演按 1 回合，到行动者下一次出手（时间 1）正好失效，「只起效一回合的自身增益」在推演里几乎一文不值
+        // （用户 11-23「只起效一回合的辅助类技能，目前是不是没有主动释放的意义？」）。新挂的多算这一回合剩下的部分（之后还要出手的人的份额）。
         let stateLasts = typeof state?.duration === 'number' ? Math.max(1, state.duration) : Infinity;
+        // 控制另算（抵掉一次行动就在那回合末解除，见 denied）。
+        if (Number.isFinite(stateLasts) && !Object.hasOwn(priorStates, key) && !preview.unitStateBlocksMove?.(state, null) &&
+          root.__LWCS_TUNE__?.FRESH_STATE_OFF !== true) stateLasts += freshRest;
         // 位移重做（S81）: a position state is one-shot (BattlePreview consumePositionOnce) — its dodge goes with the first attack
         // that comes at it (in a round where all its enemies turn on it, the first of them), the rest with its next action or
         // the round's end (counter window, cover). Read for its duration, a 瞬移 dodged every hit of the race's window.
@@ -139972,7 +140028,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const declaredNow = candidate?.declaration || {}, commitRow = Array.isArray(declaredNow.targetIds) && declaredNow.targetIds.length === 1 ? table.index.get(String(declaredNow.targetIds[0])) : undefined;
     const commit = (R20_PAIRING_ON || R20_GROUPS_ON) && idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] &&
       ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaredNow.actionKind || '').toUpperCase()) ? { row: actorRow, to: commitRow } : null;
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
+    const selfRate = idle && root.__LWCS_TUNE__?.SELF_POLICY_OFF !== true && root.__LWCS_TUNE__?.OPPONENT_RATE_OFF !== true
+      ? (['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaredNow.actionKind || '').toUpperCase()) ? 1 : r20AttackRate(table.units[actorRow], 0)) : undefined;
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -140031,12 +140089,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 校准入口 __LWCS_TUNE__.MATCH_BUDGET = false：不分预算，花的全按后续场次加价（改前的口径）。
     const budgetLeft = followMatches > 0 && R20_MATCH_BUDGET_ON ? r20MatchBudgetLeft(request, table.units[actorRow], Number(follow.remaining) || 0) : null;
     const overBudget = budgetLeft ? ['魂力', '精神力'].reduce((sum, resource) => sum + Math.max(0, spentBy[resource] - budgetLeft[resource]), 0) : spent;
-    const cost = R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
+    // 对照实验（11-23 用户「先测再定」：强攻、敏攻省着用魂力会不会赢得更多）：LWCS_TUNE.RESOURCE_PRICE_TYPES { 系别: 倍数 } 只放大该系别行动者的单价。
+    const priceTypes = root.__LWCS_TUNE__?.RESOURCE_PRICE_TYPES, actorType = priceTypes ? String(table.units?.[actorRow]?.type || table.units?.[actorRow]?.系别 || '') : '';
+    const priceMult = priceTypes && Number(priceTypes[actorType]) > 0 ? Number(priceTypes[actorType]) : 1;
+    const cost = priceMult * R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
     // 逼对手花资源（用户 11-20「加上」，原作萧萧逼出薛兵的武魂真身）：有队友接着打这个对手（接续）时，这一手让对手花掉的资源
     // 按半份生命计（同认输估值 FOLLOW_RESOURCE_SHARE）。
     const foeDrain = followCarry && R20_FOE_DRAIN_ON ? R20_FOE_DRAIN_SHARE * foeSpent : 0;
     // What it gets back is worth what it would have cost — more when it has fights after this one (followKeep).
-    const regen = R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
+    const regen = priceMult * R20_RESOURCE_PRICE * regenGain * (1 + followKeep);
     // 亮魂环（同上）: any 魂技 lights the rings — the enemy sees how many and how old, and what the spirit does — so against one
     // not yet seen it costs a base share (R20_REVEAL_BASE) of what it stands to gain, more for a bigger card, at most R20_REVEAL_CAP.
     // 试探（用户 2026-11-15「在不清楚对方能力前，最重要的就是试探」「不能过多提高战局中普攻占比」）: a big card (the share of
@@ -148745,10 +148806,17 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   // 冥想（BattlePreview interruptMeditation）: a hit that does damage breaks it. Returns the unit broken out of it (T26 第 2 批：
   // writeLedgerEvent 在这一击之后记 meditation_interrupted).
+  // 撑到下次行动的冥想（用户 11-23）：被敌人攻击就打断，中没中都算（旧规则 MEDITATION_LEGACY：打中有伤害才断）。
   function breakMeditationOnHit(combatData = {}, payload = {}) {
-    if (String(payload?.eventKind || '').trim() !== 'hit_result' || !(Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) > 0)) return null;
+    if (String(payload?.eventKind || '').trim() !== 'hit_result') return null;
+    const legacy = root.__LWCS_TUNE__?.MEDITATION_LEGACY === true;
+    if (legacy && !(Number(payload?.meta?.incomingDamage ?? payload?.meta?.appliedDamage ?? 0) > 0)) return null;
     const targetId = String(payload.targetId || '').trim();
     const target = targetId ? listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId)) : null;
+    if (!legacy && target) {
+      const attacker = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, String(payload.actorId || '')));
+      if (!attacker || inferUnitSide(combatData, attacker) === inferUnitSide(combatData, target)) return null;
+    }
     if (target && previewRuntime.meditating?.(target)) { previewRuntime.interruptMeditation(target); return target; }
     return null;
   }
@@ -161936,6 +162004,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (node.nodeKind === 'ACTIVE' && actor?.__battleRuntime?.pressure) { const { pressure, ...rest } = actor.__battleRuntime; actor.__battleRuntime = rest; }
             queue.recordTrace('CANCELLED', node, { reason: incapacityReason || 'UNAVAILABLE' });
             continue;
+          }
+          // 冥想撑到了下次行动（用户 11-23）：没被打断就在这时回魂力、精神力（精神力至多回到上限的 MENTAL_NATURAL_CEILING），状态撤掉。
+          if (node.nodeKind === 'ACTIVE' && node.actionRole === 'ACTIVE' && actor?.状态效果?.[previewRuntime.MEDITATION_KEY]?.__冥想) {
+            const meditation = actor.状态效果[previewRuntime.MEDITATION_KEY], owed = meditation.__冥想回复;
+            if (owed && meditation.__冥想中断 !== true) {
+              const pools = [['sp', '魂力', 1], ['men', '精神力', Number(owed.精神力上限比) || 1]];
+              for (const [key, name, ceiling] of pools) {
+                const maximum = Math.max(0, Number(previewRuntime.readResourceMax(actor, name)) || 0), now = Number(previewRuntime.readResource(actor, name)) || 0;
+                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0)));
+                if (target > now) {
+                  writeCombatResource(actor, key, target);
+                  writeRoundEndResourceEvent(combatData, actor, '冥想', key, target - now, { reasonCode: 'MEDITATION_RECOVERY', operation: 'RESTORE' });
+                }
+              }
+            }
+            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; }
           }
           // 压制（用户 11-23「1v1 也可以全场压制得对方难有主动出手机会」）：主动机会开始时读出被占用的时间并清空围攻记录（pressedTurn 记下这次
           // 行动只剩多少，蓄力、施法与连续行动按它算）；剩下的不够一记普攻就失去这次行动——被压着打，没有出手机会。
