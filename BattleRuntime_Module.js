@@ -445,6 +445,13 @@
     return applied;
   }
 
+  // 还手习惯：接招之后真还了手吗（最近 8 次，公开可见；BattleDecision r20Meet 按它估这人还手的概率）。
+  function recordCounterHabit(unit = {}, struck = 0) {
+    if (!unit || typeof unit !== 'object') return;
+    if (!unit.__battleRuntime || typeof unit.__battleRuntime !== 'object') unit.__battleRuntime = {};
+    const log = Array.isArray(unit.__battleRuntime.counterLog) ? unit.__battleRuntime.counterLog : [];
+    unit.__battleRuntime.counterLog = [...log, struck ? 1 : 0].slice(-8);
+  }
   function commitRuntimeShieldGain(unit = {}, amount = 0, duration = null, sourceName = '护盾', effect = {}) {
     if (!Number.isFinite(amount) || !(amount > 0)) return 0;
     if (!unit.状态效果) unit.状态效果 = {};
@@ -16032,6 +16039,8 @@
     const roll = Math.random();
     const opened = (eligible || baited) && !staminaExhausted && !chainLimited && probabilitySucceeds(probability, roll);
     if (opened && baited) reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), baitCounter: true };
+    // 还手习惯（推演—实际对账 11-23：推演反击仍比实际高 1.5～2 倍）：没开出反击窗口记 0，开了的到反击决策再记（还手 1、放弃 0）。
+    if (!opened) recordCounterHabit(reactor, 0);
     const closedReason = !eligible ? reaction.evaded === true || !defended ? 'COUNTER_WINDOW_NOT_ELIGIBLE' : 'COUNTER_WINDOW_GUARD_BROKEN_THROUGH'
       : staminaExhausted ? 'COUNTER_WINDOW_STAMINA_EXHAUSTED' : chainLimited ? 'ENGAGEMENT_CHAIN_LIMIT' : 'COUNTER_WINDOW_MISSED';
     const event = writeLedgerEvent(combatData, {
@@ -20204,6 +20213,7 @@
               if (handleLostDecisionNode(decisionResult, node)) continue;
               declaration = cloneValue(decisionResult?.selected?.declaration || {});
               if (node?.state?.breakoutOnly === true) declaration.__breakout = true;
+              if (node.nodeKind === 'COUNTER') recordCounterHabit(actor, decisionResult?.selected?.counterDeclineFallback === true ? 0 : 1);
               // A strike back's stamina price is the runtime's to set (接战链 阶段一), whatever the declaration carried.
               if (node.nodeKind === 'COUNTER') declaration.staminaFactor = previewRuntime.counterStaminaFactor(engagementCounterCounts(node)[previewRuntime.unitId(actor)] || 0);
               // The authoritative counterDeclineFallback flag is assembled by
