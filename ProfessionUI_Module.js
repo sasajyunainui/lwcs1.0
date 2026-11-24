@@ -2312,7 +2312,8 @@ class ProfessionUIComponent {
 
     if (分类 === '远程武器') {
       const 等级 = Math.max(0, Math.floor(Number(魂导等级 || 0)));
-      const 对应等级 = 等级 > 0 ? Math.min(120, 等级 * 10 + 9) : Math.min(99, 强度 * 20 + 19);
+      // 魂导器默认对应 N×10 级，定装武器（枪、炮、定装弹）N×10+9（11-24）
+      const 对应等级 = 等级 > 0 ? Math.min(120, 等级 * 10 + (等级 < 10 && /枪|炮|定装/.test(targetName) ? 9 : 0)) : Math.min(99, 强度 * 20 + 19);
       const 穿透 = 特性效果.防御穿透 ? 5 : 0;
       const 威力倍率 = Math.round((100 + 强度 * 45) * 质量倍率);
       输出.基础使用次数 = /弹|炸弹/.test(targetName) ? 1 : 10;
