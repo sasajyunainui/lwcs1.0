@@ -142,6 +142,7 @@
           ${[['mug-hot', '休整', '静息调养'], ['bed', '睡眠', '安眠休养'], ['person-praying', '冥想', '凝神修行'], ['dumbbell', '训练', '锤炼身心']].map(([ic, t, s], i) => `<button class="opt ${i === 0 ? 'on' : ''}" type="button" data-pick aria-pressed="${i === 0}"><i class="fa-solid fa-${ic}"></i>${t}<small>${s}</small></button>`).join('')}
         </div>
         <div class="train-pick chips-row" data-pick-group hidden>${['力量', '防御', '敏捷', '体魄', '精神'].map((p, i) => `<button class="key-s${i ? '' : ' on'}" type="button" data-pick data-project="${p}" aria-pressed="${!i}">${p}</button>`).join('')}</div>
+        ${(list => list.length ? `<div class="supply-pick chips-row" data-pick-group hidden>${[{ name: '', label: '不用奶瓶' }, ...list.map(x => ({ name: x.name, label: `${x.name} ×${c.fmt(x.count)}`, hint: `冥想时额外恢复魂力 ${c.fmt(x.amount)}，用掉一瓶` }))].map((x, i) => `<button class="key-s${i ? '' : ' on'}" type="button" data-pick data-supply="${c.esc(x.name)}" aria-pressed="${!i}"${x.hint ? ` data-hint="${c.esc(x.hint)}"` : ''}>${c.esc(x.label)}</button>`).join('')}</div>` : '')(c.isPlayer ? window.COCKPIT.preview('meditationSupplies') || [] : [])}
         ${(m => `<div class="plan" data-dur-box>
           <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="${m}"><input type="number" inputmode="numeric" data-dur-input min="10" max="1440" step="10" value="${m}" aria-label="行动时长（分钟）"><span>分钟</span></output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
           <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, m)}</b></div>
@@ -487,17 +488,23 @@
 
   // 日常行动：点下时先调原项目预演（克隆结算 + 差异），能行动就把变化写进确认条，确认后由原项目执行；不能行动直接给原因
   document.addEventListener('click', e => {
-    const opt = e.target.closest('.opts .opt'); if (opt) { const pick = opt.closest('.pad')?.querySelector('.train-pick'); if (pick) pick.hidden = !/训练/.test(opt.textContent); }
+    const opt = e.target.closest('.opts .opt'); if (opt) {
+      const pad = opt.closest('.pad'), pick = pad?.querySelector('.train-pick'), sup = pad?.querySelector('.supply-pick');
+      if (pick) pick.hidden = !/训练/.test(opt.textContent);
+      if (sup) sup.hidden = !/冥想/.test(opt.textContent);
+    }
     const t = e.target.closest('[data-routine]'); if (!t) return;
     const box = t.closest('.pad'), action = box?.querySelector('.opt.on')?.childNodes[1]?.textContent?.trim() || '休整';
     const minutes = Number(box?.querySelector('[data-dur-box] output')?.dataset.min) || 60, project = box?.querySelector('.train-pick [data-pick].on')?.dataset.project || '力量';
-    const label = `${action}${action === '训练' ? '·' + project : ''} ${minutes} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), minutes)}`;
+    // 冥想可带一瓶奶瓶（冥想补给），选「不用奶瓶」时为空
+    const supply = action === '冥想' ? box?.querySelector('.supply-pick [data-pick].on')?.dataset.supply || '' : '';
+    const label = `${action}${action === '训练' ? '·' + project : ''}${supply ? '·饮用' + supply : ''} ${minutes} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), minutes)}`;
     delete t.dataset.blocked;
-    const p = window.COCKPIT.preview('routine', { action, minutes, project });
+    const p = window.COCKPIT.preview('routine', { action, minutes, project, supply });
     if (p && p.allowed === false) { t.dataset.blocked = p.reason || '当前不能进行这项行动'; delete t.dataset.confirm; delete t.dataset.act; return; }
     const changes = (p?.changes || []).map(x => `${x.label} ${x.before} → ${x.after}`).join('，');
     t.dataset.confirm = changes ? `${label}；${changes}` : label;
-    t.dataset.act = JSON.stringify({ name: 'routine', action, minutes, project });
+    t.dataset.act = JSON.stringify({ name: 'routine', action, minutes, project, supply });
   }, true);
 
   // 私密档案：不在任何导航里，只由长按角色名经桥接复核后路由进来；数据为 null（规则不满足）时页面不存在，退回总览。

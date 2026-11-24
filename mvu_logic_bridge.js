@@ -810,6 +810,36 @@
     return (有使用效果 || 有可直接解锁内容) && !判断可装配魂导器_桥接(物品名, 物品数据);
   }
 
+  // 冥想补给（密封奶瓶）：使用效果里「冥想补给」状态的数值 = 冥想时额外恢复的魂力；背包里没有就是 0
+  function 读取冥想补给量_桥接(rootData = {}, 物品名 = '', 背包状态 = null) {
+    if (!物品名 || !背包状态 || typeof 背包状态 !== 'object') return 0;
+    const 数量 = Array.isArray(背包状态.批次) ? 背包状态.批次.reduce((和, 批) => 和 + toNumber(批 && 批.数量, 0), 0) : toNumber(背包状态.数量, 0);
+    if (!(数量 >= 1)) return 0;
+    const 数据 = 合并物品定义与状态_桥接(rootData, 物品名, 背包状态);
+    const 效果 = (Array.isArray(数据 && 数据.使用效果) ? 数据.使用效果 : []).find(项 => 项 && 项.原型 === '状态施加' && toText(项.状态, '').trim() === '冥想补给');
+    return 效果 ? Math.max(0, toNumber(效果.数值, 0)) : 0;
+  }
+  function 列出冥想补给_桥接(rootData = {}, 背包 = {}) {
+    return Object.entries(背包 && typeof 背包 === 'object' ? 背包 : {})
+      .map(([名称, 状态]) => ({ name: 名称, amount: 读取冥想补给量_桥接(rootData, 名称, 状态),
+        count: Array.isArray(状态 && 状态.批次) ? 状态.批次.reduce((和, 批) => 和 + toNumber(批 && 批.数量, 0), 0) : toNumber(状态 && 状态.数量, 0) }))
+      .filter(项 => 项.amount > 0 && 项.count >= 1)
+      .sort((甲, 乙) => 甲.amount - 乙.amount);
+  }
+  // 背包条目扣一件（先扣第一个还有数量的批次）；扣完返回 null
+  function 扣减一件背包物品_桥接(背包状态 = null) {
+    if (!背包状态 || typeof 背包状态 !== 'object') return null;
+    const 下一 = cloneJsonValue(背包状态, {});
+    if (Array.isArray(下一.批次) && 下一.批次.length) {
+      const 批 = 下一.批次.find(项 => toNumber(项 && 项.数量, 0) >= 1);
+      if (批) 批.数量 = toNumber(批.数量, 0) - 1;
+      下一.批次 = 下一.批次.filter(项 => toNumber(项 && 项.数量, 0) > 0);
+      下一.数量 = 下一.批次.reduce((和, 项) => 和 + toNumber(项.数量, 0), 0);
+      if (!下一.批次.length) delete 下一.批次;
+    } else 下一.数量 = toNumber(下一.数量, 0) - 1;
+    return 下一.数量 > 0 ? 下一 : null;
+  }
+
   function 构建魂导器装备技能_桥接(物品名 = '', 物品数据 = {}) {
     const 现有技能 = 物品数据 && 物品数据.装备技能 && typeof 物品数据.装备技能 === 'object' && !Array.isArray(物品数据.装备技能) ? 物品数据.装备技能 : {};
     if (Object.keys(现有技能).length) return cloneJsonValue(现有技能, {});
@@ -22513,16 +22543,33 @@
         conditions.push({ label: '精神', current: Number(attributes.精神力) || 0, required, met: enough });
         if (!enough) return { error: { ...fail('精神不足以完成一轮训练，请先调息。'), conditions } };
       }
+      // 冥想带上奶瓶（用户 2026-11-24 选「手动」）：这段冥想额外恢复奶瓶的固定魂力，用掉一瓶（读取冥想补给量_桥接）。
+      const supplyName = String(options.supplyItem || '').trim();
+      let supply = null;
+      if (supplyName) {
+        if (action !== 'meditate') return { error: fail('奶瓶只能在冥想时使用。') };
+        const amount = 读取冥想补给量_桥接(current.root, supplyName, current.character.背包?.[supplyName]);
+        if (!(amount > 0)) return { error: fail(`背包里没有可用的【${supplyName}】。`) };
+        supply = { name: supplyName, amount };
+      }
       const key = `${current.contextKey}|${current.revision}`;
       if (key !== cacheContext) { previews.clear(); cacheContext = key; }
-      return { current, action, durationMinutes, trainingProject, actionMode, conditions, key: `${action}|${durationMinutes}|${action === 'train' ? trainingProject : ''}` };
+      return { current, action, durationMinutes, trainingProject, actionMode, conditions, supply, key: `${action}|${durationMinutes}|${action === 'train' ? trainingProject : ''}|${supply ? supply.name : ''}` };
     }
     function calculate(prepared) {
-      const { current, action, durationMinutes, actionMode, conditions } = prepared;
+      const { current, action, durationMinutes, actionMode, conditions, supply } = prepared;
       const startTick = Number(current.root.world?.时间?.tick) || 0;
       const settledRoot = ports.settle(current.root, current.charKey, startTick, startTick + durationMinutes / 10, actionMode);
       const after = settledRoot?.char?.[current.charKey];
       if (!after) throw new Error('本次行动没有返回角色结果。');
+      if (supply && after.属性 && typeof after.属性 === 'object') {
+        const maximum = Math.max(0, Number(after.属性.魂力上限) || 0);
+        after.属性.魂力 = Math.min(maximum, (Number(after.属性.魂力) || 0) + supply.amount);
+        if (after.背包 && typeof after.背包 === 'object') {
+          const next = 扣减一件背包物品_桥接(after.背包[supply.name]);
+          if (next) after.背包[supply.name] = next; else delete after.背包[supply.name];
+        }
+      }
       const beforeValues = ports.projectAttributes(current.character);
       const afterValues = ports.projectAttributes(after);
       const changes = beforeValues.flatMap(before => {
@@ -22554,10 +22601,16 @@
         const prepared = prepare({ ...options, contextKey });
         if (prepared.error) return { ok: false, settled: false, message: prepared.error.reason, preview: prepared.error };
         const { preview, settledRoot } = calculate(prepared);
-        const { current, durationMinutes, action, trainingProject } = prepared;
-        const actionLabel = action === 'train' ? `${trainingProject}训练` : labels[action];
+        const { current, durationMinutes, action, trainingProject, supply } = prepared;
+        const actionLabel = action === 'train' ? `${trainingProject}训练` : supply ? `${labels[action]}（饮用${supply.name}）` : labels[action];
         const systemText = `${String(settledRoot.sys?.系统播报 || '').replace(/^初始化$/, '')} ${current.charKey} 在【${current.location}】进行${actionLabel}，耗时 ${durationMinutes} 分钟。`.trim();
         const patchOps = ports.buildPatches(current.charKey, settledRoot, systemText);
+        // 背包不在日常写回字段里：用掉的奶瓶单独写回
+        if (supply) {
+          const next = settledRoot.char?.[current.charKey]?.背包?.[supply.name];
+          const path = `/char/${escapeJsonPointerValue(current.charKey)}/背包/${escapeJsonPointerValue(supply.name)}`;
+          patchOps.push(next ? { op: 'replace', path, value: cloneJsonValue(next, {}) } : { op: 'remove', path });
+        }
         const playerInput = `我在【${current.location}】进行 ${durationMinutes} 分钟${actionLabel}。`;
         const resultSummary = preview.changes.map(item => `${item.label} ${item.before} → ${item.after}`).join('；') || '当前数值无变化';
         const systemPrompt = `[日常行动]\n角色：${current.charKey}\n地点：${current.location}\n动作：${actionLabel}\n耗时：${durationMinutes} 分钟\n已结算结果：${resultSummary}\n本次行动已经由前端按正式规则结算，收益已写回，行动耗时仅用于本轮时间裁定。请承接行动过程、收获及后续剧情，不重复结算收益，不输出 JSON、变量维护指令或系统术语。`;
@@ -23084,6 +23137,7 @@
       action: 座舱日常动作键[参数.action] || toText(参数.action, 'rest'),
       durationMinutes: Math.max(10, Math.min(1440, Math.round(toNumber(参数.minutes, 60) / 10) * 10)),
       trainingProject: toText(参数.project, '力量'),
+      supplyItem: toText(参数.supply, ''),
     };
   }
   // 技能能否在场外施展：造物类走「日常施展」，含可写回效果的走「使用」；冷却中给出剩余时间（与旧界面技能卡同一判定）
@@ -23117,6 +23171,8 @@
     try {
       if (名称 === 'routine') return statusRoutineActions.previewRoutineAction(座舱日常动作参数(参数));
       if (名称 === 'routineNarration') return statusRoutineActions.pendingNarration(readStatusRoutineState().contextKey);
+      // 冥想可带的奶瓶：背包里使用效果含「冥想补给」的物品（列出冥想补给_桥接）
+      if (名称 === 'meditationSupplies') return 列出冥想补给_桥接(deepGet(liveSnapshot, 'rootData', {}) || {}, deepGet(liveSnapshot, ['activeChar', '背包'], {}) || {});
       // 背包物品能否直接使用 / 装备：与原项目背包按钮同一判定（解锁类秘籍可用、魂骨与魂导器可装备）
       if (名称 === 'itemCaps') {
         const 物品 = toText(参数.item, ''), 背包状态 = deepGet(liveSnapshot, ['activeChar', '背包', 物品], null);
