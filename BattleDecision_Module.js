@@ -4875,7 +4875,9 @@
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        const effects = Array.isArray(skill._效果数组) ? { _效果数组: soulToolEffects(skill._效果数组, item.魂导等级, item.名称 || slot) } : {};
+        // __魂导器装配位：它展开的护盾挡下的伤害扣这件魂导器的耐久（BattleRuntime → BattlePreview drainSoulToolGear）
+        const effects = Array.isArray(skill._效果数组) ? { _效果数组: soulToolEffects(skill._效果数组, item.魂导等级, item.名称 || slot)
+          .map(effect => effect && typeof effect === 'object' ? { ...effect, __魂导器装配位: slot } : effect) } : {};
         return [name, { ...skill, ...effects, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));

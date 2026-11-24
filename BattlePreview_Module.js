@@ -2589,11 +2589,38 @@
     }
     const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
     if (equipment && gear.slot === '武器' && equipment.武器) holder.装备 = { ...equipment, 武器: { ...equipment.武器, 装备状态: '损毁', 耐久: 0 } };
-    else if (equipment && gear.slot === '魂导器' && equipment.魂导器?.装配?.[gear.fitSlot]) {
-      holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: { ...equipment.魂导器.装配,
-        [gear.fitSlot]: { ...equipment.魂导器.装配[gear.fitSlot], 装备状态: '损毁', 耐久: 0 } } } };
-    }
+    else if (gear.slot === '魂导器') scrapSoulTool(holder, gear);
     return { broken: true, before, after, durability, gear };
+  }
+  // 魂导器耐久归零即报废（用户 2026-11-24「耐久归0还是直接报废比较好，从物品里删除」）：从装配里删掉（战后随装备写回，物品就没了），
+  // 它展开的护盾（__魂导器来源）一并消失。兵器打坏仍是「损毁」可修。
+  function scrapSoulTool(holder = {}, gear = {}, world = null) {
+    const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
+    if (equipment?.魂导器?.装配?.[gear.fitSlot]) {
+      const { [gear.fitSlot]: gone, ...rest } = equipment.魂导器.装配;
+      holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: rest } };
+    }
+    const holderId = String(unitId(holder));
+    const sourced = state => state?.__魂导器来源 && String(state.__魂导器来源.holderId) === holderId && state.__魂导器来源.key === gear.key;
+    const units = world ? listUnits(world).map(entry => entry.unit) : [holder];
+    for (const unit of units) {
+      if (!unit?.状态效果 || !Object.values(unit.状态效果).some(sourced)) continue;
+      unit.状态效果 = Object.fromEntries(Object.entries(unit.状态效果).filter(([, state]) => !sourced(state)));
+    }
+  }
+  // 防御类魂导器挡下的伤害扣它自己的耐久（与被砸同一个耐久池 gearHp）；神器以上打不坏（不在 breakableGear 里），剩余按无限算。
+  function soulToolGearLeft(holder = {}, key = '') {
+    const gear = breakableGear(holder).find(entry => entry.key === key);
+    return gear ? gearHpLeft(holder, gear) : Infinity;
+  }
+  function drainSoulToolGear(world = {}, source = {}, amount = 0) {
+    const holder = findUnit(world, source?.holderId);
+    const gear = holder && breakableGear(holder).find(entry => entry.key === source?.key);
+    if (!gear || !(amount > 0)) return null;
+    const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear), after = Math.max(0, before - amount);
+    holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
+    if (after <= 1e-9) scrapSoulTool(holder, gear, world);
+    return { scrapped: after <= 1e-9, before, after, durability, gear, holder };
   }
   /* 投出武器（用户 11-19「离手、召回、磕飞都做」，补充「控鹤擎龙可以召回任意武器」；原作王秋儿投出黄金龙枪、唐三掷昊天锤、
      龙枪被磕飞后瞬移握回）：
@@ -9583,7 +9610,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function armourDurabilityMax(unit = {}, slot = '', item = {}) {
     const declared = Number(item?.耐久上限);
     if (declared > 0) return declared;
-    const level = Math.max(1, Math.floor(Number(slot === '斗铠' ? item?._属性加成?.等效等级 : 0) || Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level) || 1));
+    // 魂导器的耐久按它自己的对应等级（用户 2026-11-24，同「魂导器用自己的对应等级」；MVU 读取魂导器对应等级_V1），不看持有者。
+    const toolLevel = slot === '魂导器' && Number(item?.魂导等级) > 0
+      ? Number(root.__LWCS_SKILL_COST_HELPERS_V1__?.读取魂导器对应等级_V1?.(item.魂导等级, item.名称 || item.name || '')) || Number(item.魂导等级) * 10 : 0;
+    const level = Math.max(1, Math.floor(Number(slot === '斗铠' ? item?._属性加成?.等效等级 : 0) || toolLevel || Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level) || 1));
     const base = Number(root.__LWCS_GET_BASE_STATS__?.(level)?.vit_max) || readResourceMax(unit, '体力') || 1;
     const quality = Math.max(0.1, Number(item?.品质系数) || 1);
     return Math.max(1, Math.round(base * armourGrade(slot, item) * quality));
@@ -27075,7 +27105,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     feintRecord,
     feintShown,
     meditating,
-    beginMeditation, meditationSupplyAmount, dropMeditationSupply,
+    beginMeditation, meditationSupplyAmount, dropMeditationSupply, drainSoulToolGear, soulToolGearLeft,
     interruptMeditation,
     naturalRecoveryRatios,
     spiritReleasedMarker,

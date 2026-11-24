@@ -474,6 +474,7 @@
       const before = Math.max(0, Number(existing.shield_value || 0));
       existing.shield_value = before + amount;
       if (effect?.对应等级 !== undefined) existing.对应等级 = Math.max(0, Number(effect.对应等级 || 0));
+      if (effect?.__魂导器来源) existing.__魂导器来源 = effect.__魂导器来源;
       return existing.shield_value - before;
     } else {
       unit.状态效果[stateName] = {
@@ -484,6 +485,8 @@
         面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
         战斗效果: createEmptyCombatEffectMap(), shield_value: amount,
         ...(effect?.对应等级 !== undefined ? { 对应等级: Math.max(0, Number(effect.对应等级 || 0)) } : {}),
+        // 魂导器展开的护盾（用户 2026-11-24）：挡下的伤害扣这件魂导器的耐久（absorbRuntimeShield 之后 drainSoulToolGear）
+        ...(effect?.__魂导器来源 ? { __魂导器来源: effect.__魂导器来源 } : {}),
       };
     }
     return amount;
@@ -13213,7 +13216,26 @@
               shieldBefore + hpDamageLimit,
               settledSegmentDamage,
             ));
+            // 魂导器展开的护盾挡下的伤害扣它的耐久，归零即报废（BattlePreview drainSoulToolGear）
+            const toolShieldSources = Object.fromEntries(Object.entries(target?.状态效果 || {})
+              .filter(([, state]) => state?.__魂导器来源 && Number(state.shield_value) > 0).map(([key, state]) => [key, state.__魂导器来源]));
             const shieldResult = absorbRuntimeShield(target, incomingDamage, effect, actor);
+            (shieldResult.absorptions || []).forEach(entry => {
+              const source = toolShieldSources[entry.stateName];
+              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, Number(entry.absorbed) || 0);
+              if (!drained) return;
+              if (drained.scrapped) drained.holder.final = buildCombatFinalStats(drained.holder, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+              facts.push(writeLedgerEvent(combatData, {
+                eventKind: 'resource_change', round: Number(combatData?.回合 || 0),
+                actorId: previewRuntime.unitId(drained.holder), actorName: previewRuntime.unitName(drained.holder),
+                targetId: previewRuntime.unitId(drained.holder), targetName: previewRuntime.unitName(drained.holder),
+                actionName: drained.gear.name, actionType: 'soul_tool_wear', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+                sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS',
+                primaryOutcome: 'resource_reduced', operation: 'REDUCE', ruleCode: drained.scrapped ? 'SOUL_TOOL_SCRAPPED' : 'SOUL_TOOL_WEAR', allowImplicitActionSource: true,
+                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, absorbed: Number(entry.absorbed) || 0,
+                  durabilityBefore: drained.before, durabilityAfter: drained.after, durabilityMax: drained.durability, scrapped: drained.scrapped, sourceEffectId, auditOnly: !drained.scrapped },
+              }));
+            });
             let damage = Math.max(0, Math.min(hpDamageLimit, shieldResult.remainingDamage));
             const deathSave = before > 0 && damage >= before ? previewRuntime.consumeDeathSaveCharges(target, 1, { actionId: actionEvent.actionId })[0] : null;
             const deathSavePreventedDamage = deathSave ? damage - Math.max(0, before - 1) : 0;
@@ -13593,7 +13615,11 @@
           const shieldStateName = requested >= 0 ? runtimeShieldStateName(actionName) : '';
           if (requested >= 0) {
             const duration = Number(effect?.持续回合) > 0 ? Math.max(1, Number(effect.持续回合)) : null;
-            applyRuntimeShield(target, requested, duration, shieldStateName, effect);
+            // 魂导器展开的护盾：记下来源，护盾不超过这件魂导器剩余的耐久（快坏的护盾展开出来也薄）。
+            const toolKey = effect?.__魂导器装配位 ? `魂导器:${effect.__魂导器装配位}` : '';
+            const toolLeft = toolKey ? Number(previewRuntime.soulToolGearLeft?.(actor, toolKey)) : Infinity;
+            applyRuntimeShield(target, Number.isFinite(toolLeft) ? Math.min(requested, Math.max(0, toolLeft)) : requested, duration, shieldStateName,
+              toolKey ? { ...effect, __魂导器来源: { holderId: previewRuntime.unitId(actor), key: toolKey } } : effect);
           }
           else removeRuntimeShield(target, effect?.数值 || requested);
           const after = currentShieldTotal(target);
