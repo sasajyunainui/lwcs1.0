@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: CharacterLibrary.js:7be536f58fbe90917b557e0636e813b2f59348e3414c625e513000513bf7f85f|ItemLibrary.js:79b34351e3252d73485e2c0203290e50ed594dba1428d77f94b9a52673f0e5a7|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:2846d5768127291aa960977844bb4601e2a3dc5a47277beb72655a0788fc5a72|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
+/* sources-sha256: CharacterLibrary.js:7be536f58fbe90917b557e0636e813b2f59348e3414c625e513000513bf7f85f|ItemLibrary.js:29c3b1c4b0c7f0b83714122dc76e28b13b807bbbd57516009895dfaac8c34217|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:2846d5768127291aa960977844bb4601e2a3dc5a47277beb72655a0788fc5a72|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
 ;
 /* source: CharacterLibrary.js */
 !(function () {
@@ -37488,7 +37488,7 @@
       "品质": "稀有",
       "描述": "北海军团配备的方形金属盒，可包裹手腕并产生麻痹感，彻底封禁魂师魂力。",
       "魂导等级": 6,
-      "基础价格": 180000,
+      "基础价格": 2780000,
       "默认货币": "联邦币",
       "装备技能": {
         "封魂手铐": {
@@ -37519,7 +37519,7 @@
       "品质": "稀有",
       "描述": "北海军团配备，可释放强磁场以封闭精神之海，使目标昏迷，但可被强大气血之力阻隔。",
       "魂导等级": 6,
-      "基础价格": 240000,
+      "基础价格": 2780000,
       "默认货币": "联邦币",
       "装备技能": {
         "精神封禁头盔": {
