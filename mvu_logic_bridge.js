@@ -531,6 +531,15 @@
     return null;
   }
 
+  // 系别倍率只认 MVU_Skill_Runtime 的 TypeMultipliers（用户 2026-11-24「技能设计器和临时战斗单位用的不该单独保留吧」）：
+  // 此前这里两份副本自 11-14 起就没同步（辅助类防御 0.6 敏捷 0.8；临时单位表缺精神、元素、召唤系）。
+  function 读取系别倍率表() {
+    const 读取 = 读取窗口函数('__LWCS_GET_TYPE_MULTIPLIERS__');
+    const 表 = typeof 读取 === 'function' ? 读取() : null;
+    if (!表 || typeof 表 !== 'object' || !表.强攻系) throw new Error('MVU系别倍率表未加载');
+    return 表;
+  }
+
 
   function isSkillDesignerPreviewKey(previewKey = '') {
     return String(previewKey || '').startsWith('技能设计台：');
@@ -18164,18 +18173,7 @@
     const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
     if (typeof 基础属性函数 !== 'function') throw new Error('MVU基础属性函数未加载');
     const 基础 = 基础属性函数(等级值) || {};
-    const 系数表 = {
-      强攻系: { sp_max: 1, men_max: 1, str: 1, def: 1, agi: 1, vit_max: 1 },
-      防御系: { sp_max: 1, men_max: 1, str: 0.9, def: 1.5, agi: 0.7, vit_max: 1 },
-      敏攻系: { sp_max: 1, men_max: 1, str: 0.8, def: 0.7, agi: 1.6, vit_max: 0.8 },
-      控制系: { sp_max: 1, men_max: 1.2, str: 0.9, def: 0.8, agi: 1.1, vit_max: 0.9 },
-      辅助系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-      治疗系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-      食物系: { sp_max: 1, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-      精神系: { sp_max: 1, men_max: 1.7, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-      元素系: { sp_max: 1, men_max: 1.5, str: 0.8, def: 0.6, agi: 0.8, vit_max: 0.7 },
-      召唤系: { sp_max: 1, men_max: 1.35, str: 0.8, def: 0.8, agi: 0.8, vit_max: 0.8 },
-    };
+    const 系数表 = 读取系别倍率表();
     const 系数 = 系数表[String(系别 || '').trim()] || 系数表.强攻系;
     const 天赋训练系数 = 读取技能设计台天赋训练系数(选项?.天赋梯队 || '正常');
     const 精神训练系数 = 读取技能设计台精神训练系数(选项?.天赋梯队 || '正常');
@@ -25710,15 +25708,7 @@ ${播报文本}
     return Number(BATTLE_SOUL_BEAST_QUALITY_TIER_MULTIPLIERS[normalizeSoulBeastQualityTier(value)] || 1);
   }
 
-  const BATTLE_TEMPORARY_TYPE_MULTIPLIERS = Object.freeze({
-    强攻系: { sp_max: 1.0, men_max: 1.0, str: 1.0, def: 1.0, agi: 1.0, vit_max: 1.0 },
-    防御系: { sp_max: 1.0, men_max: 1.0, str: 0.9, def: 1.5, agi: 0.7, vit_max: 1.0 },
-    敏攻系: { sp_max: 1.0, men_max: 1.0, str: 0.8, def: 0.7, agi: 1.6, vit_max: 0.8 },
-    控制系: { sp_max: 1.0, men_max: 1.2, str: 0.9, def: 0.8, agi: 1.1, vit_max: 0.9 },
-    辅助系: { sp_max: 1.2, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-    食物系: { sp_max: 1.2, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-    治疗系: { sp_max: 1.2, men_max: 1.2, str: 0.7, def: 0.6, agi: 0.8, vit_max: 0.7 },
-  });
+  // 临时战斗单位的系别倍率：同主表（读取系别倍率表）。
 
   function getTemporaryBattleBaseStats(level = 1) {
     const 基础属性函数 = 读取窗口函数('__LWCS_GET_BASE_STATS__');
@@ -26256,7 +26246,7 @@ ${播报文本}
 
   function resolveTemporaryHumanCombatType(identity = '魂师', rng = Math.random, explicitType = '') {
     const requestedType = String(explicitType || '').trim();
-    if (requestedType && BATTLE_TEMPORARY_TYPE_MULTIPLIERS[requestedType]) return requestedType;
+    if (requestedType && 读取系别倍率表()[requestedType]) return requestedType;
     if (identity === '军人') {
       return pickTemporaryBattleItem(['强攻系', '强攻系', '防御系', '敏攻系', '控制系'], rng) || '强攻系';
     }
@@ -26428,7 +26418,7 @@ ${播报文本}
 
       const combatType = resolveTemporaryHumanCombatType(identity, rng, seed?.系别 || seed?.type);
       const base = getTemporaryBattleBaseStats(level);
-      const typeMult = BATTLE_TEMPORARY_TYPE_MULTIPLIERS[combatType] || BATTLE_TEMPORARY_TYPE_MULTIPLIERS['强攻系'];
+      const 倍率表 = 读取系别倍率表(), typeMult = 倍率表[combatType] || 倍率表.强攻系;
       const variance = 0.92 + rng() * 0.16;
       const derived = {
         str: Math.floor(base.str * typeMult.str * variance),

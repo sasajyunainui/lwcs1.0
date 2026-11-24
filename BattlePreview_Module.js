@@ -2198,11 +2198,18 @@
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
     // 虚招（T32）的作势那一下也算在前摇里（判蓄力时不算，同赶路）。
     const travel = options?.travel === false ? 0 : Math.max(0, Number(declaration?.advanceWindup || 0)) + (declaration?.feintStrike ? FEINT_STRIKE_WINDUP : 0);
+    // 打完就走（hitAndRun）：退回后排那一下也算在这次行动里。
+    const away = declaration?.hitAndRun === true ? HIT_RUN_WINDUP : 0;
     if (kind === 'USE_ITEM') return ITEM_USE_WINDUP;
-    if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor) + travel;
-    if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0)) + travel;
+    if (kind === 'BASIC_ATTACK') return basicAttackWindup(actor) + travel + away;
+    if (kind === 'RELEASE_SKILL') return Math.max(0, Number(declaration?.skill?.前摇 ?? declaration?.skill?.cast_time ?? 0)) + travel + away;
     return 0;
   }
+  /* 打完就走（用户 11-24「敏攻系近身应该攻击一次就游走，如果想打压制就得停在对方面前，这样无疑会增加危险」「对方可以选择硬承受这次伤害并打出
+     反击，这样才会让敏攻系不敢近身压制」）：近身出手的一个变体（declaration.hitAndRun），出手后同一次行动退回后排——不缠斗、这一下不累积压制
+     （pressTime 0）、对方抓空当反击 ×HIT_RUN_COUNTER_MULT、够不着硬吃还手（tradeBack 只对留在面前的近身来招）；多花 HIT_RUN_WINDUP 前摇。
+     留在面前（不走）的近身出手照常累积压制，也要承受对方硬吃还手。起始值，实测校准。 */
+  const HIT_RUN_WINDUP = Number(root.__LWCS_TUNE__?.HIT_RUN_WINDUP ?? 5), HIT_RUN_COUNTER_MULT = Number(root.__LWCS_TUNE__?.HIT_RUN_COUNTER_MULT ?? 0.5);
 
   /* 两档距离（T25，用户 2026-11-17；方案 两档距离方案-20261117.md）：每人一个「前 / 后」位置（相对整个敌方，不做两两距离）。
      双方都在前才算贴身。近身攻击（含普攻）打一个不贴身的目标要先突进：声明带 advanceWindup = ADVANCE_WINDUP_BASE × 目标有效敏捷 ÷
@@ -2366,8 +2373,8 @@
      围攻：第 k 个不同攻击者（k ≥ 2）来袭时应对 ×BESIEGE_KEEP^(k−1)——闪避、卸力、抓反击空当、防御减伤，对轰按应对窗口缩短；夹击照旧另算。
      压制：每应对一次占用 = 来袭前摇 × 速度比（出手者有效敏捷 ÷ 应对者，夹 PRESS_SPEED_MIN～MAX）× PRESS_SHARE，应对后的反击再加它自己的
      前摇；下一次主动行动只剩 CONTINUOUS_ACTION_BUDGET − 占用（不够一记普攻就失去这次行动，魂技前摇超出的走蓄力）。都是起始值，实测校准。 */
-  const BESIEGE_KEEP = Number(root.__LWCS_TUNE__?.BESIEGE_KEEP ?? 0.7), PRESS_SHARE = Number(root.__LWCS_TUNE__?.PRESS_SHARE ?? 0.5),
-    PRESS_SPEED_MIN = 0.5, PRESS_SPEED_MAX = 2;
+  const BESIEGE_KEEP = Number(root.__LWCS_TUNE__?.BESIEGE_KEEP ?? 0.7), PRESS_SHARE = Number(root.__LWCS_TUNE__?.PRESS_SHARE ?? 1.5),
+    PRESS_SPEED_MIN = Number(root.__LWCS_TUNE__?.PRESS_SPEED_MIN ?? 0.5), PRESS_SPEED_MAX = Number(root.__LWCS_TUNE__?.PRESS_SPEED_MAX ?? 2);
   function besiegeFactor(reactor = {}, attacker = {}) {
     if (root.__LWCS_TUNE__?.PRESSURE_OFF === true) return 1;
     const by = reactor?.__battleRuntime?.pressure?.by;
@@ -2376,15 +2383,33 @@
     return others > 0 ? BESIEGE_KEEP ** others : 1;
   }
   // 应对一次来袭占用的时间（见上）。
-  function pressTime(attacker = {}, declaration = {}, reactor = {}) {
+  function pressTime(attacker = {}, declaration = {}, reactor = {}, worldSnapshot = null) {
     const own = Number(naturalActionOrderProfile(reactor).effectiveAgility), theirs = Number(naturalActionOrderProfile(attacker).effectiveAgility);
     const speed = own > 0 && theirs > 0 ? clamp(theirs / own, PRESS_SPEED_MIN, PRESS_SPEED_MAX) : 1;
-    return Math.max(0, actionWindup(attacker, declaration, { travel: false })) * speed * PRESS_SHARE;
+    // 打完就走的近身出手不累积压制（出手后就退开了）。
+    if (declaration?.hitAndRun === true) return 0;
+    return Math.max(0, actionWindup(attacker, declaration, { travel: false })) * speed * PRESS_SHARE * pressThreat(attacker, declaration, reactor, worldSnapshot);
+  }
+  // 压制按威胁（用户 11-24「不可能不管对方能造成什么伤害，只要打过来我就只能匆忙应对吧？如果对方甚至都不破防呢？」，选「按威胁打折 + 硬吃不占」）：
+  // 这一下不接会掉的生命份额（incomingHitShare，按双方眼下的攻防）÷ PRESS_THREAT_BASE，封顶 1——破不了防、几乎不掉血的一下几乎不占时间。
+  // 不带伤害的来招（控制、减益）按 1。起始值，按原著压制份额与先手胜率实测校准。PRESS_THREAT_OFF 回旧（一律 1）。
+  const PRESS_THREAT_BASE = Number(root.__LWCS_TUNE__?.PRESS_THREAT_BASE ?? 0.1);
+  // 硬吃（不接、或硬吃还手）按威胁的这一份占时间（BattleRuntime 接招处）。
+  const PRESS_TAKE_SHARE = Number(root.__LWCS_TUNE__?.PRESS_TAKE_SHARE ?? 0.5);
+  function pressThreat(attacker = {}, declaration = {}, reactor = {}, worldSnapshot = null) {
+    if (root.__LWCS_TUNE__?.PRESS_THREAT_OFF === true) return 1;
+    const share = incomingHitShare(attacker, declaration, reactor, worldSnapshot);
+    return share === null ? 1 : clamp(share / PRESS_THREAT_BASE, 0, 1);
   }
   // 这个单位下一次主动行动还剩的时间。
   function pressedBudget(unit = {}) {
     const used = root.__LWCS_TUNE__?.PRESSURE_OFF === true ? 0 : Math.max(0, Number(unit?.__battleRuntime?.pressure?.used) || 0);
     return Math.max(0, CONTINUOUS_ACTION_BUDGET - used);
+  }
+  // 被压满：接招占掉的时间已满一次行动，来不及再应对（BattleRuntime structuredActorCanAct 对应对、反击、援护判否）。
+  function isPressedOut(unit = {}) {
+    // 默认关（用户 11-24：被压的人照样能接，压制到位体现在抢不回主动、抓不到反击空当）；PRESS_OUT_ON 开。
+    return root.__LWCS_TUNE__?.PRESS_OUT_ON === true && root.__LWCS_TUNE__?.PRESSURE_OFF !== true && pressedBudget(unit) <= 1e-9;
   }
   // 夹击：同一回合里这个单位挨过 attacker 一方别人的近身攻击。
   function pincerCut(reactor = {}, attacker = {}, round = null) {
@@ -6700,6 +6725,9 @@
   // a clash of two mental moves deals the loser its share × MENTAL_CLASH_LOSS_MULT.
   // 同日「打平也受到50%」: an even mental clash deals each side MENTAL_CLASH_SHOCK of the other's move (CLASH_SHOCK otherwise).
   const MENTAL_DODGE_MULT = 0.5, MENTAL_COUNTER_MULT = 0.4, MENTAL_CLASH_LOSS_MULT = 2, MENTAL_CLASH_SHOCK = 0.5;
+  // 近身、范围攻击更难躲（用户 2026-11-24「可以加强一点精神力锁定的作用和近身攻击，范围攻击的命中」）：近身来招 命中判定的落空与闪避应对都 ×MELEE_DODGE_MULT；
+  // 范围来招 命中判定 +AREA_HIT_BONUS（闪避应对 DODGE_AREA_PENALTY 0.1 → 0.2）。提议值 0.85 / 0.05 / 0.2，待讨论，默认保持原值（1 / 0 / 0.1）。
+  const MELEE_DODGE_MULT = Number(root.__LWCS_TUNE__?.MELEE_DODGE_MULT ?? 1), AREA_HIT_BONUS = Number(root.__LWCS_TUNE__?.AREA_HIT_BONUS ?? 0);
   // The class of a move's strike: its first 伤害结算's (a basic attack carries its own, melee by default); null: no strike.
   function declarationDamageClass(declaration = {}) {
     // 投出武器：投掷与召回时顺势一击按远程（伤害照普攻）。
@@ -7923,8 +7951,10 @@
     );
     if (String(explicitValue ?? '').trim() !== '') return probability;
     const strikeClass = String(effect?.原型 || '').trim() === '伤害结算' ? classifyDamageType(effect?.伤害类型) : '';
-    const rangedProbability = strikeClass === 'RANGED' ? clamp(1 - (1 - probability) * RANGED_DODGE_MULT, 0.05, 0.99)
-      : strikeClass === 'MENTAL' ? clamp(1 - (1 - probability) * MENTAL_DODGE_MULT, 0.05, 0.99) : probability;
+    const classed = strikeClass === 'RANGED' ? clamp(1 - (1 - probability) * RANGED_DODGE_MULT, 0.05, 0.99)
+      : strikeClass === 'MENTAL' ? clamp(1 - (1 - probability) * MENTAL_DODGE_MULT, 0.05, 0.99)
+      : strikeClass === 'MELEE' ? clamp(1 - (1 - probability) * MELEE_DODGE_MULT, 0.05, 0.99) : probability;
+    const rangedProbability = /群体|全场/.test(String(effect?.目标 || '')) ? clamp(classed + AREA_HIT_BONUS, 0.05, 0.99) : classed;
     const opened = hitAgainstAttackOpening(rangedProbability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
     // 夹击（T30）：这回合已被对方另一人近身打过，近身来招的命中再 +PINCER_DODGE_CUT（它的闪避 −，同状态里的闪避减益）。
     const bonus = areaSingleTargetHitBonus(effect, targetCount) + (options?.initiative === true ? INITIATIVE_HIT_BONUS : 0) +
@@ -25654,6 +25684,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  const MENTAL_LOCK_EXP = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_EXP ?? 0.35), MENTAL_LOCK_FLOOR = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_FLOOR ?? 0.35), MENTAL_LOCK_CAP = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_CAP ?? 1.65);
   function calculateWithdrawalPressureDetails(unit = {}, opponent = {}, stance = 'WITHDRAW') {
     const agilityBreakdown = readCombatStatBreakdown(unit, 'agi');
     const agility = agilityBreakdown.value;
@@ -25686,9 +25717,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const conditionFactor = 0.35 + spiritRatio * 0.4 + staminaRatio * 0.25;
     const opposingSpirit = readResource(opponent, '精神力');
     const resourcePressure = clamp(
-      Math.pow(Math.max(0.01, spirit / Math.max(1, opposingSpirit)), 0.35) * (0.45 + 0.55 * spiritRatio),
-      0.35,
-      1.65,
+      // 精神力锁定（用户 2026-11-24「加强一点精神力锁定的作用」）：双方精神力之比的次方 MENTAL_LOCK_EXP（提议 0.6）、夹 MENTAL_LOCK_FLOOR～CAP（提议 0.25～2），待讨论，默认保持原值 0.35、0.35～1.65。
+      Math.pow(Math.max(0.01, spirit / Math.max(1, opposingSpirit)), MENTAL_LOCK_EXP) * (0.45 + 0.55 * spiritRatio),
+      MENTAL_LOCK_FLOOR,
+      MENTAL_LOCK_CAP,
     );
     const stanceMultiplier = stance === 'PURSUIT' ? 1.08 : 1;
     // 位移重做: 击退 / 换位 leave the unit's next reaction cut by a share (reaction_mult_penalty, one-shot), multiplicative on the base.
@@ -25969,7 +26001,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   //     in the same exchange. No cap on the chain (ENGAGEMENT_CHAIN_LIMIT in the runtime only stops a runaway loop).
   // Every number is a starting value.
   const DODGE_BASE = 0.35, DODGE_SHARE_SLOPE = 1.1, DODGE_BASE_FLOOR = 0.05, DODGE_BASE_CAP = 0.85;
-  const DODGE_WINDUP_SWING = 0.15, DODGE_AREA_PENALTY = 0.1, DODGE_FLOOR = 0.05, DODGE_CAP = 0.9;
+  const DODGE_WINDUP_SWING = 0.15, DODGE_AREA_PENALTY = Number(root.__LWCS_TUNE__?.DODGE_AREA_PENALTY ?? 0.1), DODGE_FLOOR = 0.05, DODGE_CAP = 0.9;
   // The windup swing of a move: clamp((windup − WINDUP_PIVOT) / WINDUP_SPAN, −1, 1); a basic attack (20) is the pivot,
   // a charged release counts as CONTINUOUS_ACTION_BUDGET (40).
   const WINDUP_PIVOT = 20, WINDUP_SPAN = 20;
@@ -26346,7 +26378,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       (options?.prepared === true ? COUNTER_STANCE_BONUS : 0) + unbalanced, COUNTER_FLOOR, COUNTER_CAP);
     // 战斗经验抓空当：× (1 + (经验 − 0.5) × EXPERIENCE_COUNTER_SLOPE)。
     const seasoned = 1 + (battleExperience(reactor) - 0.5) * EXPERIENCE_COUNTER_SLOPE;
-    return clamp(base * seasoned, 0, COUNTER_CAP) * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) * besiegeFactor(reactor, sourceActor) *
+    // 压制到位就没有反击空当（用户 11-24「不能每次都吃反击，本质上是压制不到位，给了反击机会导致的」）：× (1 − 自上次主动行动以来接招占掉的
+    // 时间 ÷ 一次行动的时间)——压满了只能接、抓不到空当，压得松才会被抓住反打。PRESS_COUNTER_OFF 回旧。
+    // 只算这一招之前累积的压制（recent：这次接招里刚记上的，BattleRuntime 接招开头清零）——挨一下不叫被压住。
+    const pressure = reactor?.__battleRuntime?.pressure;
+    const pressFill = root.__LWCS_TUNE__?.PRESS_COUNTER_OFF === true || root.__LWCS_TUNE__?.PRESSURE_OFF === true ? 0
+      : clamp((Math.max(0, Number(pressure?.used) || 0) - Math.max(0, Number(pressure?.recent) || 0)) / CONTINUOUS_ACTION_BUDGET, 0, 1);
+    // 打完就走：出手的人一击就退开，抓空当反击更难。
+    const leaving = declaration?.hitAndRun === true ? HIT_RUN_COUNTER_MULT : 1;
+    return clamp(base * seasoned, 0, COUNTER_CAP) * (1 - pressFill) * leaving * passiveStreakFactor(reactor) * COUNTER_FADE ** Math.max(0, Math.floor(Number(options?.prior) || 0)) * besiegeFactor(reactor, sourceActor) *
       // 远程来招打折，但还手本身不靠近身的（元素系还手按远程、精神系按精神攻击，同 BattleRuntime 行为防反）不打折（11-15）。
       (!declaration ? 1 : declarationDamageClass(declaration) === 'RANGED' && !/元素系|精神系/.test(String(reactor?.type || reactor?.系别 || '')) ? RANGED_COUNTER_MULT
         : declarationDamageClass(declaration) === 'MENTAL' ? MENTAL_COUNTER_MULT : 1);
@@ -26958,7 +26998,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionBlocksSkill,
     meditationOptions, meditationSafe, MEDITATION_KEY, guardHoldFor,
     // 两档距离（T25）
-    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, besiegeFactor, pressTime, pressedBudget, BESIEGE_KEEP, PRESS_SHARE, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
+    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, besiegeFactor, pressTime, pressThreat, basicAttackEffect, PRESS_THREAT_BASE, PRESS_TAKE_SHARE, HIT_RUN_WINDUP, HIT_RUN_COUNTER_MULT, PRESS_SPEED_MIN, PRESS_SPEED_MAX, pressedBudget, isPressedOut, BESIEGE_KEEP, PRESS_SHARE, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,
     isFeint,
     feintRecord,

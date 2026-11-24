@@ -6421,6 +6421,13 @@
         engagement: engagement('CLASH') };
       if (clashConfidence(declaration) > 0) out.push({ candidateId: id, declaration });
     }
+    // 硬吃还手（用户 11-24「对方可以选择硬承受这次伤害并打出反击，这样才会让敏攻系不敢近身压制」）：不挡不闪，整下吃下，同时一记普攻打回去
+    // （tradeBack，换血的普攻版）——只对留在面前的近身来招（打完就走的够不着）。HIT_RUN_OFF 一并关。
+    if (clashable && !hasStateFlag(actor, 'disarm') && root.__LWCS_TUNE__?.HIT_RUN_OFF !== true && opportunity.intercept !== true &&
+      preview.declarationDamageClass?.(incomingMove) === 'MELEE' && incoming.hitAndRun !== true) {
+      const id = `${actorId}:trade:basic`;
+      out.push({ candidateId: id, declaration: { actionId: id, actorId, actionKind: 'BASIC_ATTACK', targetIds: [sourceId], skill: basicAttackSkill(actor), tradeBack: true } });
+    }
     if (hasStateFlag(actor, 'silence') || preview.isSummonSkillDisabled(actor)) return out;
     const intensity = preview.battleIntensity(worldSnapshot, input.battleIntent);
     // 蓄力迎击 (BattlePreview chargeMeetSkill: 「如同任何魂技迎击来招——接战链的对轰」): the charge thrown at the attacker meets its
@@ -6822,6 +6829,27 @@
         (strongest && skillName(candidate.declaration) === skillName(strongest.declaration)));
       if (picked.length) candidates = [...candidates, ...picked.map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:flank`,
         declaration: { ...candidate.declaration, flank: true, actionId: `${candidate.declaration.actionId || candidate.candidateId}:flank` } }))];
+    }
+    // 打完就走（BattlePreview HIT_RUN_*，用户 11-24）：主动出手、近身打单个敌人的普攻与威力最高的一个近身魂技各多出一份「打完就走」
+    // （declaration.hitAndRun）：出手后退回后排，不缠斗、不累积压制、对方难还手。估值自己在「留下压」和「打完走」之间选。HIT_RUN_OFF 关。
+    if (advanceActor && preview.declarationDamageClass && root.__LWCS_TUNE__?.HIT_RUN_OFF !== true && String(input?.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'ACTIVE') {
+      const actorSideNow = sideOf(worldSnapshot, advanceActor);
+      const runnable = candidates.filter(candidate => {
+        const declaration = candidate?.declaration || {};
+        if (declaration.hitAndRun || declaration.flank || declaration.feintStrike || !['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaration.actionKind || '').toUpperCase())) return false;
+        if (!Array.isArray(declaration.targetIds) || declaration.targetIds.length !== 1 || preview.declarationDamageClass(declaration) !== 'MELEE') return false;
+        const target = findUnitInWorld(worldSnapshot, declaration.targetIds[0]);
+        return !!target && sideOf(worldSnapshot, target) !== actorSideNow;
+      });
+      const power = declaration => preview.collectEffects(declaration?.skill || {}).filter(effect => effect?.原型 === '伤害结算')
+        .reduce((sum, effect) => sum + Math.max(0, Number(effect.威力倍率) || 0), 0);
+      const skillName = declaration => String(declaration?.skill?.name || declaration?.skill?.魂技名 || '');
+      const strongest = runnable.filter(candidate => candidate.declaration.actionKind === 'RELEASE_SKILL')
+        .sort((left, right) => power(right.declaration) - power(left.declaration))[0];
+      const picked = runnable.filter(candidate => candidate.declaration.actionKind === 'BASIC_ATTACK' ||
+        (strongest && skillName(candidate.declaration) === skillName(strongest.declaration)));
+      if (picked.length) candidates = [...candidates, ...picked.map(candidate => ({ ...candidate, candidateId: `${candidate.candidateId}:run`,
+        declaration: { ...candidate.declaration, hitAndRun: true, actionId: `${candidate.declaration.actionId || candidate.candidateId}:run` } }))];
     }
     // 投出武器（11-19，BattlePreview canThrowWeapon / canRecallStrike）：主动出手时，打单个敌人的普攻多出一份「投掷」（throwWeapon，
     // 按远程、不用突进，投完武器离手）；武器已经离手、又能随时召回的（器武魂、会控鹤擎龙的），普攻多出一份「召回时顺势一击」（recallStrike）。
@@ -40194,7 +40222,7 @@
     }
     r20Struck = struck / 100;
     // 开发钩子（对账）：格子取的是哪一项（basic 普攻、skill 看得见的技能按用得起摊开、shown 看到过的技能、routine 看不见技能时的典型技能）。
-    root.__LWCS_DECISION_DEBUG__?.cellParts?.({ unit, other, friendly, basic: basic / 100, best: best / 100, from: cellFrom });
+    root.__LWCS_DECISION_DEBUG__?.cellParts?.({ unit, other, friendly, basic: basic / 100, best: best / 100, from: cellFrom, struck: struck / 100 });
     return best / 100;
   }
   // A release's upkeep (维持) on `actor` as the release leaves it: the shares of its pools one round end takes, summed, and
@@ -40713,6 +40741,16 @@
     const travel = preview.advanceWindupFor && !(Number(move?.advanceWindup) > 0) ? Number(preview.advanceWindupFor(attacker, unit, move)) || 0 : 0;
     return travel > 0 ? { ...move, advanceWindup: travel } : incoming;
   };
+  // 硬吃还手（BattleDecision 应对候选 trade:basic 的推演版）：来招是留在面前的近身（不知道来招时按普攻），自己没被缴械。
+  const r20TradeBasic = (unit, attacker, incoming = null) => {
+    const move = incoming || R20_ASSUMED_MOVE;
+    if (root.__LWCS_TUNE__?.HIT_RUN_OFF === true || hasStateFlag(unit, 'disarm') || move?.hitAndRun === true || preview.declarationDamageClass?.(move) !== 'MELEE') return { tradeBasic: 0 };
+    const declaration = { actorId: preview.unitId(unit), actionKind: 'BASIC_ATTACK', targetIds: [preview.unitId(attacker)], skill: basicAttackSkill(unit) };
+    // 打回去的这一下按它打中的概率（11-24 对账：不乘命中时普攻还手占应对 15%，原著攻击还手合计约 10%）。
+    const strike = (Number(preview.incomingMoveDamage(unit, declaration, attacker, r20World)) || 0) *
+      clamp(Number(preview.estimateHitProbability(unit, attacker, preview.basicAttackEffect?.() || {})) || 0, 0, 1);
+    return strike > 0 ? { tradeBasic: strike, tradeBasicPrice: r20AnswerPrice(unit, attacker, declaration).price } : { tradeBasic: 0 };
+  };
   const r20Stand = (unit, attacker, incoming = null, prepared = false, runUp = r20RunUp(unit, attacker, incoming)) => ({
     blocked: hasStateFlag(unit, 'cannot_react') || preview.guardBrokenOf(unit, r20Round),
     // An unseen 控制系's routine preemption (routine_preempt_share); not out of a stance.
@@ -40725,6 +40763,8 @@
     catch: preview.counterOpeningProbability(unit, attacker, runUp, { prepared }),
     // 接战链 阶段二: what the unit could meet the hit with instead (r20Engage); not out of a stance.
     ...(prepared ? { strikes: [], stops: [], guards: [] } : r20Engage(unit, attacker, incoming)),
+    // 硬吃还手（11-24）：留在面前的近身来招，整下吃下同时一记普攻打回去的分量（数值）与代价。
+    ...(prepared ? { tradeBasic: 0 } : r20TradeBasic(unit, attacker, incoming)),
     // 接战链 阶段 2c: what each plain answer costs (a stance was paid for when it was taken).
     defendPrice: prepared ? 0 : r20AnswerPrice(unit, attacker, R20_DEFEND_ANSWER).price,
     evadePrice: prepared ? 0 : r20AnswerPrice(unit, attacker, R20_EVADE_ANSWER).price,
@@ -40984,6 +41024,14 @@
   const R20_COUNTER_SCALE = Number(root.__LWCS_TUNE__?.COUNTER_SCALE_VALUE ?? 0.4);
   // ANSWER_PRIOR_MIX 的各接法先验比例：1v1 应对决策实际所选（11-24，对上来招的 4609 次；防御里约 3 成是卸力另记）。起始值，实测校准。
   const R20_ANSWER_KIND_PRIOR = Object.freeze({ DEFEND: 0.40, DEFLECT: 0.03, CLASH: 0.17, GUARD_SKILL: 0.12, TRADE: 0.10, EVADE: 0.09, TAKE: 0.06, PREEMPT: 0.03 });
+  // 接招时出手（花自己前摇）的份额：对轰、换血、防御魂技、抢先（BattleRuntime 接招也花时间，11-24）。先验按 R20_ANSWER_KIND_PRIOR，
+  // 与这人最近的接招记录（answerLog）按 R20_ANSWER_PRIOR 份混合。
+  const R20_ANSWER_MOVES = new Set(['CLASH', 'TRADE', 'GUARD_SKILL', 'PREEMPT']);
+  const R20_ANSWER_MOVE_PRIOR = [...R20_ANSWER_MOVES].reduce((sum, kind) => sum + (R20_ANSWER_KIND_PRIOR[kind] || 0), 0);
+  function r20AnswerMoveShare(unit) {
+    const log = Array.isArray(unit?.__battleRuntime?.answerLog) ? unit.__battleRuntime.answerLog : [];
+    return (R20_ANSWER_PRIOR * R20_ANSWER_MOVE_PRIOR + log.filter(kind => R20_ANSWER_MOVES.has(String(kind))).length) / (R20_ANSWER_PRIOR + log.length);
+  }
   const r20Meet = (stand, weight, held = '', follow = null) => {
     if (stand.blocked) return { kind: 'NONE', keep: stand.soak, share: 1, lands: 1, defends: false, answer: 0, back: 0 };
     const guard = preview.applyGuardWeight(stand.guard, weight);
@@ -41015,6 +41063,8 @@
       if (String(move?.actionKind || '').toUpperCase() !== 'RELEASE_SKILL' || !(strike > 0)) continue;
       options.push({ kind: 'TRADE', keep: stand.soak, share: 1, lands: 1, answer: 0, back: confidence * strike / stand.attackerHpMax, price, move });
     }
+    // 硬吃还手（11-24）：普攻换血，只对留在面前的近身来招（r20TradeBasic）。
+    if (theirs > 0 && Number(stand.tradeBasic) > 0) options.push({ kind: 'TRADE', keep: stand.soak, share: 1, lands: 1, answer: 0, back: Number(stand.tradeBasic) / stand.attackerHpMax, price: Number(stand.tradeBasicPrice) || 0 });
     for (const { stop, price } of stand.stops || []) {
       options.push({ kind: 'PREEMPT', keep: stand.soak * (1 - stop), share: 1 - stop, lands: 1 - stop, answer: stop * stand.catch, back: 0, price });
     }
@@ -41610,7 +41660,7 @@
       const row = table.index.get(String(targets[0]));
       if (row === undefined || table.sides[row] === table.sides[actorRow]) continue;
       const key = [declaration.actionKind, declaration.skill?.魂技名 || declaration.skill?.name || '', !!declaration.bait, !!declaration.deflect, !!declaration.feintStrike, !!declaration.flank,
-        !!declaration.humanShield, !!declaration.retreat, !!declaration.throwWeapon, !!declaration.recallStrike].join('|');
+        !!declaration.humanShield, !!declaration.retreat, !!declaration.throwWeapon, !!declaration.recallStrike, !!declaration.hitAndRun].join('|');
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push({ candidateId, row, score: (table.out[actorRow]?.[row] || 0) * (table.priority[row] || 0) });
     }
@@ -41767,6 +41817,10 @@
     const pressAgility = pressUnits ? (landTable.agility || pressUnits.map(unit => Number(preview.naturalActionOrderProfile(unit).effectiveAgility) || 1)) : null;
     const pressBudget = Number(preview.CONTINUOUS_ACTION_BUDGET) || 40, pressShare = Number(preview.PRESS_SHARE) || 0.5, besiegeKeep = Number(preview.BESIEGE_KEEP) || 0.7;
     const pressEff = new Array(count).fill(1), besiegedBy = new Array(count).fill(0), lastAimed = new Array(count).fill(-1);
+    const reactPress = root.__LWCS_TUNE__?.REACT_PRESS_OFF !== true;
+    const pressThreatOn = root.__LWCS_TUNE__?.PRESS_THREAT_OFF !== true, pressThreatBase = Number(preview.PRESS_THREAT_BASE) || 0.1;
+    const pressOutOn = root.__LWCS_TUNE__?.PRESS_OUT_ON === true, pressTransferOn = root.__LWCS_TUNE__?.PRESS_TRANSFER_OFF !== true;
+    const pressOut = new Array(count).fill(0);
     // 代价对称（11-23 用户定）：收尾的人整次付它这次交锋挨的反击——takenBy[u] 是 u 这一步每回合挨的，aimStart[u] 是它开始打眼下这个目标的时刻；
     // 目标倒下时它打这个目标不满一回合，就补足到一整次。此前流量让离线一丝的人在 0.04 回合内倒下，收尾的队友只付 0.04 份反击，行动者自己去收
     // 却要付整次（候选的结算），于是人人把收尾留给队友。
@@ -41776,6 +41830,25 @@
     const basicOf = row => Math.max(1, Number(preview.basicAttackWindup?.(pressUnits[row])) || 10);
     if (pressUnits) for (let row = 0; row < Math.min(count, pressRows); row += 1) {
       if (pressUnits[row]) pressEff[row] = effOf(Number(preview.pressedBudget?.(pressUnits[row]) ?? pressBudget), pressWindup[row], basicOf(row));
+      if (pressUnits[row] && pressOutOn && preview.isPressedOut?.(pressUnits[row])) pressOut[row] = 1;
+    }
+    // 这一手是出手接招：行动者下一次主动行动少掉它的前摇（plan.selfPress）。
+    if (pressUnits && plan?.selfPress && plan.selfPress.row < Math.min(count, pressRows) && pressUnits[plan.selfPress.row]) {
+      const row = plan.selfPress.row, budget = Number(preview.pressedBudget?.(pressUnits[row]) ?? pressBudget) - plan.selfPress.time;
+      const before = pressEff[row];
+      pressEff[row] = effOf(budget, pressWindup[row], basicOf(row));
+      if (pressOutOn && budget <= 1e-9) pressOut[row] = 1;
+      // 节奏转移：这一接多压掉的那份归来袭者。
+      const by = plan.selfPress.by;
+      if (pressTransferOn && Number.isInteger(by) && by >= 0 && by < count && sides[by] !== sides[row] && before > pressEff[row]) pressEff[by] += before - pressEff[row];
+    }
+    // 第一步的节奏转移按单位身上真的压制记录（pressure.from：每个压制者占掉的时间）。
+    if (pressUnits && pressTransferOn) for (let row = 0; row < Math.min(count, pressRows); row += 1) {
+      const from = pressUnits[row]?.__battleRuntime?.pressure?.from;
+      if (!(pressEff[row] < 1) || !from || typeof from !== 'object') continue;
+      const [topId] = Object.entries(from).sort((a, b) => Number(b[1]) - Number(a[1]))[0] || [];
+      const top = topId !== undefined ? landTable.index?.get(String(topId)) : undefined;
+      if (top !== undefined && top < count && sides[top] !== sides[row]) pressEff[top] += 1 - pressEff[row];
     }
     const besiegeShare = n => n <= 1 ? 1 : (1 - besiegeKeep ** n) / (n * (1 - besiegeKeep));
     // 进攻倾向（r20AttackRate）：别人（不含行动者本人）打出去的按它最近的进攻份额折算；给队友的支援不折。
@@ -41853,18 +41926,33 @@
     for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
       r20Work.steps += 1;
       if (pressUnits && step > 0) {
-        const used = new Array(count).fill(0);
+        const used = new Array(count).fill(0), topBy = new Array(count).fill(-1), topUsed = new Array(count).fill(0);
         besiegedBy.fill(0);
         for (let attacker = 0; attacker < Math.min(count, pressRows); attacker += 1) {
           const row = lastAimed[attacker];
           if (row < 0 || row >= pressRows || sides[row] === sides[attacker]) continue;
           besiegedBy[row] += 1;
+          // 压制按威胁（BattlePreview pressThreat 的推演版，11-24）：这一下的分量（表里出手者打它的格子）÷ PRESS_THREAT_BASE，封顶 1。
+          const threat = pressThreatOn ? clamp((Number(landTable.out?.[attacker]?.[row]) || 0) / pressThreatBase, 0, 1) : 1;
           // PRESS_RATE（11-23 对账：推演被压制、一下都出不了手的时间约占对手出手时间 8.5%，实际被压着打丢掉行动约 0.7%）：
           // 按攻击者的进攻份额加权——瞄着他不等于每回合都打他。默认关，对账验收后再定。
-          used[row] += pressWindup[attacker] * clamp((Number(pressAgility[attacker]) || 1) / Math.max(1e-9, Number(pressAgility[row]) || 1), 0.5, 2) * pressShare *
-            (root.__LWCS_TUNE__?.PRESS_RATE === true ? attackRate[attacker] : 1);
+          const part = pressWindup[attacker] * clamp((Number(pressAgility[attacker]) || 1) / Math.max(1e-9, Number(pressAgility[row]) || 1), Number(preview.PRESS_SPEED_MIN) || 0.5, Number(preview.PRESS_SPEED_MAX) || 2) * pressShare * threat *
+            (root.__LWCS_TUNE__?.PRESS_RATE === true ? attackRate[attacker] : 1) +
+            // 接招也花时间（BattleRuntime 同规则，11-24）：用技能或普攻去接（对轰、换血、防御魂技、抢先）的份额 × 它主力一招的前摇。
+            (reactPress ? r20AnswerMoveShare(pressUnits[row]) * pressWindup[row] : 0);
+          used[row] += part;
+          if (part > topUsed[row]) { topUsed[row] = part; topBy[row] = attacker; }
         }
-        for (let row = 0; row < Math.min(count, pressRows); row += 1) pressEff[row] = effOf(pressBudget - used[row], pressWindup[row], basicOf(row));
+        for (let row = 0; row < Math.min(count, pressRows); row += 1) {
+          pressEff[row] = effOf(pressBudget - used[row], pressWindup[row], basicOf(row));
+          // 被压满（BattleRuntime isPressedOut）：来不及应对，挨的整下吃下、不还手。
+          pressOut[row] = pressOutOn && used[row] >= pressBudget - 1e-9 ? 1 : 0;
+        }
+        // 节奏转移（BattleRuntime 同规则）：被压掉的那份行动归占它时间最多的压制者。
+        if (pressTransferOn) for (let row = 0; row < Math.min(count, pressRows); row += 1) {
+          const top = topBy[row];
+          if (top >= 0 && pressEff[row] < 1 && left[top] > 1e-9) pressEff[top] += 1 - pressEff[row];
+        }
       }
       // Which cells a pair reads now: a unit the candidate brought, the candidate's; a unit it changed, the candidate's
       // while that change lasts; anyone else the table's — from R20_LATE_ROUNDS on the table's late cells.
@@ -41897,7 +41985,8 @@
       // What of an attacker's hit a unit takes: its answer's share while it can answer; held (controlled — the hard control
       // lasts to the end of the round it took an action in, BattleRuntime consumeStructuredControlActiveBudget) or busy, it
       // takes the whole hit, as a unit that cannot act does in the table (r20FillPair).
-      const takes = (view, unit, attacker) => acting(unit) ? view.keep[unit][attacker] + (1 - view.keep[unit][attacker]) * (1 - (1 - heldHard[unit]) * (1 - exposed[unit])) : 1;
+      // 被压满（pressOut）的人来不及应对，整下吃下。
+      const takes = (view, unit, attacker) => acting(unit) && !pressOut[unit] ? view.keep[unit][attacker] + (1 - view.keep[unit][attacker]) * (1 - (1 - heldHard[unit]) * (1 - exposed[unit])) : 1;
       let nextChange = base.late && time < R20_LATE_ROUNDS - 1e-9 ? Math.min(horizon, R20_LATE_ROUNDS) : horizon;
       if (leaves) for (let unit = 0; unit < count; unit += 1) {
         if (leaves[unit] <= time + 1e-9) left[unit] = 0; else nextChange = Math.min(nextChange, leaves[unit]);
@@ -42260,7 +42349,7 @@
         const help = cells(unit, ally).support[unit][ally] * share * offMul[unit];
         // The exchange its strike opens; a unit that would take more than it lands aims at the enemy it does best
         // against instead, and failing that helps or holds.
-        const open = aim => { const view = cells(unit, aim), answers = acting(aim), still = 1 - heldHard[aim];
+        const open = aim => { const view = cells(unit, aim), answers = acting(aim) && !pressOut[aim], still = 1 - heldHard[aim];
           return r20Exchange(answers ? view.answer[aim][unit] * still : 0, view.answer[unit][aim], view.back[unit][aim] * view.keepBack[aim][unit],
             answers ? view.back[aim][unit] * view.keepBack[unit][aim] * still : 0, answers ? view.answerOpen[aim][unit] * still : 0); };
         // 打还是帮按没乘进攻份额的比（11-23 对账：份额只是他多常出手，不该让打显得比帮小；此前 1v1 对手 23% 的出手时间在「帮自己」，
@@ -43911,7 +44000,18 @@
     const selfDamage = selfRate !== undefined && root.__LWCS_TUNE__?.INTENT_RATE !== false
       ? r20DamageShare(table.units[actorRow], ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaredNow.actionKind || '').toUpperCase())
         ? (String(declaredNow.actionKind).toUpperCase() === 'BASIC_ATTACK' || directImmediateSkillEffects(declaredNow.skill || {}).some(effect => effect?.原型 === '伤害结算') ? 'd' : 'c') : 'w') : undefined;
-    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, selfDamage, ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
+    // 接招也花时间（BattleRuntime 同规则，11-24）：这一手是用技能或普攻去接时，它的前摇记进行动者下一次主动行动的占用（plan.selfPress）。
+    const answeringMove = String(request.actionOpportunity?.role || 'ACTIVE').trim().toUpperCase() === 'REACTION';
+    const ownPress = answeringMove && root.__LWCS_TUNE__?.REACT_PRESS_OFF !== true && actorRow !== undefined && table.units[actorRow]
+      ? Math.max(0, Number(preview.actionWindup(table.units[actorRow], declaredNow, { travel: false })) || 0) : 0;
+    // 来招占的时间（BattleRuntime 接招处同规则）：接了按威胁占满，硬吃（不接、硬吃还手）占 PRESS_TAKE_SHARE。
+    const pressSourceId = String(request.actionOpportunity?.sourceActorId || '').trim(), pressSourceRow = pressSourceId ? table.index.get(pressSourceId) : undefined;
+    const answeredKind = String(declaredNow.actionKind || '').trim().toUpperCase();
+    const answeredNow = declaredNow.tradeBack !== true && (['DEFEND', 'GUARD', 'EVADE', 'RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM'].includes(answeredKind) || !!declaredNow.engagement);
+    const incomingPress = answeringMove && root.__LWCS_TUNE__?.PRESS_THREAT_OFF !== true && pressSourceRow !== undefined && request.actionOpportunity?.incomingAction && actorRow !== undefined
+      ? Math.max(0, Number(preview.pressTime?.(table.units[pressSourceRow], request.actionOpportunity.incomingAction, table.units[actorRow], table.world)) || 0) * (answeredNow ? 1 : Number(preview.PRESS_TAKE_SHARE ?? 0.5)) : 0;
+    const selfPress = ownPress + incomingPress;
+    const plan = { denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, selfDamage, ...(selfPress > 0 ? { selfPress: { row: actorRow, time: selfPress, by: pressSourceRow } } : {}), ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -45603,7 +45703,7 @@
     // 变体（卖破绽、卸力、虚招、绕后、人盾）：与原型打平时让原型（BehaviorDecisionPipeline 平手规则）。
     const variantOf = candidateId => {
       const declaration = frozenById.get(candidateId)?.declaration || {};
-      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true ||
+      return declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true || declaration.hitAndRun === true ||
         !!declaration.throwWeapon || declaration.recallStrike === true;
     };
     const holdOf = candidateId => {
@@ -45999,7 +46099,7 @@
     // 变体（卖破绽、卸力、虚招、绕后、人盾）不比它的原型（同动作、同目标、同魂技、不带变体标记）多得到什么时，不进抽取池：
     // 11-19 卖破绽 60 次里 51 次与防御估值完全相等，靠等权抽取占了一半（原著卖破绽约占主动步 1%）。
     const declarations = new Map((request?.frozenCandidates || []).map(candidate => [String(candidate?.candidateId || ''), candidate?.declaration || {}]));
-    const isVariant = declaration => declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true;
+    const isVariant = declaration => declaration.bait === true || declaration.deflect === true || !!declaration.feintStrike || !!declaration.flank || !!declaration.humanShield || declaration.retreat === true || declaration.hitAndRun === true;
     const plainKey = declaration => [String(declaration.actionKind || '').toUpperCase(), (declaration.targetIds || []).map(String).sort().join(','),
       declaration.skill ? skillId(declaration.skill) : '', String(declaration.releaseSlot || '')].join('|');
     const plainBest = new Map();

@@ -14422,9 +14422,17 @@
         const before = unit.__battleRuntime?.closeStruck;
         const by = Number(before?.round) === round && Array.isArray(before?.by) ? before.by : [];
         unit.__battleRuntime = { ...(unit.__battleRuntime || {}), closeStruck: { round, by: [...new Set([...by, actorId])] } };
-        // 交战关系：近身交手的两人缠在一起（对轰、反击、追击也是近身出手，同走这里）。
-        recordEngagement(combatData, actor, unit);
+        // 交战关系：近身交手的两人缠在一起（对轰、反击、追击也是近身出手，同走这里）。打完就走的不缠。
+        if (declaration?.hitAndRun !== true) recordEngagement(combatData, actor, unit);
       });
+    }
+    // 打完就走（BattlePreview HIT_RUN_*，用户 11-24）：近身出手后同一次行动退回后排。
+    if (declaration?.hitAndRun === true && previewRuntime.declarationDamageClass?.(declaration) === 'MELEE' && previewRuntime.setUnitPosition &&
+      structuredActorPhysicallyAlive(actor) && previewRuntime.setUnitPosition(actor, previewRuntime.POSITION_BACK)) {
+      facts.push(writeMechanicEvent(combatData, { eventKind: 'position_shift', actionName: '打完就走', actionRole: String(actionEvent?.actionRole || 'ACTIVE'), actorControl: String(actionEvent?.actorControl || 'AI'),
+        actorId: previewRuntime.unitId(actor), actorName: previewRuntime.unitName(actor), targetId: previewRuntime.unitId(actor), targetName: previewRuntime.unitName(actor),
+        actionId: actionEvent.actionId, sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
+        result: 'back', meta: { positionType: '打完就走', position: previewRuntime.POSITION_BACK } }));
     }
     const committedEquipmentPassiveTriggers = new Set();
     equipmentPassiveTriggerRows.forEach(row => {
@@ -14782,6 +14790,9 @@
       return false;
     }
     if (!previewRuntime.isBattleCapable(unit)) return false;
+    // 被压满（用户 11-24 选「被压满就应对不了」）：自上次主动行动以来接招占掉的时间已满一次行动（pressedBudget 为 0），来不及再应对、反击、
+    // 援护——下一下只能硬吃，出手的人按「对方无法应对才能连续」接着连续出手（节奏转移给压的一方）。默认关，PRESS_OUT_ON 开（用户 11-24：被压的人照样能接）。
+    if (normalizeActionRole(actionRole) !== 'ACTIVE' && previewRuntime.isPressedOut?.(unit)) return false;
     return !Object.values(unit?.状态效果 || {}).some(state => structuredControlPreventsOpportunity(state, actionRole));
   }
 
@@ -18364,16 +18375,22 @@
         };
         // 围攻与压制（用户 11-23，BattlePreview besiegeFactor / pressTime / pressedBudget）：应对一次敌方来袭，记下攻击者并占用自己下一次
         // 主动行动的时间；反击另加它自己的前摇（addPressTime）。自己主动行动时清空（见主动机会开头）。
-        const recordPressure = (reactor, attacker, declaration) => {
+        // timed false：只记来袭者（围攻），不占时间——接招方式定下来之后再记占用（硬吃不占，用户 11-24）。
+        const recordPressure = (reactor, attacker, declaration, timed = true, scale = 1) => {
           if (!reactor || !attacker || reactor === attacker || inferUnitSide(combatData, reactor) === inferUnitSide(combatData, attacker)) return;
           const before = reactor.__battleRuntime?.pressure, by = Array.isArray(before?.by) ? before.by : [], id = String(previewRuntime.unitId(attacker));
-          const used = Number(before?.used || 0) + Math.max(0, Number(previewRuntime.pressTime?.(attacker, declaration || {}, reactor)) || 0);
-          reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), pressure: { by: by.includes(id) ? by : [...by, id], used } };
+          const time = timed ? Math.max(0, Number(previewRuntime.pressTime?.(attacker, declaration || {}, reactor, combatData)) || 0) * Math.max(0, Number(scale) || 0) : 0, used = Number(before?.used || 0) + time;
+          // from：每个攻击者占掉的时间（节奏转移按它找压得最多的人）。
+          const from = { ...(before?.from || {}) }; from[id] = (Number(from[id]) || 0) + time;
+          reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), pressure: { by: by.includes(id) ? by : [...by, id], used, from, recent: timed ? Number(before?.recent || 0) + time : 0 } };
         };
-        const addPressTime = (unit, time) => {
+        // 自己出手花的时间（反击、接招出手）记在逼它出手的那个攻击者名下（sourceId；没有时记给最近一个来袭者）。
+        const addPressTime = (unit, time, sourceId = '') => {
           if (!unit || !(Number(time) > 0)) return;
-          const before = unit.__battleRuntime?.pressure;
-          unit.__battleRuntime = { ...(unit.__battleRuntime || {}), pressure: { by: Array.isArray(before?.by) ? before.by : [], used: Number(before?.used || 0) + Number(time) } };
+          const before = unit.__battleRuntime?.pressure, by = Array.isArray(before?.by) ? before.by : [];
+          const from = { ...(before?.from || {}) }, id = String(sourceId || by[by.length - 1] || '');
+          if (id) from[id] = (Number(from[id]) || 0) + Number(time);
+          unit.__battleRuntime = { ...(unit.__battleRuntime || {}), pressure: { by, used: Number(before?.used || 0) + Number(time), from, recent: Number(before?.recent || 0) + Number(time) } };
         };
         // 这次主动行动还剩的时间（压制：pressedTurn 只对它开头读出的那次自然主动机会算；蓄力往后的回合照满额）。
         const turnBudgetOf = (actor, node) => {
@@ -19318,6 +19335,37 @@
               });
               consumeAutonomousSummonWindow(actor, node);
               queue.recordTrace('CANCELLED', node, { reason: 'PRESSED' });
+              // 节奏转移（用户 11-24 选「归压他的人」）：被压得失去的这次主动行动归占它时间最多、还能行动的敌方压制者——立刻多一次主动行动
+              // （同连续行动，满额 40）。此前只是被压者丢掉行动、压的人什么也不多得，1v1 总出手变少、仗变长。PRESS_TRANSFER_OFF 回旧。
+              if (root.__LWCS_TUNE__?.PRESS_TRANSFER_OFF !== true) {
+                const from = pressure?.from && typeof pressure.from === 'object' ? pressure.from : {};
+                const presser = Object.entries(from).sort((a, b) => Number(b[1]) - Number(a[1])).map(([id]) => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, id)))
+                  .find(unit => unit && unit !== actor && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor) && structuredActorPhysicallyAlive(unit) &&
+                    structuredActorCanAct(unit, 'ACTIVE') && !unit.蓄力技能);
+                if (presser) {
+                  const presserId = String(previewRuntime.unitId(presser) || '');
+                  writeLedgerEvent(combatData, {
+                    eventKind: 'tempo_transfer', round: Number(combatData.回合 || 0),
+                    actorId: presserId, actorName: previewRuntime.unitName(presser), targetId: previewRuntime.unitId(actor) || '', targetName: previewRuntime.unitName(actor),
+                    actionName: '抢到节奏', actionType: 'extra_action', actorControl: String(presser?.__battleRuntime?.control || 'AI'), actionRole: 'ACTIVE',
+                    result: 'granted', resultState: 'SUCCESS', ruleCode: 'PRESS_TEMPO_TRANSFER',
+                    meta: { source: 'structured_shadow', lostGrantId: String(node.grantId || ''), pressedUsed: naturalActionBudget - budget, from },
+                  });
+                  queue.enqueue({
+                    actorEntry: { char: presser, side: inferUnitSide(combatData, presser) },
+                    actorControl: String(presser?.__battleRuntime?.control || 'AI'),
+                    actorTurnSequence: node.actorTurnSequence,
+                    parentActionSequence: node.parentActionSequence || node.actionSequence,
+                    phasePriority: 66,
+                    grantId: `tempo:${String(node.grantId || '')}`,
+                    nodeKind: 'CONTINUATION',
+                    actionRole: 'ACTIVE',
+                    sourceActionId: String(node.sourceActionId || '').trim(),
+                    grantType: 'EXTRA_ACTION',
+                    state: { continuationDepth: 1, windupUsed: 0, chainDepth: 0, tempoTransfer: true, immediateBudget: previewRuntime.CONTINUOUS_ACTION_BUDGET - 1e-6 },
+                  });
+                }
+              }
               continue;
             }
           }
@@ -19346,7 +19394,7 @@
               const reactionTargetId = String(node?.state?.targetId || actorId).trim();
               const summonGuard = node?.state?.summonGuard === true && !!actor?.召唤键;
               const sourceActorId = previewRuntime.unitId(sourceActor);
-              recordPressure(actor, sourceActor, shared.declaration);
+              recordPressure(actor, sourceActor, shared.declaration, root.__LWCS_TUNE__?.PRESS_THREAT_OFF === true);
               const preparedDefense = actor?.__battleRuntime?.activeDefenseStance || null;
               const sourceActionEvent = shared?.actionContext?.actionEvent;
               const sourceActionId = String(sourceActionEvent?.actionId || '').trim();
@@ -19428,13 +19476,24 @@
                   return !!unit && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor);
                 });
                 const answer = mode === 'CLASH' || mode === 'PREEMPT' ? mode : kind === 'DEFEND' && reactionDeclaration?.deflect === true ? 'DEFLECT'
-                  : kind === 'DEFEND' || kind === 'GUARD' ? 'DEFEND' : kind === 'EVADE' ? 'EVADE' : kind === 'RELEASE_SKILL' ? (hostileSkill ? 'TRADE' : 'GUARD_SKILL') : 'TAKE';
+                  : kind === 'DEFEND' || kind === 'GUARD' ? 'DEFEND' : kind === 'EVADE' ? 'EVADE' : kind === 'RELEASE_SKILL' ? (hostileSkill ? 'TRADE' : 'GUARD_SKILL') : kind === 'BASIC_ATTACK' && reactionDeclaration?.tradeBack === true ? 'TRADE' : 'TAKE';
                 const log = Array.isArray(actor.__battleRuntime?.answerLog) ? actor.__battleRuntime.answerLog : [];
                 if (!actor.__battleRuntime || typeof actor.__battleRuntime !== 'object') actor.__battleRuntime = {};
                 actor.__battleRuntime.answerLog = [...log, answer].slice(-8);
               }
               // 看穿来招：答的是一个照常来不及的魂技时记一笔（战报写「看穿来招，抢先出手」）。
               const answerWindupTaken = Math.max(0, Number(reactionDeclaration?.skill?.前摇 ?? reactionDeclaration?.skill?.cast_time ?? 0) || 0);
+              // 压制：接招时出手（对轰、换血、防御魂技、抢先控制——用技能或普攻去接）也花掉它自己的前摇，记进下一次主动行动的占用，同反击
+              // （用户 11-24 选「接招也算花时间」：原著 1v1 一方连着出手、对方只能接的段占 36%，AI 9%——用技能接完下一回合照样满额反打）。
+              // 防御、闪避前摇为 0 不变。REACT_PRESS_OFF 回旧。
+              if (reactionDeclaration && root.__LWCS_TUNE__?.REACT_PRESS_OFF !== true) addPressTime(actor, previewRuntime.actionWindup(actor, reactionDeclaration, { travel: false }), sourceActorId);
+              // 来招占的时间：接了按威胁占（BattlePreview pressTime）；硬吃（不防、不闪、不出手接，或硬吃还手）按 PRESS_TAKE_SHARE 占——
+              // 重击硬挨下来也会被打乱节奏（11-24：硬吃完全不占时，硬吃还手占应对 27%，原著攻击还手约 10%）。
+              if (root.__LWCS_TUNE__?.PRESS_THREAT_OFF !== true && reactionDeclaration) {
+                const answerKind = String(reactionDeclaration?.actionKind || '').trim().toUpperCase();
+                const answered = reactionDeclaration.tradeBack !== true && (['DEFEND', 'GUARD', 'EVADE', 'RELEASE_SKILL', 'BASIC_ATTACK', 'USE_ITEM'].includes(answerKind) || !!reactionDeclaration?.engagement);
+                recordPressure(actor, sourceActor, shared.declaration, true, answered ? 1 : previewRuntime.PRESS_TAKE_SHARE ?? 0.5);
+              }
               if (foresaw && String(reactionDeclaration?.actionKind || '').toUpperCase() === 'RELEASE_SKILL' && answerWindupTaken > plainBudget) {
                 writeMechanicEvent(combatData, { eventKind: 'foresee', actionName: '看穿来招', actionRole: 'REACTION', actorControl: String(actor?.__battleRuntime?.control || 'AI'),
                   actorId, actorName: previewRuntime.unitName(actor), targetId: String(sourceActorId), targetName: previewRuntime.unitName(sourceActor), targetIds: [String(sourceActorId)],
