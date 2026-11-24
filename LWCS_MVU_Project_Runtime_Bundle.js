@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:5f64c0f38e77377630d78e4f0e23f5c3f6d4513f4de1082cf5e96c34242877ef|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:c2560ba27e72ec5dc8f9d82ed76c2e52c1f9371e42865727528ae11a977064b6|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -5148,6 +5148,53 @@ function 读取装备超神器发挥比例_V1(物品 = {}, 角色 = null) {
   return 解析(角色);
 }
 
+// 魂导器出手 = 一个对应等级的标准角色放出同阶位魂技（用户 2026-11-24「带入自己的对应等级，按绝对值处理」）：魂导等级 N 对应
+// N×10 级，定装武器（枪、炮、炸弹、定装弹）N×10+9，10 级以上逐件单独定义（没写时按 N×10 兜底）。效果里按资源或属性算的
+// 百分比换成这一级标准值的绝对数，之后照现有技能规则结算；比例类效果（减伤、穿透、命中闪避修正、状态）保持比例，读施法方
+// 属性的地方按 __魂导器等级 取这一级的标准属性（BattlePreview driveRatio）。装配、被动、背包使用三个入口都走这里。
+function 读取魂导器对应等级_V1(魂导等级 = 0, 名称 = '') {
+  const 等级 = Math.max(1, Math.floor(Number(魂导等级) || 1));
+  return 等级 < 10 && /枪|炮|弹|定装/.test(String(名称 || '')) ? 等级 * 10 + 9 : 等级 * 10;
+}
+const 魂导器绝对值基准键_V1 = Object.freeze({
+  魂力: 'sp_max', 精神力: 'men_max', 体力: 'vit_max', 生命: 'vit_max',
+  力量: 'str', 防御: 'def', 敏捷: 'agi', 魂力上限: 'sp_max', 精神力上限: 'men_max', 体力上限: 'vit_max', 生命上限: 'vit_max',
+});
+function 换算魂导器效果_V1(效果列表 = [], 魂导等级 = 0, 名称 = '') {
+  if (!Array.isArray(效果列表) || !(Number(魂导等级) > 0)) return 效果列表;
+  const 默认等级 = 读取魂导器对应等级_V1(魂导等级, 名称);
+  const 读比例 = 值 => {
+    const 文本 = String(值 ?? '').trim(), 数 = Number.parseFloat(文本);
+    return /%$/.test(文本) && Number.isFinite(数) ? 数 / 100 : null;
+  };
+  const 绝对值 = (比例, 基准) => `${比例 < 0 ? '-' : '+'}${Math.round(Math.abs(比例) * Math.max(0, Number(基准) || 0))}`;
+  const 单项 = 列 => (Array.isArray(列) ? 列 : [列]).map(项 => String(项 || '').trim()).filter(Boolean);
+  return 效果列表.flatMap(效果 => {
+    if (!效果 || typeof 效果 !== 'object' || Array.isArray(效果)) return [效果];
+    const 原型 = String(效果.原型 || '').trim();
+    const 等级 = Number(效果.对应等级) > 0 ? Number(效果.对应等级) : 默认等级;
+    if (原型 === '伤害结算') return [Number(效果.对应等级) > 0 ? 效果 : { ...效果, 对应等级: 等级 }];
+    const 输出 = { ...效果, __魂导器等级: 等级 };
+    const 比例 = 读比例(效果.数值);
+    if (比例 === null) return [输出];
+    const 标准 = getBaseStats(等级) || {};
+    if (原型 === '资源变化' || (原型 === '资源锁定' && String(效果.锁定类型 || '').trim() === '资源池锁定')) {
+      const 资源 = 单项(效果.资源 || '魂力'), 键 = 魂导器绝对值基准键_V1[资源[0]];
+      if (资源.length !== 1 || !键) return [输出];
+      const 结果 = { ...输出, 数值: 绝对值(比例, 标准[键]) };
+      if (原型 === '资源锁定') delete 结果.对应等级; // 锁的是固定量，对应等级不再当目标等级门槛
+      return [结果];
+    }
+    if (原型 === '护盾变化' && String(效果.护盾模式 || '').trim() === '正向护盾') return [{ ...输出, 数值: 绝对值(比例, 标准.vit_max) }];
+    if (原型 === '属性修正') {
+      const 属性列表 = 单项(效果.属性);
+      if (!属性列表.length || 属性列表.some(属性 => !魂导器绝对值基准键_V1[属性])) return [输出];
+      return 属性列表.map(属性 => ({ ...输出, 属性, 数值: 绝对值(比例, 标准[魂导器绝对值基准键_V1[属性]]) }));
+    }
+    return [输出];
+  });
+}
+
 function 读取物品被动技能条目_V1(物品 = {}, 选项 = {}) {
   if (!物品 || typeof 物品 !== 'object' || Array.isArray(物品)) return [];
   const 超神器比例 = 读取装备超神器发挥比例_V1(物品, 选项?.角色);
@@ -5169,10 +5216,9 @@ function 读取物品被动技能条目_V1(物品 = {}, 选项 = {}) {
       // 该魂导等级的标准魂力消耗补上（与主动魂导器 BattleDecision soulToolSkillView 同一做法）。付费见 BattlePreview passiveSkillTriggerCosts。
       const 魂导等级 = Math.max(0, Math.min(9, Math.floor(Number(物品.魂导等级) || 0)));
       const 技能副本 = cloneJsonValue(技能, {});
-      // 威力是魂导器自己的（11-24）：没写对应等级的伤害按魂导等级补上（同 BattleDecision soulToolEquivalentLevel），伤害按这一级的标准属性出手。
+      // 魂导器按自己的对应等级、绝对值结算（换算魂导器效果_V1）。
       const 原始魂导等级 = Math.floor(Number(物品.魂导等级) || 0);
-      const 补对应等级 = 列表 => 原始魂导等级 > 0 ? 列表.map(效果 => 效果?.原型 === '伤害结算' && !(Number(效果.对应等级) > 0)
-        ? { ...效果, 对应等级: 原始魂导等级 < 10 && /枪|炮|定装/.test(String(选项.来源物品 || 物品.名称 || 物品.name || '')) ? 原始魂导等级 * 10 + 9 : 原始魂导等级 * 10 } : 效果) : 列表;
+      const 补对应等级 = 列表 => 换算魂导器效果_V1(列表, 原始魂导等级, 选项.来源物品 || 物品.名称 || 物品.name || '');
       if (魂导等级 > 0) {
         技能副本.__魂导等级 = 魂导等级;
         if (!技能副本.消耗 || String(技能副本.消耗).trim() === '无') 技能副本.消耗 = 构建魂技消耗文本_V1('纯耗魂力', 50, 魂导等级);
@@ -10767,6 +10813,8 @@ if (typeof globalThis !== 'undefined') {
   // v3 阶段 2-7：暴露 COST 真值表与评估函数给 mvu_logic_bridge / 检查器 / 生成器调用
   globalThis.__LWCS_SKILL_COST_HELPERS_V1__ = Object.freeze({
     构建魂技消耗文本_V1,
+    读取魂导器对应等级_V1,
+    换算魂导器效果_V1,
     SKILL_UNIT_COST_TABLE_V1,
     SKILL_STANDARD_COST_BY_TIER_V1,
     SKILL_STANDARD_CAST_TIME_V1,

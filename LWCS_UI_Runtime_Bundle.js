@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:cdfe0d345d0e6daacf7877a14d506f1c48b83f833c677a52cc3bbd9b638d7f9c|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:3415ac484ac6aaa91d3b47e9ef95b49f4eb125605a5e531b76ce313739ddf32e|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:fa93693e60a23a8f250b0039d0bf1e006244b586b89c0dcb327c581c8b50831f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:0227845591148346a9bcd1c3437a5eb9935eee6c654052ff7c8d3a7c672554a5|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:cdfe0d345d0e6daacf7877a14d506f1c48b83f833c677a52cc3bbd9b638d7f9c|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:138d5baf921836d2a339c56ca242953a958d3c796b850f6b790d884a3ce2d8fc|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a8c115780b77818466ab8d80c2593fee1513a1d816af728e0cacfec9e55aeea7|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -59466,8 +59466,8 @@ class ProfessionUIComponent {
 
     if (分类 === '远程武器') {
       const 等级 = Math.max(0, Math.floor(Number(魂导等级 || 0)));
-      // 魂导器默认对应 N×10 级，定装武器（枪、炮、定装弹）N×10+9（11-24）
-      const 对应等级 = 等级 > 0 ? Math.min(120, 等级 * 10 + (等级 < 10 && /枪|炮|定装/.test(targetName) ? 9 : 0)) : Math.min(99, 强度 * 20 + 19);
+      // 魂导器默认对应 N×10 级，定装武器（枪、炮、炸弹、定装弹）N×10+9（11-24，同 MVU 读取魂导器对应等级_V1）
+      const 对应等级 = 等级 > 0 ? Math.min(120, 等级 * 10 + (等级 < 10 && /枪|炮|弹|定装/.test(targetName) ? 9 : 0)) : Math.min(99, 强度 * 20 + 19);
       const 穿透 = 特性效果.防御穿透 ? 5 : 0;
       const 威力倍率 = Math.round((100 + 强度 * 45) * 质量倍率);
       输出.基础使用次数 = /弹|炸弹/.test(targetName) ? 1 : 10;
@@ -62003,7 +62003,10 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       if (gate > 0 && Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0) > gate) continue;
       for (const rule of rules) {
         if (String(rule?.锁定类型 || '').trim() === '资源池锁定' && Array.isArray(rule.资源) && rule.资源.some(name => skillCostResourceKey(name) === key)) {
-          ratio = Math.max(ratio, Number(rule.比例) || 0);
+          // 绝对量锁定（resourceLockRules）：锁住的是固定的量，手上的量变了比例跟着变。
+          ratio = Math.max(ratio, Number(rule.绝对量) > 0
+            ? Number(rule.绝对量) / Math.max(1, Number(readResource(unit, resource)) || 0)
+            : Number(rule.比例) || 0);
         }
       }
     }
@@ -72411,12 +72414,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     else setResource(unit, resource, value);
   }
 
-  function resourceLockRules(effect = {}) {
+  // 资源池锁定写纯数字（不带 %）= 锁住这个绝对量（用户 2026-11-24 批准；魂导器的百分比在 MVU 换算魂导器效果_V1 里换成
+  // 对应等级标准上限的绝对量）：比例按施加时目标手上的量折算，可花的部分按 绝对量 结算（resourcePoolLockRatio）。
+  function resourceLockRules(effect = {}, unit = null) {
     if (String(effect?.原型 || '').trim() !== '资源锁定') return [];
     const lockType = String(effect?.锁定类型 || '').trim();
     if (!['资源池锁定', '回复锁定', '转化锁定'].includes(lockType)) return [];
+    const resources = normalizedResourceKeys(effect?.资源 || '魂力').map(resourceLabel);
+    const raw = String(effect?.数值 ?? '').trim();
+    const amount = lockType === '资源池锁定' && raw && !raw.includes('%') ? Math.abs(parseSignedValue(raw, 1)) : 0;
+    if (amount > 0) {
+      const held = unit ? Math.max(1, Number(readResource(unit, resources[0])) || 0) : amount;
+      return [{ 资源: resources, 锁定类型: lockType, 比例: clamp(amount / held, 0, 1), 绝对量: amount }];
+    }
     return [{
-      资源: normalizedResourceKeys(effect?.资源 || '魂力').map(resourceLabel),
+      资源: resources,
       锁定类型: lockType,
       比例: clamp(Math.abs(parseSignedValue(effect?.数值, 1)), 0, 1),
     }];
@@ -72900,9 +72912,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function driveRatio(actor = null, target = null, effect = {}, selfOnly = false) {
     const key = DRIVE_ATTRIBUTE_KEYS[String(effect?.驱动属性 || '').trim()];
     if (!key || !actor || typeof actor !== 'object') return null;
-    const own = driveAttributeValue(actor, key);
+    // 魂导器的效果（MVU 换算魂导器效果_V1 记 __魂导器等级）：施法方属性取这一级的标准值，对自己的效果比的也是这一级。
+    const toolLevel = Number(effect?.__魂导器等级) > 0 ? Number(effect.__魂导器等级) : 0;
+    const own = toolLevel ? driveLevelValue({ 属性: { 等级: toolLevel } }, key) : driveAttributeValue(actor, key);
     const opposed = !selfOnly && target && typeof target === 'object' && unitId(target) !== unitId(actor) && statePolarity(effect) <= 0;
-    const other = opposed ? driveAttributeValue(target, key) : driveLevelValue(actor, key);
+    const other = opposed ? driveAttributeValue(target, key) : toolLevel ? own : driveLevelValue(actor, key);
     return own > 0 && other > 0 ? own / other : null;
   }
   function driveFactor(ratio, low, high) {
@@ -74063,7 +74077,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const ownIdentity = ownAttributeStateIdentity(unit, effect, source);
     const stackable = effect?.可叠加 === true || /叠加|层数/.test(String(effect?.叠加规则 || effect?.层数规则 || ''));
     const requestedDuration = Math.max(1, Number(effect?.持续回合 || 1));
-    const lockRules = resourceLockRules(effect);
+    const lockRules = resourceLockRules(effect, unit);
     const sourceSkill = String(effect?.来源技能 || '').trim();
     if (existingEntry && sameSkillStillActive(existingEntry[1], effect)) return false;
     if (existingEntry && !stackable && String(effect?.原型 || '').trim() !== '状态施加') {
@@ -101351,11 +101365,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
     .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '') + (/损毁/.test(String(item?.装备状态 || '')) ? `${slot}:损毁` : '')).filter(Boolean).join('|');
-  // 魂导等级 N 对标第 N 环，默认对应 N×10 级；定装武器（枪、炮、定装弹）按 N×10+9（用户 11-24「统一n*10，只有定装武器是
-  // n*10+9」「枪，炮都是定装武器」）。10 级以上逐件单独定义，没写时才按 N×10 兜底。
-  const soulToolEquivalentLevel = (tier, name = '') => {
-    const value = Math.max(1, Math.floor(Number(tier) || 1));
-    return value < 10 && /枪|炮|定装/.test(String(name || '')) ? value * 10 + 9 : value * 10;
+  // 魂导器按自己的对应等级、绝对值结算（MVU 换算魂导器效果_V1：对应等级、百分比换绝对值、__魂导器等级）。
+  const soulToolEffects = (effects, tier, name) => {
+    const convert = root.__LWCS_SKILL_COST_HELPERS_V1__?.换算魂导器效果_V1;
+    return typeof convert === 'function' && Array.isArray(effects) ? convert(effects, tier, name) : effects;
   };
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
@@ -101373,10 +101386,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        // 威力是魂导器自己的（11-24）：没写对应等级的伤害按魂导等级补上，伤害公式按这一级的标准属性出手（BattlePreview calculateDamageFormula）。
-        const effects = Array.isArray(skill._效果数组) && skill._效果数组.some(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0))
-          ? { _效果数组: skill._效果数组.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0) ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级, item.名称 || slot) } : effect) }
-          : {};
+        const effects = Array.isArray(skill._效果数组) ? { _效果数组: soulToolEffects(skill._效果数组, item.魂导等级, item.名称 || slot) } : {};
         return [name, { ...skill, ...effects, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));
@@ -104288,11 +104298,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       usableEffects = preview.inventoryUseEffects(actor, { actionKind: 'USE_ITEM', skill: item,
         irreversibleAsset: { assetId: entry.id } }, worldSnapshot, usableEffects);
       const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;
-      // 一次性魂导器（定装弹等，从背包使用）：没写对应等级的伤害同样按魂导等级补上（soulToolEquivalentLevel）。
-      if (Number(item?.魂导等级) > 0 && usableEffects.some(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0))) {
-        usableEffects = usableEffects.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0)
-          ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级, itemName) } : effect);
-      }
+      // 一次性魂导器（定装弹等，从背包使用）同样按自己的对应等级、绝对值结算。
+      if (Number(item?.魂导等级) > 0) usableEffects = soulToolEffects(usableEffects, item.魂导等级, itemName);
       const usableItem = {
         ...item,
         name: itemName,
