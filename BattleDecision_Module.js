@@ -4854,11 +4854,10 @@
   const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
     .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '') + (/损毁/.test(String(item?.装备状态 || '')) ? `${slot}:损毁` : '')).filter(Boolean).join('|');
-  // 魂导等级 N 对标第 N 环，默认对应 N×10 级；定装武器（枪、炮、定装弹）按 N×10+9（用户 11-24「统一n*10，只有定装武器是
-  // n*10+9」「枪，炮都是定装武器」）。10 级以上逐件单独定义，没写时才按 N×10 兜底。
-  const soulToolEquivalentLevel = (tier, name = '') => {
-    const value = Math.max(1, Math.floor(Number(tier) || 1));
-    return value < 10 && /枪|炮|定装/.test(String(name || '')) ? value * 10 + 9 : value * 10;
+  // 魂导器按自己的对应等级、绝对值结算（MVU 换算魂导器效果_V1：对应等级、百分比换绝对值、__魂导器等级）。
+  const soulToolEffects = (effects, tier, name) => {
+    const convert = root.__LWCS_SKILL_COST_HELPERS_V1__?.换算魂导器效果_V1;
+    return typeof convert === 'function' && Array.isArray(effects) ? convert(effects, tier, name) : effects;
   };
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
@@ -4876,10 +4875,7 @@
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        // 威力是魂导器自己的（11-24）：没写对应等级的伤害按魂导等级补上，伤害公式按这一级的标准属性出手（BattlePreview calculateDamageFormula）。
-        const effects = Array.isArray(skill._效果数组) && skill._效果数组.some(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0))
-          ? { _效果数组: skill._效果数组.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0) ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级, item.名称 || slot) } : effect) }
-          : {};
+        const effects = Array.isArray(skill._效果数组) ? { _效果数组: soulToolEffects(skill._效果数组, item.魂导等级, item.名称 || slot) } : {};
         return [name, { ...skill, ...effects, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));
@@ -7791,11 +7787,8 @@
       usableEffects = preview.inventoryUseEffects(actor, { actionKind: 'USE_ITEM', skill: item,
         irreversibleAsset: { assetId: entry.id } }, worldSnapshot, usableEffects);
       const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;
-      // 一次性魂导器（定装弹等，从背包使用）：没写对应等级的伤害同样按魂导等级补上（soulToolEquivalentLevel）。
-      if (Number(item?.魂导等级) > 0 && usableEffects.some(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0))) {
-        usableEffects = usableEffects.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0)
-          ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级, itemName) } : effect);
-      }
+      // 一次性魂导器（定装弹等，从背包使用）同样按自己的对应等级、绝对值结算。
+      if (Number(item?.魂导等级) > 0) usableEffects = soulToolEffects(usableEffects, item.魂导等级, itemName);
       const usableItem = {
         ...item,
         name: itemName,

@@ -584,7 +584,10 @@
       if (gate > 0 && Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0) > gate) continue;
       for (const rule of rules) {
         if (String(rule?.锁定类型 || '').trim() === '资源池锁定' && Array.isArray(rule.资源) && rule.资源.some(name => skillCostResourceKey(name) === key)) {
-          ratio = Math.max(ratio, Number(rule.比例) || 0);
+          // 绝对量锁定（resourceLockRules）：锁住的是固定的量，手上的量变了比例跟着变。
+          ratio = Math.max(ratio, Number(rule.绝对量) > 0
+            ? Number(rule.绝对量) / Math.max(1, Number(readResource(unit, resource)) || 0)
+            : Number(rule.比例) || 0);
         }
       }
     }
@@ -11004,12 +11007,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     else setResource(unit, resource, value);
   }
 
-  function resourceLockRules(effect = {}) {
+  // 资源池锁定写纯数字（不带 %）= 锁住这个绝对量（用户 2026-11-24 批准；魂导器的百分比在 MVU 换算魂导器效果_V1 里换成
+  // 对应等级标准上限的绝对量）：比例按施加时目标手上的量折算，可花的部分按 绝对量 结算（resourcePoolLockRatio）。
+  function resourceLockRules(effect = {}, unit = null) {
     if (String(effect?.原型 || '').trim() !== '资源锁定') return [];
     const lockType = String(effect?.锁定类型 || '').trim();
     if (!['资源池锁定', '回复锁定', '转化锁定'].includes(lockType)) return [];
+    const resources = normalizedResourceKeys(effect?.资源 || '魂力').map(resourceLabel);
+    const raw = String(effect?.数值 ?? '').trim();
+    const amount = lockType === '资源池锁定' && raw && !raw.includes('%') ? Math.abs(parseSignedValue(raw, 1)) : 0;
+    if (amount > 0) {
+      const held = unit ? Math.max(1, Number(readResource(unit, resources[0])) || 0) : amount;
+      return [{ 资源: resources, 锁定类型: lockType, 比例: clamp(amount / held, 0, 1), 绝对量: amount }];
+    }
     return [{
-      资源: normalizedResourceKeys(effect?.资源 || '魂力').map(resourceLabel),
+      资源: resources,
       锁定类型: lockType,
       比例: clamp(Math.abs(parseSignedValue(effect?.数值, 1)), 0, 1),
     }];
@@ -11493,9 +11505,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function driveRatio(actor = null, target = null, effect = {}, selfOnly = false) {
     const key = DRIVE_ATTRIBUTE_KEYS[String(effect?.驱动属性 || '').trim()];
     if (!key || !actor || typeof actor !== 'object') return null;
-    const own = driveAttributeValue(actor, key);
+    // 魂导器的效果（MVU 换算魂导器效果_V1 记 __魂导器等级）：施法方属性取这一级的标准值，对自己的效果比的也是这一级。
+    const toolLevel = Number(effect?.__魂导器等级) > 0 ? Number(effect.__魂导器等级) : 0;
+    const own = toolLevel ? driveLevelValue({ 属性: { 等级: toolLevel } }, key) : driveAttributeValue(actor, key);
     const opposed = !selfOnly && target && typeof target === 'object' && unitId(target) !== unitId(actor) && statePolarity(effect) <= 0;
-    const other = opposed ? driveAttributeValue(target, key) : driveLevelValue(actor, key);
+    const other = opposed ? driveAttributeValue(target, key) : toolLevel ? own : driveLevelValue(actor, key);
     return own > 0 && other > 0 ? own / other : null;
   }
   function driveFactor(ratio, low, high) {
@@ -12656,7 +12670,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const ownIdentity = ownAttributeStateIdentity(unit, effect, source);
     const stackable = effect?.可叠加 === true || /叠加|层数/.test(String(effect?.叠加规则 || effect?.层数规则 || ''));
     const requestedDuration = Math.max(1, Number(effect?.持续回合 || 1));
-    const lockRules = resourceLockRules(effect);
+    const lockRules = resourceLockRules(effect, unit);
     const sourceSkill = String(effect?.来源技能 || '').trim();
     if (existingEntry && sameSkillStillActive(existingEntry[1], effect)) return false;
     if (existingEntry && !stackable && String(effect?.原型 || '').trim() !== '状态施加') {
