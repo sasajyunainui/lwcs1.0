@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:caa8cde2f76c36e86b6e61e8d5af6113d3bba08bafe4d78d57375c68c7bce0e6|MVU_Schema_Runtime.js:9a07d792f32f50affc0bc95ba8219bc4736b872026523caff4b763b4cc027c03|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:ec4ff10731b8b437e5fac5bc749054922660694dbebb690b450b90185ace8161|MVU_Schema_Runtime.js:4a9cc935c5d3a1bc33763b7bf923656ff1be1699bccda0490e49e7364f9e7a76|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -4816,6 +4816,19 @@ globalThis.__LWCS_SKILL_TYPE_REGISTRY__ = Object.freeze(Object.keys(TypeMultipli
 // 系别倍率只此一份（用户 2026-11-24「技能设计器和临时战斗单位用的不该单独保留吧」）：mvu_logic_bridge 的技能设计台标准属性、临时战斗单位都从这里读，
 // 同 __LWCS_GET_BASE_STATS__ 挂到父窗口与顶层窗口。
 globalThis.__LWCS_GET_TYPE_MULTIPLIERS__ = () => TypeMultipliers;
+// 训练加成的系别系数（用户 2026-11-24「训练部分还是得有个系别加成……保持每个属性在全系别里最高的总量和现在差不多……防御系99级的防御和训练加成后的
+// 防御系99级防御要一致，只是其他系的防御会降」）：训练加成按 本系倍率 ÷ 各系该项最高倍率 计入（最高那一系不变，上限 1）；存档里的训练加成数值不动，
+// 在算最终属性时缩放。LWCS_TUNE {"TRAINING_TYPE_SCALE":false} 关回（训练加成各系相同）。
+var TrainingTypeScaleMax = Object.freeze(Object.fromEntries(['str', 'def', 'agi', 'vit_max', 'men_max']
+  .map(key => [key, Math.max(...Object.values(TypeMultipliers).map(entry => Number(entry?.[key]) || 0))])));
+// 坡度放缓（同日「系别很难锻炼自己的弱项。可以放缓一点坡度」）：(本系 ÷ 最高)^TRAINING_TYPE_SCALE_EXP，默认 0.5（敏攻训练防御 ×0.27 → ×0.52）。
+function 读取训练加成系别系数_V1(typeMult = {}, key = 'str') {
+  if (globalThis.__LWCS_TUNE__?.TRAINING_TYPE_SCALE === false) return 1;
+  const maximum = Number(TrainingTypeScaleMax[key]) || 1;
+  const slope = Math.max(0, Number(globalThis.__LWCS_TUNE__?.TRAINING_TYPE_SCALE_EXP ?? 0.5));
+  return Math.pow(Math.min(1, Math.max(0, Number(typeMult?.[key] ?? maximum) / maximum)), slope);
+}
+globalThis.__LWCS_TRAINING_TYPE_SCALE__ = 读取训练加成系别系数_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_GET_TYPE_MULTIPLIERS__ = globalThis.__LWCS_GET_TYPE_MULTIPLIERS__; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_GET_TYPE_MULTIPLIERS__ = globalThis.__LWCS_GET_TYPE_MULTIPLIERS__; } catch (错误) {}
 
@@ -38176,7 +38189,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 底子波动 = Math.max(0.1, Number(属性.底子波动 || 1));
       let 体力上限 =
         Math.floor(Number(基础属性.vit_max || 0) * Math.max(0.1, 系别倍率 || 1) * 底子波动) +
-        Math.max(0, Math.floor(Number(属性.训练加成?.体力上限 || 0)));
+        Math.max(0, Math.floor(Number(属性.训练加成?.体力上限 || 0) * 读取训练加成系别系数_V1({ vit_max: 系别倍率 || 1 }, 'vit_max')));
       const 血脉名 = String(角色数据?.血脉之力?.血脉 || '').trim();
       体力上限 = 应用龙王血脉力量体力加成_V1(体力上限, 角色数据);
       if (角色数据.社交?.势力?.['本体宗']) 体力上限 += Math.min(体力上限 * 2, 40000);
@@ -38601,7 +38614,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 底子波动 = Math.max(0.1, Number(属性.底子波动 || 1));
       let 精神力上限 = Math.floor(
         (Math.floor(Number(基础属性.men_max || 0) * Math.max(0.1, 系别倍率 || 1) * 底子波动) +
-          Math.max(0, Math.floor(Number(属性.训练加成?.精神力上限 || 0)))) *
+          Math.max(0, Math.floor(Number(属性.训练加成?.精神力上限 || 0) * 读取训练加成系别系数_V1({ men_max: 系别倍率 || 1 }, 'men_max')))) *
           读取高天赋精神倍率_V1(属性),
       );
       精神力上限 = 应用龙王血脉精神力加成_V1(精神力上限, 角色数据);
@@ -41573,11 +41586,13 @@ function 规范化角色Schema_V1(char) {
       + Number(char.装备.斗铠?.装备状态 === '已装备' ? char.装备.斗铠?._属性加成?.魂力上限 || 0 : 0)
       + Number(char.装备.机甲?.装备状态 === '已装备' ? char.装备.机甲?._属性加成?.魂力上限 || 0 : 0)
     ));
-    let final_str = Math.floor(base.str * typeMult.str * hiddenVar) + char.属性.训练加成.力量;
-    let final_def = Math.floor(base.def * typeMult.def * hiddenVar) + char.属性.训练加成.防御;
-    let final_agi = Math.floor(base.agi * typeMult.agi * hiddenVar) + char.属性.训练加成.敏捷;
-    let final_vit_max = Math.floor(base.vit_max * typeMult.vit_max * hiddenVar) + char.属性.训练加成.体力上限;
-    let final_men_max = Math.floor((Math.floor(base.men_max * typeMult.men_max * hiddenVar) + char.属性.训练加成.精神力上限) * 读取高天赋精神倍率_V1(char.属性));
+    // 训练加成按系别系数计入（读取训练加成系别系数_V1，MVU_Skill_Runtime）。
+    const 训练计入 = (key, value) => Math.floor(Number(value || 0) * 读取训练加成系别系数_V1(typeMult, key));
+    let final_str = Math.floor(base.str * typeMult.str * hiddenVar) + 训练计入('str', char.属性.训练加成.力量);
+    let final_def = Math.floor(base.def * typeMult.def * hiddenVar) + 训练计入('def', char.属性.训练加成.防御);
+    let final_agi = Math.floor(base.agi * typeMult.agi * hiddenVar) + 训练计入('agi', char.属性.训练加成.敏捷);
+    let final_vit_max = Math.floor(base.vit_max * typeMult.vit_max * hiddenVar) + 训练计入('vit_max', char.属性.训练加成.体力上限);
+    let final_men_max = Math.floor((Math.floor(base.men_max * typeMult.men_max * hiddenVar) + 训练计入('men_max', char.属性.训练加成.精神力上限)) * 读取高天赋精神倍率_V1(char.属性));
     let final_sp_max = Math.max(自然魂力上限, 既有魂力上限);
     let bName = char.血脉之力?.血脉 || '无';
 
