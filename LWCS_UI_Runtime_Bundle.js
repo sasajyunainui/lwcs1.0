@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:9608d78c1339e19a462e63d2a06d8b05ef46d0360d854bdfd66fe5206fb06ce2|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:64ecfffe99650f39282594422e09af5abdd24f76e7c9bad98810aac4c018af78|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a5cde7517f584a38fdcee92268e7c1827269444f756a9d967d7464b5c53f1154|BattleRuntime_Module.js:72d405dfac5738877532e64b806a43f68be60ee61ea02e447053a5c268abc02d|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:69cdbfd7e0a8bf8086c7b6c0cee2fa559537e6abe5faee53e0873b640600fb7c|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:64ecfffe99650f39282594422e09af5abdd24f76e7c9bad98810aac4c018af78|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a5cde7517f584a38fdcee92268e7c1827269444f756a9d967d7464b5c53f1154|BattleRuntime_Module.js:72d405dfac5738877532e64b806a43f68be60ee61ea02e447053a5c268abc02d|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -2658,6 +2658,36 @@
       ['功法', '情报', '自创魂技'].includes(toText(内容?.内容类型, '').trim()),
     );
     return (有使用效果 || 有可直接解锁内容) && !判断可装配魂导器_桥接(物品名, 物品数据);
+  }
+
+  // 冥想补给（密封奶瓶）：使用效果里「冥想补给」状态的数值 = 冥想时额外恢复的魂力；背包里没有就是 0
+  function 读取冥想补给量_桥接(rootData = {}, 物品名 = '', 背包状态 = null) {
+    if (!物品名 || !背包状态 || typeof 背包状态 !== 'object') return 0;
+    const 数量 = Array.isArray(背包状态.批次) ? 背包状态.批次.reduce((和, 批) => 和 + toNumber(批 && 批.数量, 0), 0) : toNumber(背包状态.数量, 0);
+    if (!(数量 >= 1)) return 0;
+    const 数据 = 合并物品定义与状态_桥接(rootData, 物品名, 背包状态);
+    const 效果 = (Array.isArray(数据 && 数据.使用效果) ? 数据.使用效果 : []).find(项 => 项 && 项.原型 === '状态施加' && toText(项.状态, '').trim() === '冥想补给');
+    return 效果 ? Math.max(0, toNumber(效果.数值, 0)) : 0;
+  }
+  function 列出冥想补给_桥接(rootData = {}, 背包 = {}) {
+    return Object.entries(背包 && typeof 背包 === 'object' ? 背包 : {})
+      .map(([名称, 状态]) => ({ name: 名称, amount: 读取冥想补给量_桥接(rootData, 名称, 状态),
+        count: Array.isArray(状态 && 状态.批次) ? 状态.批次.reduce((和, 批) => 和 + toNumber(批 && 批.数量, 0), 0) : toNumber(状态 && 状态.数量, 0) }))
+      .filter(项 => 项.amount > 0 && 项.count >= 1)
+      .sort((甲, 乙) => 甲.amount - 乙.amount);
+  }
+  // 背包条目扣一件（先扣第一个还有数量的批次）；扣完返回 null
+  function 扣减一件背包物品_桥接(背包状态 = null) {
+    if (!背包状态 || typeof 背包状态 !== 'object') return null;
+    const 下一 = cloneJsonValue(背包状态, {});
+    if (Array.isArray(下一.批次) && 下一.批次.length) {
+      const 批 = 下一.批次.find(项 => toNumber(项 && 项.数量, 0) >= 1);
+      if (批) 批.数量 = toNumber(批.数量, 0) - 1;
+      下一.批次 = 下一.批次.filter(项 => toNumber(项 && 项.数量, 0) > 0);
+      下一.数量 = 下一.批次.reduce((和, 项) => 和 + toNumber(项.数量, 0), 0);
+      if (!下一.批次.length) delete 下一.批次;
+    } else 下一.数量 = toNumber(下一.数量, 0) - 1;
+    return 下一.数量 > 0 ? 下一 : null;
   }
 
   function 构建魂导器装备技能_桥接(物品名 = '', 物品数据 = {}) {
@@ -24358,16 +24388,33 @@
         conditions.push({ label: '精神', current: Number(attributes.精神力) || 0, required, met: enough });
         if (!enough) return { error: { ...fail('精神不足以完成一轮训练，请先调息。'), conditions } };
       }
+      // 冥想带上奶瓶（用户 2026-11-24 选「手动」）：这段冥想额外恢复奶瓶的固定魂力，用掉一瓶（读取冥想补给量_桥接）。
+      const supplyName = String(options.supplyItem || '').trim();
+      let supply = null;
+      if (supplyName) {
+        if (action !== 'meditate') return { error: fail('奶瓶只能在冥想时使用。') };
+        const amount = 读取冥想补给量_桥接(current.root, supplyName, current.character.背包?.[supplyName]);
+        if (!(amount > 0)) return { error: fail(`背包里没有可用的【${supplyName}】。`) };
+        supply = { name: supplyName, amount };
+      }
       const key = `${current.contextKey}|${current.revision}`;
       if (key !== cacheContext) { previews.clear(); cacheContext = key; }
-      return { current, action, durationMinutes, trainingProject, actionMode, conditions, key: `${action}|${durationMinutes}|${action === 'train' ? trainingProject : ''}` };
+      return { current, action, durationMinutes, trainingProject, actionMode, conditions, supply, key: `${action}|${durationMinutes}|${action === 'train' ? trainingProject : ''}|${supply ? supply.name : ''}` };
     }
     function calculate(prepared) {
-      const { current, action, durationMinutes, actionMode, conditions } = prepared;
+      const { current, action, durationMinutes, actionMode, conditions, supply } = prepared;
       const startTick = Number(current.root.world?.时间?.tick) || 0;
       const settledRoot = ports.settle(current.root, current.charKey, startTick, startTick + durationMinutes / 10, actionMode);
       const after = settledRoot?.char?.[current.charKey];
       if (!after) throw new Error('本次行动没有返回角色结果。');
+      if (supply && after.属性 && typeof after.属性 === 'object') {
+        const maximum = Math.max(0, Number(after.属性.魂力上限) || 0);
+        after.属性.魂力 = Math.min(maximum, (Number(after.属性.魂力) || 0) + supply.amount);
+        if (after.背包 && typeof after.背包 === 'object') {
+          const next = 扣减一件背包物品_桥接(after.背包[supply.name]);
+          if (next) after.背包[supply.name] = next; else delete after.背包[supply.name];
+        }
+      }
       const beforeValues = ports.projectAttributes(current.character);
       const afterValues = ports.projectAttributes(after);
       const changes = beforeValues.flatMap(before => {
@@ -24399,10 +24446,16 @@
         const prepared = prepare({ ...options, contextKey });
         if (prepared.error) return { ok: false, settled: false, message: prepared.error.reason, preview: prepared.error };
         const { preview, settledRoot } = calculate(prepared);
-        const { current, durationMinutes, action, trainingProject } = prepared;
-        const actionLabel = action === 'train' ? `${trainingProject}训练` : labels[action];
+        const { current, durationMinutes, action, trainingProject, supply } = prepared;
+        const actionLabel = action === 'train' ? `${trainingProject}训练` : supply ? `${labels[action]}（饮用${supply.name}）` : labels[action];
         const systemText = `${String(settledRoot.sys?.系统播报 || '').replace(/^初始化$/, '')} ${current.charKey} 在【${current.location}】进行${actionLabel}，耗时 ${durationMinutes} 分钟。`.trim();
         const patchOps = ports.buildPatches(current.charKey, settledRoot, systemText);
+        // 背包不在日常写回字段里：用掉的奶瓶单独写回
+        if (supply) {
+          const next = settledRoot.char?.[current.charKey]?.背包?.[supply.name];
+          const path = `/char/${escapeJsonPointerValue(current.charKey)}/背包/${escapeJsonPointerValue(supply.name)}`;
+          patchOps.push(next ? { op: 'replace', path, value: cloneJsonValue(next, {}) } : { op: 'remove', path });
+        }
         const playerInput = `我在【${current.location}】进行 ${durationMinutes} 分钟${actionLabel}。`;
         const resultSummary = preview.changes.map(item => `${item.label} ${item.before} → ${item.after}`).join('；') || '当前数值无变化';
         const systemPrompt = `[日常行动]\n角色：${current.charKey}\n地点：${current.location}\n动作：${actionLabel}\n耗时：${durationMinutes} 分钟\n已结算结果：${resultSummary}\n本次行动已经由前端按正式规则结算，收益已写回，行动耗时仅用于本轮时间裁定。请承接行动过程、收获及后续剧情，不重复结算收益，不输出 JSON、变量维护指令或系统术语。`;
@@ -24929,6 +24982,7 @@
       action: 座舱日常动作键[参数.action] || toText(参数.action, 'rest'),
       durationMinutes: Math.max(10, Math.min(1440, Math.round(toNumber(参数.minutes, 60) / 10) * 10)),
       trainingProject: toText(参数.project, '力量'),
+      supplyItem: toText(参数.supply, ''),
     };
   }
   // 技能能否在场外施展：造物类走「日常施展」，含可写回效果的走「使用」；冷却中给出剩余时间（与旧界面技能卡同一判定）
@@ -24962,6 +25016,8 @@
     try {
       if (名称 === 'routine') return statusRoutineActions.previewRoutineAction(座舱日常动作参数(参数));
       if (名称 === 'routineNarration') return statusRoutineActions.pendingNarration(readStatusRoutineState().contextKey);
+      // 冥想可带的奶瓶：背包里使用效果含「冥想补给」的物品（列出冥想补给_桥接）
+      if (名称 === 'meditationSupplies') return 列出冥想补给_桥接(deepGet(liveSnapshot, 'rootData', {}) || {}, deepGet(liveSnapshot, ['activeChar', '背包'], {}) || {});
       // 背包物品能否直接使用 / 装备：与原项目背包按钮同一判定（解锁类秘籍可用、魂骨与魂导器可装备）
       if (名称 === 'itemCaps') {
         const 物品 = toText(参数.item, ''), 背包状态 = deepGet(liveSnapshot, ['activeChar', '背包', 物品], null);
@@ -50297,6 +50353,7 @@ ${播报文本}
           ${[['mug-hot', '休整', '静息调养'], ['bed', '睡眠', '安眠休养'], ['person-praying', '冥想', '凝神修行'], ['dumbbell', '训练', '锤炼身心']].map(([ic, t, s], i) => `<button class="opt ${i === 0 ? 'on' : ''}" type="button" data-pick aria-pressed="${i === 0}"><i class="fa-solid fa-${ic}"></i>${t}<small>${s}</small></button>`).join('')}
         </div>
         <div class="train-pick chips-row" data-pick-group hidden>${['力量', '防御', '敏捷', '体魄', '精神'].map((p, i) => `<button class="key-s${i ? '' : ' on'}" type="button" data-pick data-project="${p}" aria-pressed="${!i}">${p}</button>`).join('')}</div>
+        ${(list => list.length ? `<div class="supply-pick chips-row" data-pick-group hidden>${[{ name: '', label: '不用奶瓶' }, ...list.map(x => ({ name: x.name, label: `${x.name} ×${c.fmt(x.count)}`, hint: `冥想时额外恢复魂力 ${c.fmt(x.amount)}，用掉一瓶` }))].map((x, i) => `<button class="key-s${i ? '' : ' on'}" type="button" data-pick data-supply="${c.esc(x.name)}" aria-pressed="${!i}"${x.hint ? ` data-hint="${c.esc(x.hint)}"` : ''}>${c.esc(x.label)}</button>`).join('')}</div>` : '')(c.isPlayer ? window.COCKPIT.preview('meditationSupplies') || [] : [])}
         ${(m => `<div class="plan" data-dur-box>
           <div class="dur"><button type="button" data-dur="-10" aria-label="减少十分钟">−</button><output data-min="${m}"><input type="number" inputmode="numeric" data-dur-input min="10" max="1440" step="10" value="${m}" aria-label="行动时长（分钟）"><span>分钟</span></output><button type="button" data-dur="10" aria-label="增加十分钟">＋</button></div>
           <div class="plan-end"><i class="fa-regular fa-clock"></i><span>结束于</span><b data-dur-end>${endAt(c, m)}</b></div>
@@ -50642,17 +50699,23 @@ ${播报文本}
 
   // 日常行动：点下时先调原项目预演（克隆结算 + 差异），能行动就把变化写进确认条，确认后由原项目执行；不能行动直接给原因
   document.addEventListener('click', e => {
-    const opt = e.target.closest('.opts .opt'); if (opt) { const pick = opt.closest('.pad')?.querySelector('.train-pick'); if (pick) pick.hidden = !/训练/.test(opt.textContent); }
+    const opt = e.target.closest('.opts .opt'); if (opt) {
+      const pad = opt.closest('.pad'), pick = pad?.querySelector('.train-pick'), sup = pad?.querySelector('.supply-pick');
+      if (pick) pick.hidden = !/训练/.test(opt.textContent);
+      if (sup) sup.hidden = !/冥想/.test(opt.textContent);
+    }
     const t = e.target.closest('[data-routine]'); if (!t) return;
     const box = t.closest('.pad'), action = box?.querySelector('.opt.on')?.childNodes[1]?.textContent?.trim() || '休整';
     const minutes = Number(box?.querySelector('[data-dur-box] output')?.dataset.min) || 60, project = box?.querySelector('.train-pick [data-pick].on')?.dataset.project || '力量';
-    const label = `${action}${action === '训练' ? '·' + project : ''} ${minutes} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), minutes)}`;
+    // 冥想可带一瓶奶瓶（冥想补给），选「不用奶瓶」时为空
+    const supply = action === '冥想' ? box?.querySelector('.supply-pick [data-pick].on')?.dataset.supply || '' : '';
+    const label = `${action}${action === '训练' ? '·' + project : ''}${supply ? '·饮用' + supply : ''} ${minutes} 分钟，结束于 ${window.COCKPIT.endAt(window.COCKPIT.ctx(), minutes)}`;
     delete t.dataset.blocked;
-    const p = window.COCKPIT.preview('routine', { action, minutes, project });
+    const p = window.COCKPIT.preview('routine', { action, minutes, project, supply });
     if (p && p.allowed === false) { t.dataset.blocked = p.reason || '当前不能进行这项行动'; delete t.dataset.confirm; delete t.dataset.act; return; }
     const changes = (p?.changes || []).map(x => `${x.label} ${x.before} → ${x.after}`).join('，');
     t.dataset.confirm = changes ? `${label}；${changes}` : label;
-    t.dataset.act = JSON.stringify({ name: 'routine', action, minutes, project });
+    t.dataset.act = JSON.stringify({ name: 'routine', action, minutes, project, supply });
   }, true);
 
   // 私密档案：不在任何导航里，只由长按角色名经桥接复核后路由进来；数据为 null（规则不满足）时页面不存在，退回总览。
