@@ -7784,6 +7784,9 @@
         ? item._效果数组
         : Array.isArray(item?.使用效果) ? item.使用效果 : [];
       if (!usableEffects.length || !preview.inventoryItemAvailable(item, worldSnapshot, actor)) return;
+      // 带冥想的物品（密封奶瓶：喝下即坐下冥想）和冥想动作同一个条件：缺魂力或精神力、此刻能安全坐下（meditationOptions）。
+      if (usableEffects.some(effect => effect?.原型 === '状态施加' && String(effect?.状态 || '').trim() === '冥想') &&
+        !preview.meditationOptions(actor, worldSnapshot).length) return;
       usableEffects = preview.inventoryUseEffects(actor, { actionKind: 'USE_ITEM', skill: item,
         irreversibleAsset: { assetId: entry.id } }, worldSnapshot, usableEffects);
       const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;

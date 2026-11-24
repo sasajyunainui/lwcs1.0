@@ -19304,16 +19304,18 @@
             const meditation = actor.状态效果[previewRuntime.MEDITATION_KEY], owed = meditation.__冥想回复;
             if (owed && meditation.__冥想中断 !== true) {
               const pools = [['sp', '魂力', 1], ['men', '精神力', Number(owed.精神力上限比) || 1]];
+              // 冥想补给（密封奶瓶）：额外恢复的固定魂力（BattlePreview meditationSupplyAmount）。
+              const supply = { 魂力: Number(previewRuntime.meditationSupplyAmount?.(actor)) || 0 };
               for (const [key, name, ceiling] of pools) {
                 const maximum = Math.max(0, Number(previewRuntime.readResourceMax(actor, name)) || 0), now = Number(previewRuntime.readResource(actor, name)) || 0;
-                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0)));
+                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0) + (supply[name] || 0)));
                 if (target > now) {
                   writeCombatResource(actor, key, target);
                   writeRoundEndResourceEvent(combatData, actor, '冥想', key, target - now, { reasonCode: 'MEDITATION_RECOVERY', operation: 'RESTORE' });
                 }
               }
             }
-            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; }
+            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; previewRuntime.dropMeditationSupply?.(actor); }
           }
           // 压制（用户 11-23「1v1 也可以全场压制得对方难有主动出手机会」）：主动机会开始时读出被占用的时间并清空围攻记录（pressedTurn 记下这次
           // 行动只剩多少，蓄力、施法与连续行动按它算）；剩下的不够一记普攻就失去这次行动——被压着打，没有出手机会。

@@ -9842,9 +9842,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return true;
   }
   // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
+  // 冥想补给（密封奶瓶，用户 2026-11-24「不是直接回复魂力，而是增加冥想效果」选甲）：喝下奶瓶即坐下冥想，同时记一个「冥想补给」
+  // 状态，数值是额外恢复的固定魂力；冥想撑到下次行动时加进恢复（BattleRuntime），被打断就作废。
+  const MEDITATION_SUPPLY_STATE = '冥想补给';
+  const isMeditationSupply = state => String(state?.状态 || state?.状态名称 || '').trim() === MEDITATION_SUPPLY_STATE;
+  function meditationSupplyAmount(unit = {}) {
+    return Object.values(unit?.状态效果 || {}).reduce((sum, state) => isMeditationSupply(state) ? sum + Math.max(0, parseSignedValue(state?.数值, 0)) : sum, 0);
+  }
+  function dropMeditationSupply(unit = {}) {
+    if (!Object.values(unit?.状态效果 || {}).some(isMeditationSupply)) return;
+    unit.状态效果 = Object.fromEntries(Object.entries(unit.状态效果).filter(([, state]) => !isMeditationSupply(state)));
+  }
   function interruptMeditation(unit = {}) {
     const state = unit?.状态效果?.[MEDITATION_KEY];
     if (!state || state.__冥想中断 === true) return false;
+    dropMeditationSupply(unit);
     const effects = state.战斗效果 || {};
     if (state.__冥想回复) {
       // 撑到下次行动的冥想：被攻击就打断，什么也不回，又能应对。
@@ -27063,7 +27075,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     feintRecord,
     feintShown,
     meditating,
-    beginMeditation,
+    beginMeditation, meditationSupplyAmount, dropMeditationSupply,
     interruptMeditation,
     naturalRecoveryRatios,
     spiritReleasedMarker,
