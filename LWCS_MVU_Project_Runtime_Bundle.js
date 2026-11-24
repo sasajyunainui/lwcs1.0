@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:85d91b07f5dc649d37ae42c0ad10afe7c13a2fd7f151c4d14a0726292eaa4efd|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:dc128310e3ca0322af3f511f747486883d3165d9648804a4256783d74a7cc92c|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -5169,15 +5169,20 @@ function 读取物品被动技能条目_V1(物品 = {}, 选项 = {}) {
       // 该魂导等级的标准魂力消耗补上（与主动魂导器 BattleDecision soulToolSkillView 同一做法）。付费见 BattlePreview passiveSkillTriggerCosts。
       const 魂导等级 = Math.max(0, Math.min(9, Math.floor(Number(物品.魂导等级) || 0)));
       const 技能副本 = cloneJsonValue(技能, {});
+      // 威力是魂导器自己的（11-24）：没写对应等级的伤害按魂导等级补上（同 BattleDecision soulToolEquivalentLevel），伤害按这一级的标准属性出手。
+      const 原始魂导等级 = Math.floor(Number(物品.魂导等级) || 0);
+      const 补对应等级 = 列表 => 原始魂导等级 > 0 ? 列表.map(效果 => 效果?.原型 === '伤害结算' && !(Number(效果.对应等级) > 0)
+        ? { ...效果, 对应等级: 原始魂导等级 >= 10 ? 原始魂导等级 * 10 : 原始魂导等级 * 10 + 9 } : 效果) : 列表;
       if (魂导等级 > 0) {
         技能副本.__魂导等级 = 魂导等级;
         if (!技能副本.消耗 || String(技能副本.消耗).trim() === '无') 技能副本.消耗 = 构建魂技消耗文本_V1('纯耗魂力', 50, 魂导等级);
+        if (Array.isArray(技能副本._效果数组)) 技能副本._效果数组 = 补对应等级(技能副本._效果数组);
       }
       条目.push({
         字段: 字段名,
         技能名: String(技能名 || 技能.魂技名 || '被动技能').trim() || '被动技能',
         技能: 技能副本,
-        效果数组: 超神器比例 !== null && 超神器比例 < 1 ? 缩放技能效果数组_V1(效果数组, 超神器比例) : cloneJsonValue(效果数组, []),
+        效果数组: 补对应等级(超神器比例 !== null && 超神器比例 < 1 ? 缩放技能效果数组_V1(效果数组, 超神器比例) : cloneJsonValue(效果数组, [])),
         来源物品: String(选项.来源物品 || 物品.名称 || 物品.name || 物品.物品名 || '').trim(),
         来源槽位: String(选项.来源槽位 || '').trim(),
       });

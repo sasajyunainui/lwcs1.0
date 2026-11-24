@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:1f6530774b4807589ab0011e5702ab10588bdae3fe4e86a13027f0d66934a9f7|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:2ea4a890c73d2cfb88289a84f5312c3fa80d9688fc614e852e977176c85df4c6|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:fa93693e60a23a8f250b0039d0bf1e006244b586b89c0dcb327c581c8b50831f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:016c430f93613c7ebd048642a6272b4e62666820fc1d715557ef705affa7db9e|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -13761,11 +13761,19 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     );
     const attackKey = damageClass === 'MENTAL' ? 'men' : 'str';
     const defenseKey = damageClass === 'MENTAL' ? 'men' : 'def';
-    const panelAttack = Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
-      ? Number(actorProfile.stats[attackKey])
-      : readCombatStat(actor, attackKey);
+    // 物品自身等级（对应等级，用户 2026-11-24「不看使用者自己的力量，而是魂导器本身就有这样的威力」）：带对应等级的伤害（魂导器等物品）
+    // 按该等级的标准属性出手——攻击、远程魂力、魂力驱动、等级差都换成这一级的标准值；命中闪避等仍是使用者自己的（不在这里）。
+    const itemLevel = Number(effect?.对应等级) > 0 && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? Number(effect.对应等级) : 0;
+    const itemBase = itemLevel > 0 ? root.__LWCS_GET_BASE_STATS__(itemLevel) : null;
+    const attacker = itemBase ? { 属性: { 等级: itemLevel } } : actor;
+    const panelAttack = itemBase
+      ? Number(itemBase[damageClass === 'MENTAL' ? 'men_max' : 'str']) || 0
+      : Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
+        ? Number(actorProfile.stats[attackKey])
+        : readCombatStat(actor, attackKey);
     const attack = damageClass === 'RANGED'
-      ? rangedAttackStat(actor, panelAttack, Number.isFinite(Number(actorProfile?.resourceMax?.魂力)) ? Number(actorProfile.resourceMax.魂力) : readResourceMax(actor, '魂力'))
+      ? rangedAttackStat(attacker, panelAttack, itemBase ? Number(itemBase.sp_max) || 0
+        : Number.isFinite(Number(actorProfile?.resourceMax?.魂力)) ? Number(actorProfile.resourceMax.魂力) : readResourceMax(actor, '魂力'))
       : panelAttack;
     const rawDefense = Math.max(
       1,
@@ -13790,9 +13798,11 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)));
     const powerRatio = power <= 100 ? power / 100 : Math.pow(power / 100, 0.25);
     const resourceName = damageClass === 'MENTAL' ? '精神力' : '魂力';
-    const actorResourceMax = Number.isFinite(Number(actorProfile?.resourceMax?.[resourceName]))
-      ? Number(actorProfile.resourceMax[resourceName])
-      : readResourceMax(actor, resourceName);
+    const actorResourceMax = itemBase
+      ? Number(itemBase[damageClass === 'MENTAL' ? 'men_max' : 'sp_max']) || 1
+      : Number.isFinite(Number(actorProfile?.resourceMax?.[resourceName]))
+        ? Number(actorProfile.resourceMax[resourceName])
+        : readResourceMax(actor, resourceName);
     const targetResourceMax = Number.isFinite(Number(targetProfile?.resourceMax?.[resourceName]))
       ? Number(targetProfile.resourceMax[resourceName])
       : readResourceMax(target, resourceName);
@@ -13811,7 +13821,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     } else if (damageClass === 'TRUE') {
       total = attack * powerRatio * 0.4;
     } else {
-      const effectiveAttack = attack * Math.pow(levelScaleRatio(actor, target, damageClass), DAMAGE_GAP_EXPONENT - 1);
+      const effectiveAttack = attack * Math.pow(levelScaleRatio(attacker, target, damageClass), DAMAGE_GAP_EXPONENT - 1);
       const gap = effectiveAttack / Math.max(1, defense);
       const mitigation = gap / (gap + 1);
       total = effectiveAttack * powerRatio * mitigation * 0.4 * resourceDrive;
@@ -46655,6 +46665,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
     .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '') + (/损毁/.test(String(item?.装备状态 || '')) ? `${slot}:损毁` : '')).filter(Boolean).join('|');
+  // 魂导等级 N 对标第 N 环：1～9 级按 N×10+9（与物品库、工坊产物同口径），10 级以上按 N×10。
+  const soulToolEquivalentLevel = tier => {
+    const value = Math.max(1, Math.floor(Number(tier) || 1));
+    return value >= 10 ? value * 10 : value * 10 + 9;
+  };
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
     if (!fitted || typeof fitted !== 'object') return equipment;
@@ -46671,7 +46686,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        return [name, { ...skill, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
+        // 威力是魂导器自己的（11-24）：没写对应等级的伤害按魂导等级补上，伤害公式按这一级的标准属性出手（BattlePreview calculateDamageFormula）。
+        const effects = Array.isArray(skill._效果数组) && skill._效果数组.some(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0))
+          ? { _效果数组: skill._效果数组.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0) ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级) } : effect) }
+          : {};
+        return [name, { ...skill, ...effects, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));
       return [slot, { ...item, 装备技能: skills }];
