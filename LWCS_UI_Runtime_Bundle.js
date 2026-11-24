@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:3f6c3ffffe0c80496f0d2996689265f63041db2aa7ab5d4e77f0c31d44462a0a|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:2efa2da06c8436cc16bd743c7d3d70bb7368d175ca7762f7fb8e263805c86334|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -98619,6 +98619,35 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return low[name] + (high[name] - low[name]) * t;
   }
 
+  // 按系别的典型属性（BELIEF_SYSTEM_CALIB，11-25 信息模型偏差 A）：生成器在各等级、各系别生成角色，取推演口径的真值 ÷ 基础表的中位数
+  // （str/def/agi 为面板基础值 ÷ 三项几何平均，其余 ÷ 基础表对应项；scratchpad belief-calib-sys.mjs，生成规则变了就重跑）。旧表全系共用一组比例、
+  // 系别形状只分四类，且是训练按系别缩放（3556f43）之前校准的：没交过手的对手各项高估 1.2～1.4 倍，精神/元素/敏攻系的防御高估 2.1～2.6 倍。
+  // 列顺序 [str, def, agi, men_max, sp_max, hp_max, vit_max]。LWCS_TUNE {"BELIEF_SYSTEM_CALIB":false} 回旧表。
+  const TYPICAL_SYSTEM_STAT_KEYS = Object.freeze(["str","def","agi","men_max","sp_max","hp_max","vit_max"]);
+  const TYPICAL_SYSTEM_STAT_BY_LEVEL = Object.freeze([
+    [5, {强攻系: [1.263, 1.263, 0.627, 1, 1, 1, 1], 敏攻系: [1.005, 0.498, 0.996, 1, 1, 0.796, 0.796], 防御系: [1.134, 1.89, 0.433, 1, 1, 1, 1], 控制系: [1.134, 1.005, 0.682, 1.188, 1, 0.898, 0.898], 元素系: [1.005, 0.433, 0.498, 1.5, 1, 0.693, 0.693], 精神系: [0.876, 0.396, 0.498, 1.688, 1, 0.693, 0.693], 辅助系: [0.876, 0.277, 0.369, 1.188, 1, 0.693, 0.693], 治疗系: [0.876, 0.277, 0.369, 1.188, 1, 0.693, 0.693], 召唤系: [1.005, 1.005, 0.498, 1.313, 1, 0.796, 0.796], 食物系: [0.876, 0.277, 0.369, 1.188, 1, 0.693, 0.693]}],
+    [10, {强攻系: [1.26, 1.26, 0.63, 1, 1, 1, 1], 敏攻系: [1.005, 0.502, 1.005, 1, 1, 0.797, 0.797], 防御系: [1.132, 1.89, 0.438, 1, 1, 1, 1], 控制系: [1.132, 1.005, 0.69, 1.185, 1, 0.899, 0.899], 元素系: [1.005, 0.438, 0.502, 1.481, 1, 0.699, 0.699], 精神系: [0.881, 0.4, 0.502, 1.667, 1, 0.699, 0.699], 辅助系: [0.881, 0.277, 0.375, 1.185, 1, 0.699, 0.699], 治疗系: [0.881, 0.277, 0.375, 1.185, 1, 0.699, 0.699], 召唤系: [1.005, 1.005, 0.502, 1.333, 1, 0.797, 0.797], 食物系: [0.881, 0.277, 0.375, 1.185, 1, 0.699, 0.699]}],
+    [20, {强攻系: [1.291, 1.285, 0.64, 1, 1, 1.024, 1.024], 敏攻系: [1.034, 0.518, 1.02, 1, 1, 0.821, 0.821], 防御系: [1.162, 1.921, 0.448, 1, 1, 1.024, 1.024], 控制系: [1.162, 1.028, 0.701, 1.2, 1, 0.922, 0.922], 元素系: [1.034, 0.454, 0.51, 1.5, 1, 0.719, 0.719], 精神系: [0.907, 0.415, 0.51, 1.7, 1, 0.719, 0.719], 辅助系: [0.907, 0.286, 0.385, 1.2, 1, 0.719, 0.719], 治疗系: [0.907, 0.286, 0.385, 1.2, 1, 0.719, 0.719], 召唤系: [1.034, 1.028, 0.51, 1.333, 1, 0.821, 0.821], 食物系: [0.907, 0.286, 0.385, 1.2, 1, 0.719, 0.719]}],
+    [30, {强攻系: [1.341, 1.32, 0.666, 1.131, 1, 1.064, 1.064], 敏攻系: [1.083, 0.548, 1.047, 1.131, 1, 0.86, 0.86], 防御系: [1.212, 1.956, 0.472, 1.131, 1, 1.064, 1.064], 控制系: [1.212, 1.066, 0.73, 1.353, 1, 0.962, 0.962], 元素系: [1.083, 0.482, 0.538, 1.681, 1, 0.756, 0.756], 精神系: [0.953, 0.443, 0.538, 1.903, 1, 0.756, 0.756], 辅助系: [0.953, 0.31, 0.408, 1.353, 1, 0.756, 0.756], 治疗系: [0.953, 0.31, 0.408, 1.353, 1, 0.756, 0.756], 召唤系: [1.083, 1.066, 0.538, 1.513, 1, 0.86, 0.86], 食物系: [0.953, 0.31, 0.408, 1.353, 1, 0.756, 0.756]}],
+    [40, {强攻系: [1.354, 1.336, 0.667, 1.153, 1, 1.075, 1.075], 敏攻系: [1.091, 0.554, 1.054, 1.153, 1, 0.866, 0.866], 防御系: [1.222, 1.984, 0.471, 1.153, 1, 1.075, 1.075], 控制系: [1.222, 1.076, 0.731, 1.375, 1, 0.97, 0.97], 元素系: [1.091, 0.488, 0.537, 1.708, 1, 0.763, 0.763], 精神系: [0.962, 0.449, 0.537, 1.928, 1, 0.763, 0.763], 辅助系: [0.962, 0.317, 0.406, 1.375, 1, 0.763, 0.763], 治疗系: [0.962, 0.317, 0.406, 1.375, 1, 0.763, 0.763], 召唤系: [1.091, 1.076, 0.537, 1.541, 1, 0.866, 0.866], 食物系: [0.962, 0.317, 0.406, 1.375, 1, 0.763, 0.763]}],
+    [50, {强攻系: [1.403, 1.369, 0.685, 1.232, 1.001, 1.113, 1.113], 敏攻系: [1.142, 0.587, 1.073, 1.232, 1.001, 0.907, 0.907], 防御系: [1.273, 2.018, 0.49, 1.232, 1.001, 1.113, 1.113], 控制系: [1.273, 1.109, 0.75, 1.468, 1.001, 1.01, 1.01], 元素系: [1.142, 0.52, 0.556, 1.817, 1.001, 0.802, 0.802], 精神系: [1.011, 0.479, 0.556, 2.051, 1.001, 0.802, 0.802], 辅助系: [1.011, 0.339, 0.425, 1.468, 1.001, 0.802, 0.802], 治疗系: [1.011, 0.339, 0.425, 1.468, 1.001, 0.802, 0.802], 召唤系: [1.142, 1.109, 0.556, 1.642, 1.001, 0.907, 0.907], 食物系: [1.011, 0.339, 0.425, 1.468, 1.001, 0.802, 0.802]}],
+    [60, {强攻系: [1.523, 1.473, 0.739, 1.457, 1, 1.209, 1.209], 敏攻系: [1.244, 0.645, 1.139, 1.457, 1, 0.987, 0.987], 防御系: [1.384, 2.142, 0.536, 1.457, 1, 1.209, 1.209], 控制系: [1.384, 1.202, 0.806, 1.724, 1, 1.098, 1.098], 元素系: [1.244, 0.574, 0.604, 2.124, 1, 0.876, 0.876], 精神系: [1.104, 0.531, 0.604, 2.39, 1, 0.876, 0.876], 辅助系: [1.104, 0.385, 0.466, 1.724, 1, 0.876, 0.876], 治疗系: [1.104, 0.385, 0.466, 1.724, 1, 0.876, 0.876], 召唤系: [1.244, 1.202, 0.604, 1.924, 1, 0.987, 0.987], 食物系: [1.104, 0.385, 0.466, 1.724, 1, 0.876, 0.876]}],
+    [70, {强攻系: [1.571, 1.516, 0.758, 1.497, 1, 1.247, 1.247], 敏攻系: [1.287, 0.67, 1.167, 1.497, 1, 1.022, 1.022], 防御系: [1.429, 2.197, 0.552, 1.497, 1, 1.247, 1.247], 控制系: [1.429, 1.237, 0.827, 1.768, 1, 1.135, 1.135], 元素系: [1.287, 0.598, 0.62, 2.174, 1, 0.908, 0.908], 精神系: [1.144, 0.555, 0.62, 2.442, 1, 0.908, 0.908], 辅助系: [1.144, 0.408, 0.483, 1.768, 1, 0.908, 0.908], 治疗系: [1.144, 0.408, 0.483, 1.768, 1, 0.908, 0.908], 召唤系: [1.287, 1.237, 0.62, 1.972, 1, 1.022, 1.022], 食物系: [1.144, 0.408, 0.483, 1.768, 1, 0.908, 0.908]}],
+    [80, {强攻系: [1.653, 1.578, 0.799, 2.45, 1, 1.312, 1.312], 敏攻系: [1.367, 0.722, 1.211, 2.45, 1, 1.085, 1.085], 防御系: [1.51, 2.265, 0.586, 2.45, 1, 1.312, 1.312], 控制系: [1.51, 1.298, 0.869, 2.882, 1, 1.199, 1.199], 元素系: [1.367, 0.647, 0.658, 3.52, 1, 0.969, 0.969], 精神系: [1.221, 0.602, 0.658, 3.943, 1, 0.969, 0.969], 辅助系: [1.221, 0.447, 0.514, 2.882, 1, 0.969, 0.969], 治疗系: [1.221, 0.447, 0.514, 2.882, 1, 0.969, 0.969], 召唤系: [1.367, 1.298, 0.658, 3.202, 1, 1.085, 1.085], 食物系: [1.221, 0.447, 0.514, 2.882, 1, 0.969, 0.969]}],
+    [90, {强攻系: [1.825, 1.732, 0.901, 2.637, 1, 1.448, 1.448], 敏攻系: [1.526, 0.84, 1.314, 2.637, 1, 1.211, 1.211], 防御系: [1.676, 2.439, 0.684, 2.637, 1, 1.448, 1.448], 控制系: [1.676, 1.442, 0.971, 3.095, 1, 1.33, 1.33], 元素系: [1.526, 0.761, 0.757, 3.775, 1, 1.09, 1.09], 精神系: [1.374, 0.714, 0.757, 4.223, 1, 1.09, 1.09], 辅助系: [1.374, 0.552, 0.607, 3.095, 1, 1.09, 1.09], 治疗系: [1.374, 0.552, 0.607, 3.095, 1, 1.09, 1.09], 召唤系: [1.526, 1.442, 0.757, 3.436, 1, 1.211, 1.211], 食物系: [1.374, 0.552, 0.607, 3.095, 1, 1.09, 1.09]}],
+    [95, {强攻系: [1.97, 1.839, 0.958, 4.904, 1, 1.553, 1.553], 敏攻系: [1.65, 0.916, 1.384, 4.904, 1, 1.3, 1.3], 防御系: [1.811, 2.587, 0.728, 4.904, 1, 1.553, 1.553], 控制系: [1.811, 1.532, 1.03, 5.735, 1, 1.427, 1.427], 元素系: [1.65, 0.835, 0.807, 6.962, 1, 1.175, 1.175], 精神系: [1.493, 0.785, 0.807, 7.771, 1, 1.175, 1.175], 辅助系: [1.493, 0.608, 0.649, 5.735, 1, 1.175, 1.175], 治疗系: [1.493, 0.608, 0.649, 5.735, 1, 1.175, 1.175], 召唤系: [1.65, 1.532, 0.807, 6.352, 1, 1.3, 1.3], 食物系: [1.493, 0.608, 0.649, 5.735, 1, 1.175, 1.175]}],
+    [99, {强攻系: [2.157, 1.993, 1, 6.73, 1, 1.712, 1.712], 敏攻系: [1.817, 0.986, 1.463, 6.73, 1, 1.442, 1.442], 防御系: [1.988, 2.787, 0.758, 6.73, 1, 1.712, 1.712], 控制系: [1.988, 1.67, 1.079, 7.79, 1, 1.578, 1.578], 元素系: [1.817, 0.895, 0.84, 9.344, 1, 1.303, 1.303], 精神系: [1.642, 0.839, 0.84, 10.36, 1, 1.303, 1.303], 辅助系: [1.642, 0.645, 0.675, 7.79, 1, 1.303, 1.303], 治疗系: [1.642, 0.645, 0.675, 7.79, 1, 1.303, 1.303], 召唤系: [1.817, 1.67, 0.84, 8.572, 1, 1.442, 1.442], 食物系: [1.642, 0.645, 0.675, 7.79, 1, 1.303, 1.303]}],
+    [105, {强攻系: [1.584, 1.474, 0.734, 6.914, 1, 1.76, 1.76], 敏攻系: [1.326, 0.709, 1.09, 6.914, 1, 1.48, 1.48], 防御系: [1.456, 2.072, 0.549, 6.914, 1, 1.76, 1.76], 控制系: [1.456, 1.227, 0.794, 7.992, 1, 1.621, 1.621], 元素系: [1.326, 0.64, 0.611, 9.569, 1, 1.336, 1.336], 精神系: [1.193, 0.598, 0.611, 10.6, 1, 1.336, 1.336], 辅助系: [1.193, 0.453, 0.485, 7.992, 1, 1.336, 1.336], 治疗系: [1.193, 0.453, 0.485, 7.992, 1, 1.336, 1.336], 召唤系: [1.326, 1.227, 0.611, 8.786, 1, 1.48, 1.48], 食物系: [1.193, 0.453, 0.485, 7.992, 1, 1.336, 1.336]}],
+  ]);
+  function typicalSystemStat(level = 1, system = '') {
+    const rows = TYPICAL_SYSTEM_STAT_BY_LEVEL, index = rows.findIndex(([at]) => at >= level);
+    const pick = row => row[system] || null;
+    const at = index < 0 ? rows.length - 1 : index;
+    const high = pick(rows[at][1]);
+    if (!high) return null;
+    const low = at > 0 && index > 0 ? pick(rows[at - 1][1]) : null, t = low ? (level - rows[at - 1][0]) / (rows[at][0] - rows[at - 1][0]) : 1;
+    return Object.fromEntries(TYPICAL_SYSTEM_STAT_KEYS.map((key, i) => [key, low ? low[i] + (high[i] - low[i]) * clamp(t, 0, 1) : high[i]]));
+  }
   function typicalStatRatio(level = 1) {
     const rows = TYPICAL_STAT_RATIO_BY_LEVEL, index = rows.findIndex(([at]) => at >= level);
     if (index <= 0) return rows[index < 0 ? rows.length - 1 : 0][1];
@@ -98633,21 +98662,22 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 取同等级、同系别典型角色的均值（游戏自己的生成器，tools/battle-analytics/typical-attack-calibration.mjs，生成规则或伤害
   // 公式变了就重跑；看不出系别用「全部」，召唤物按普攻）；己方单位按自己的魂技同口径计（knownRoutineAttackRatio），
   // 两边在同一尺度上。9 级以下没有魂环。
+  // 11-25 重跑（训练按系别缩放 3556f43、减伤曲线之后；tools/battle-analytics/typical-attack-calibration.mjs，每格 24 个）。
   const TYPICAL_ATTACK_RATIO_BY_LEVEL = Object.freeze([
     [9, {全部: 1}],
-    [10, {全部: 1.08, 强攻系: 1.22, 敏攻系: 1.21, 防御系: 1.19, 控制系: 1.08, 元素系: 1.14, 精神系: 1, 辅助系: 1, 治疗系: 1, 召唤系: 1, 食物系: 1}],
-    [20, {全部: 1.23, 强攻系: 1.74, 敏攻系: 1.55, 防御系: 1.17, 控制系: 1.09, 元素系: 1.58, 精神系: 1, 辅助系: 1, 治疗系: 1.15, 召唤系: 1.04, 食物系: 1}],
-    [30, {全部: 1.33, 强攻系: 2.17, 敏攻系: 1.97, 防御系: 1.49, 控制系: 1.14, 元素系: 1.44, 精神系: 1, 辅助系: 1, 治疗系: 1, 召唤系: 1.08, 食物系: 1}],
-    [40, {全部: 1.5, 强攻系: 2.58, 敏攻系: 2.17, 防御系: 1.77, 控制系: 1.49, 元素系: 1.59, 精神系: 1.26, 辅助系: 1.11, 治疗系: 1.05, 召唤系: 1, 食物系: 1}],
-    [50, {全部: 1.62, 强攻系: 2.59, 敏攻系: 2.68, 防御系: 1.91, 控制系: 1.53, 元素系: 1.84, 精神系: 1.28, 辅助系: 1.05, 治疗系: 1.29, 召唤系: 1.05, 食物系: 1}],
-    [60, {全部: 1.89, 强攻系: 3.17, 敏攻系: 3, 防御系: 2.73, 控制系: 1.76, 元素系: 2.77, 精神系: 1.26, 辅助系: 1, 治疗系: 1.24, 召唤系: 1, 食物系: 1}],
-    [70, {全部: 1.81, 强攻系: 3.03, 敏攻系: 2.73, 防御系: 2.43, 控制系: 1.53, 元素系: 3.11, 精神系: 1.14, 辅助系: 1, 治疗系: 1.1, 召唤系: 1.08, 食物系: 1}],
-    [80, {全部: 2.02, 强攻系: 3.79, 敏攻系: 3.13, 防御系: 2.68, 控制系: 1.59, 元素系: 3.2, 精神系: 1.21, 辅助系: 1.09, 治疗系: 1.44, 召唤系: 1.09, 食物系: 1}],
-    [90, {全部: 2.24, 强攻系: 4.15, 敏攻系: 3.76, 防御系: 2.74, 控制系: 1.93, 元素系: 3.03, 精神系: 2.57, 辅助系: 1, 治疗系: 1.19, 召唤系: 1, 食物系: 1}],
-    [95, {全部: 2.27, 强攻系: 3.67, 敏攻系: 4.01, 防御系: 2.84, 控制系: 1.87, 元素系: 2.87, 精神系: 2.63, 辅助系: 1, 治疗系: 1.59, 召唤系: 1.21, 食物系: 1}],
-    [98, {全部: 2.24, 强攻系: 3.89, 敏攻系: 3.33, 防御系: 1.99, 控制系: 1.84, 元素系: 3.93, 精神系: 2.51, 辅助系: 1.28, 治疗系: 1.42, 召唤系: 1.22, 食物系: 1}],
-    [100, {全部: 2.61, 强攻系: 4.65, 敏攻系: 4.29, 防御系: 2.32, 控制系: 2.1, 元素系: 3.98, 精神系: 2.79, 辅助系: 1, 治疗系: 2.25, 召唤系: 1.7, 食物系: 1}],
-    [110, {全部: 2.67, 强攻系: 4.82, 敏攻系: 4.25, 防御系: 3.48, 控制系: 1.54, 元素系: 4.81, 精神系: 2.43, 辅助系: 1.13, 治疗系: 2.04, 召唤系: 1.22, 食物系: 1}],
+    [10, {全部: 1, 强攻系: 1, 敏攻系: 1, 防御系: 1, 控制系: 1, 元素系: 1, 精神系: 1, 辅助系: 1, 治疗系: 1, 召唤系: 1, 食物系: 1}],
+    [20, {全部: 1.18, 强攻系: 1.72, 敏攻系: 1.27, 防御系: 1, 控制系: 1, 元素系: 1.7, 精神系: 1, 辅助系: 1, 治疗系: 1, 召唤系: 1.11, 食物系: 1}],
+    [30, {全部: 1.39, 强攻系: 2.25, 敏攻系: 1.73, 防御系: 1.27, 控制系: 1.16, 元素系: 1.55, 精神系: 1.17, 辅助系: 1.17, 治疗系: 1.23, 召唤系: 1.19, 食物系: 1.17}],
+    [40, {全部: 1.44, 强攻系: 2.3, 敏攻系: 1.82, 防御系: 1.24, 控制系: 1.22, 元素系: 1.99, 精神系: 1.16, 辅助系: 1.16, 治疗系: 1.23, 召唤系: 1.16, 食物系: 1.17}],
+    [50, {全部: 1.54, 强攻系: 2.77, 敏攻系: 2.03, 防御系: 1.61, 控制系: 1.35, 元素系: 1.69, 精神系: 1.22, 辅助系: 1.16, 治疗系: 1.21, 召唤系: 1.16, 食物系: 1.16}],
+    [60, {全部: 1.61, 强攻系: 2.95, 敏攻系: 2.08, 防御系: 1.57, 控制系: 1.52, 元素系: 2.22, 精神系: 1.06, 辅助系: 1.11, 治疗系: 1.33, 召唤系: 1.17, 食物系: 1.07}],
+    [70, {全部: 1.78, 强攻系: 3.22, 敏攻系: 2.79, 防御系: 1.59, 控制系: 1.29, 元素系: 2.36, 精神系: 1.13, 辅助系: 1.28, 治疗系: 1.57, 召唤系: 1.42, 食物系: 1.13}],
+    [80, {全部: 1.71, 强攻系: 3.38, 敏攻系: 2.69, 防御系: 1.47, 控制系: 1.17, 元素系: 2.45, 精神系: 1.06, 辅助系: 1.11, 治疗系: 1.35, 召唤系: 1.36, 食物系: 1.1}],
+    [90, {全部: 1.89, 强攻系: 3.91, 敏攻系: 2.7, 防御系: 2.23, 控制系: 1.25, 元素系: 2.25, 精神系: 1.46, 辅助系: 1.18, 治疗系: 1.51, 召唤系: 1.21, 食物系: 1.2}],
+    [95, {全部: 1.94, 强攻系: 4.11, 敏攻系: 2.91, 防御系: 2.33, 控制系: 1.54, 元素系: 2.05, 精神系: 1.59, 辅助系: 1.11, 治疗系: 1.51, 召唤系: 1.11, 食物系: 1.11}],
+    [98, {全部: 1.96, 强攻系: 4.06, 敏攻系: 3, 防御系: 2.09, 控制系: 1.29, 元素系: 2.41, 精神系: 1.18, 辅助系: 1.22, 治疗系: 1.81, 召唤系: 1.4, 食物系: 1.11}],
+    [100, {全部: 2.54, 强攻系: 5.46, 敏攻系: 4.01, 防御系: 2.01, 控制系: 2.28, 元素系: 4.32, 精神系: 1.78, 辅助系: 1.19, 治疗系: 1.82, 召唤系: 1.37, 食物系: 1.17}],
+    [110, {全部: 2.65, 强攻系: 5.51, 敏攻系: 4.12, 防御系: 3.46, 控制系: 2.14, 元素系: 3.91, 精神系: 1.64, 辅助系: 1, 治疗系: 2.39, 召唤系: 1.31, 食物系: 1}],
   ]);
   const TYPICAL_ATTACK_SYSTEMS = Object.freeze(['强攻', '敏攻', '防御', '控制', '元素', '精神', '辅助', '治疗', '召唤', '食物']);
 
@@ -99091,7 +99121,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const gauged = seen + (senses ? BELIEF_SENSE_EXCHANGES : 0), strengthClarity = fullClarity ? 1 : gauged / (gauged + BELIEF_EXCHANGE_PRIOR);
       const toward = (estimate, truth) => Number.isFinite(Number(truth)) ? estimate + (Number(truth) - estimate) * strengthClarity : estimate;
       const truePanel = key => preview.readCombatStatBreakdown(sourceUnit, key).base;
-      const perceivedLevel = toward(lower + (upper - lower) * (0.75 - 0.25 * confidence), unitLevel(sourceUnit));
+      // 估计等级（BELIEF_LEVEL_MEDIAN，11-25 A）：取等级区间的中位，不再按没把握往高处取（0.75 − 0.25 × 把握）——谨慎放在估值的试探溢价里
+      // （R20_PROBE_PREMIUM × 没看清的程度），不改预测本身。LWCS_TUNE {"BELIEF_LEVEL_MEDIAN":false} 回旧。
+      const perceivedLevel = toward(lower + (upper - lower) * (root.__LWCS_TUNE__?.BELIEF_LEVEL_MEDIAN === false ? 0.75 - 0.25 * confidence : 0.5), unitLevel(sourceUnit));
       if (typeof root.__LWCS_GET_BASE_STATS__ !== 'function') throw new Error('battle_decision_base_stats_unavailable');
       const baseStats = root.__LWCS_GET_BASE_STATS__(perceivedLevel);
       if (!baseStats || !['sp_max', 'men_max', 'vit_max', 'str', 'def', 'agi'].every(key => Number.isFinite(baseStats[key]) && baseStats[key] > 0)) {
@@ -99108,10 +99140,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const blend = (read, weights = systemBelief) => Object.entries(weights).reduce((sum, [name, weight]) => sum + weight * read(name), 0);
       // 看不出系别时威胁偏谨慎（用户 11-22 定「威胁按偏强的系别估」）：没有任何线索（武魂没开或外观对不上、没亮过招、没在蓄力、没有往场情报）时，
       // 力量与典型常规攻击只在会打伤害的系别里按信念平均（不混入辅助、治疗、食物、防御的低输出）；防御、敏捷仍按全体平均。有线索就照常按信念。
-      const threatBelief = publicUnitRole !== 'SUMMON' && !beliefHasEvidence(sourceUnit, beliefState, exposed) ? beliefThreatWeights(systemBelief) : systemBelief;
-      const systemScale = Object.fromEntries(['str', 'def', 'agi'].map(key => [key, blend(name => systemPanelScale(name)[key], key === 'str' ? threatBelief : systemBelief)]));
+      // 看不出系别时按偏强系别估（11-22）改为默认关（11-25 A：预测按信念如实混合，谨慎在估值里）；LWCS_TUNE {"BELIEF_THREAT_CAUTION":true} 回旧。
+      const threatBelief = root.__LWCS_TUNE__?.BELIEF_THREAT_CAUTION === true && publicUnitRole !== 'SUMMON' && !beliefHasEvidence(sourceUnit, beliefState, exposed) ? beliefThreatWeights(systemBelief) : systemBelief;
+      const systemCalib = root.__LWCS_TUNE__?.BELIEF_SYSTEM_CALIB !== false && Object.keys(systemBelief).every(name => typicalSystemStat(perceivedLevel, name));
+      const systemScale = systemCalib ? { str: 1, def: 1, agi: 1 } : Object.fromEntries(['str', 'def', 'agi'].map(key => [key, blend(name => systemPanelScale(name)[key], key === 'str' ? threatBelief : systemBelief)]));
       const typicalAttack = blend(name => typicalAttackRatio(perceivedLevel, name), threatBelief);
-      const typical = typicalStatRatio(perceivedLevel);
+      const typical = systemCalib ? Object.fromEntries(TYPICAL_SYSTEM_STAT_KEYS.map(key => [key, blend(name => typicalSystemStat(perceivedLevel, name)[key], key === 'str' ? threatBelief : systemBelief)])) : typicalStatRatio(perceivedLevel);
       const hpMax = toward(baseStats.vit_max * typical.hp_max, preview.readHpMax(sourceUnit));
       const hp = hpMax * clamp(beliefUnit.hpRatio ?? 1, 0, 1);
       const resourceRatios = beliefUnit.resources || {};
@@ -99158,7 +99192,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           : {}),
       }]));
       // 接战链 阶段 2e/2f: the agility pictured, and the bounds settled clashes and preemptions put on it.
-      const pictureAgility = toward(combatBase * systemScale.agi * typical.agi * blend(name => systemAgilityCorrection(perceivedLevel, name)), truePanel('agi'));
+      const pictureAgility = toward(combatBase * systemScale.agi * typical.agi * (systemCalib ? 1 : blend(name => systemAgilityCorrection(perceivedLevel, name))), truePanel('agi'));
       const boundLow = Number(beliefState?.agilityBounds?.[id]?.lo) || 0, boundHigh = Number(beliefState?.agilityBounds?.[id]?.hi) || Infinity;
       const projected = {
         id,
