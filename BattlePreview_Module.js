@@ -2190,6 +2190,10 @@
     return Math.max(0, Number(applySkillSettlementModifiers(actor, probe).skill.前摇 ?? BASIC_ATTACK_WINDUP));
   }
   // options.travel === false：不含突进的赶路时间（蓄力判定用——赶路不让一记近身攻击变成蓄力）。
+  // 守护者出了这一招之后还能拦下多少（持续守护，见 resolveTargets）：1 − 前摇 ÷ 一回合可用时间。
+  function guardHoldFor(actor = {}, declaration = {}) {
+    return clamp(1 - actionWindup(actor, declaration) / Math.max(1, CONTINUOUS_ACTION_BUDGET), 0, 1);
+  }
   function actionWindup(actor = {}, declaration = {}, options = {}) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
     // 虚招（T32）的作势那一下也算在前摇里（判蓄力时不算，同赶路）。
@@ -10602,23 +10606,51 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // 护卫（11-15 设计侧与运行时排查：说明「替被护卫者承受伤害、替其拦截攻击」，原先只给被护卫者减伤 10%）: a single-target hostile
   // effect aimed at a unit under 护卫 goes to the one who guards it instead (its 来源角色), while that one stands on the target's side and
   // can act. Group effects are not intercepted (as 援护). BattleRuntime resolves its targets through here, so the two agree.
-  function resolveTargets(worldSnapshot = {}, actor = {}, declaration = {}, effect = {}, projectionContext = null) {
+  // 持续守护（用户 11-22 定、11-23 定运行时照此）：守护一直持续，守护者之后出了别的招，打向被守护者的单体效果按 __守护挡下（1 − 那一招前摇 ÷
+  // CONTINUOUS_ACTION_BUDGET）的机会被拦下——出招占着的那段时间来不及回防。options.guardRoll(wardId, hold) 由运行时给（同一次出手只掷一次）；
+  // 预演不掷骰，份额过半算拦下。
+  function resolveTargets(worldSnapshot = {}, actor = {}, declaration = {}, effect = {}, projectionContext = null, options = null) {
     const targets = resolveTargetsUnguarded(worldSnapshot, actor, declaration, effect, projectionContext);
     if (targets.length !== 1 || /群体|全场/.test(String(effect?.目标 || '')) || effectTargetsAllies(effect)) return targets;
     const target = targets[0], side = sideOf(worldSnapshot, target);
     if (!side || side === sideOf(worldSnapshot, actor)) return targets;
+    // 开发钩子：运行时（有 guardRoll）的每次单体敌对判定报一次守护结果，回放统计「有效期内为什么没改向」。
+    const report = typeof options?.guardRoll === 'function' ? root.__LWCS_DECISION_DEBUG__?.onGuardCheck : null;
+    if (report) {
+      const result = guardedRecipients(worldSnapshot, actor, target, side, targets, effect, options);
+      const outcome = guardOutcome(worldSnapshot, target, actor, side);
+      report({ round: Number(worldSnapshot?.回合 || 0), targetId: unitId(target), actorId: unitId(actor), outcome: outcome.kind, hold: outcome.hold,
+        redirected: result.length === 1 && unitId(result[0]) !== unitId(target) });
+      return result;
+    }
+    return guardedRecipients(worldSnapshot, actor, target, side, targets, effect, options);
+  }
+  function guardedRecipients(worldSnapshot, actor, target, side, targets, effect, options) {
     for (const state of Object.values(target?.状态效果 || {})) {
       if (String(state?.状态 || state?.状态名称 || '').trim() !== '护卫') continue;
       const guardName = String(state?.来源角色 || '').trim();
       const guard = guardName && listUnits(worldSnapshot).map(entry => entry.unit).find(unit => unitName(unit) === guardName && unitId(unit) !== unitId(target));
       if (!guard || sideOf(worldSnapshot, guard) !== side || !isBattleCapable(guard) || unitId(guard) === unitId(actor)) continue;
       if (stateEntries(guard).some(([, entry]) => entry?.战斗效果?.skip_turn === true || entry?.战斗效果?.cannot_act === true)) continue;
+      const hold = Number.isFinite(Number(state?.__守护挡下)) ? clamp(Number(state.__守护挡下), 0, 1) : 1;
+      if (hold < 1 && !(typeof options?.guardRoll === 'function' ? options.guardRoll(unitId(target), hold) : hold >= 0.5)) continue;
       return [guard];
     }
     const guardSummon = guardSummonFor(worldSnapshot, target, actor, '护卫承伤');
     if (guardSummon) return [guardSummon];
     const sharer = String(effect?.原型 || '').trim() === '伤害结算' ? guardSummonFor(worldSnapshot, target, actor, '分摊承伤') : null;
     return sharer ? [target, sharer] : targets;
+  }
+  // 守护判定的原因（只给开发钩子用；不掷骰）。
+  function guardOutcome(worldSnapshot = {}, target = {}, actor = {}, side = '') {
+    const state = Object.values(target?.状态效果 || {}).find(entry => String(entry?.状态 || entry?.状态名称 || '').trim() === '护卫');
+    if (!state) return { kind: 'none', hold: 0 };
+    const guard = listUnits(worldSnapshot).map(entry => entry.unit).find(unit => unitName(unit) === String(state.来源角色 || '').trim() && unitId(unit) !== unitId(target));
+    if (!guard || sideOf(worldSnapshot, guard) !== side || !isBattleCapable(guard)) return { kind: 'guardDown', hold: 0 };
+    if (unitId(guard) === unitId(actor)) return { kind: 'guardIsActor', hold: 0 };
+    if (stateEntries(guard).some(([, entry]) => entry?.战斗效果?.skip_turn === true || entry?.战斗效果?.cannot_act === true)) return { kind: 'guardControlled', hold: 0 };
+    const hold = Number.isFinite(Number(state?.__守护挡下)) ? clamp(Number(state.__守护挡下), 0, 1) : 1;
+    return { kind: hold < 1 ? 'partial' : 'full', hold };
   }
   // 护卫召唤的承伤规则（11-15 用户定）: a summon of 行动模式 护卫 standing for its host — 护卫承伤 takes a single-target hostile
   // effect aimed at the host in its place (as the 护卫 state); 分摊承伤 takes half of a single-target hit with the host, each at
@@ -26924,7 +26956,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionStates,
     ringCapStates,
     suppressionBlocksSkill,
-    meditationOptions, meditationSafe, MEDITATION_KEY,
+    meditationOptions, meditationSafe, MEDITATION_KEY, guardHoldFor,
     // 两档距离（T25）
     POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, besiegeFactor, pressTime, pressedBudget, BESIEGE_KEEP, PRESS_SHARE, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,

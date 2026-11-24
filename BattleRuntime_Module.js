@@ -6010,12 +6010,24 @@
     return null;
   }
 
+  // 主动出手的命中加到出手者 dealtLog 的最后一格（见 attackLog 处）。
+  function tallyDealt(combatData = {}, payload = {}) {
+    if (String(payload?.eventKind || '').trim() !== 'hit_result' || String(payload?.actionRole || '').toUpperCase() !== 'ACTIVE') return;
+    const amount = (Number(payload?.appliedDamage ?? payload?.meta?.appliedDamage) || 0) + (Number(payload?.meta?.shieldAbsorb) || 0);
+    if (!(amount > 0)) return;
+    const actor = listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, String(payload.actorId || '')));
+    const log = actor?.__battleRuntime?.dealtLog;
+    if (!Array.isArray(log) || !log.length) return;
+    actor.__battleRuntime.dealtLog = [...log.slice(0, -1), Number(log[log.length - 1] || 0) + amount];
+  }
+
   function writeLedgerEvent(combatData = {}, payload = {}, inventoryBefore = null) {
     // 接战链 阶段 2e: stamina deductions queued by writeCombatResource go in first.
     if (pendingStaminaDeductions.length && !flushingStaminaDeductions) flushStaminaDeductions(combatLedgerRoot(combatData));
     const rootData = combatLedgerRoot(combatData);
     const attackProgress = tallyAttack(rootData, payload);
     const meditationBroken = breakMeditationOnHit(rootData, payload);
+    tallyDealt(rootData, payload);
     const ledger = ensureLedger(rootData);
     const runtimeState = ensureCombatRuntime(rootData);
     // 机制事实（T26 第 2 批）不推进账本序号：沿用触发它的那条事件的序号（排序时按事件 id 排在它后面），
@@ -8964,8 +8976,12 @@
     return { results, fatal: queue.fatal };
   }
 
+  // 持续守护的拦截机会：同一次出手（同一个声明对象）对同一个被守护者只掷一次骰。
+  const guardRollsByDeclaration = new WeakMap();
   function resolveStructuredTargets(combatData = {}, actor = {}, declaration = {}, effect = {}) {
-    return previewRuntime.resolveTargets(combatData, actor, declaration, effect);
+    const rolls = declaration && typeof declaration === 'object' ? (guardRollsByDeclaration.get(declaration) || (guardRollsByDeclaration.set(declaration, new Map()), guardRollsByDeclaration.get(declaration))) : new Map();
+    return previewRuntime.resolveTargets(combatData, actor, declaration, effect, null, {
+      guardRoll: (wardId, hold) => { if (!rolls.has(wardId)) rolls.set(wardId, Math.random() < hold); return rolls.get(wardId); } });
   }
 
   function structuredDeclarationEffectTargetAudit(combatData = {}, actor = {}, declaration = {}) {
@@ -11477,6 +11493,27 @@
       });
       const log = Array.isArray(actor.__battleRuntime.attackLog) ? actor.__battleRuntime.attackLog : [];
       actor.__battleRuntime.attackLog = [...log, hostile ? 1 : 0].slice(-6);
+      // 出手意图（按意图估出手，11-24 对账：推演把对敌出手都按最好的一招算伤害，实际约 35% 对敌出手不带伤害）：最近 6 次主动行动
+      // 各记一条，可兼有——d 对敌带伤害、c 对敌控制减益、s 只给自己、a 给队友、w 等待（防御、闪避、让过、观察）。开武魂不记。
+      // 公开可见，BattleDecision r20DamageShare。
+      if (actionKind !== 'EQUIP') actor.__battleRuntime.intentLog = [...(Array.isArray(actor.__battleRuntime.intentLog) ? actor.__battleRuntime.intentLog : []),
+        actionIntentOf(combatData, actor, declaration, actionKind)].slice(-6);
+      // 招式混合（11-24 对账：实际带伤害的出手普攻占 1v1 78%、3v3 61%，推演格子却按「魂力够就放最好的技能」）：最近 6 次带伤害的主动出手
+      // 是魂技（1）还是普攻（0）。公开可见，BattleDecision r20SkillShare。
+      if (actionKind === 'BASIC_ATTACK' || actionKind === 'RELEASE_SKILL' && String(actor.__battleRuntime.intentLog?.[actor.__battleRuntime.intentLog.length - 1] || '').includes('d'))
+        actor.__battleRuntime.moveLog = [...(Array.isArray(actor.__battleRuntime.moveLog) ? actor.__battleRuntime.moveLog : []), actionKind === 'RELEASE_SKILL' ? 1 : 0].slice(-6);
+      // 每回合出手次数（公开可见，BattleDecision r20ActionCount）：最近 4 个有出手的回合各几次（连续行动算在同一回合；开武魂不算）。
+      if (actionKind !== 'EQUIP') {
+        const roundNow = Number(combatData.回合 || 0), turns = Array.isArray(actor.__battleRuntime.turnLog) ? actor.__battleRuntime.turnLog : [];
+        actor.__battleRuntime.turnLog = actor.__battleRuntime.turnLogRound === roundNow && turns.length
+          ? [...turns.slice(0, -1), Number(turns[turns.length - 1] || 0) + 1] : [...turns, 1].slice(-4);
+        actor.__battleRuntime.turnLogRound = roundNow;
+      }
+      // 最近 6 次对敌出手各打出多少（扣血＋护盾挡下的，绝对值；这一手的命中在 writeLedgerEvent 里加到最后一格）。公开可见，推演按它校准产出（r20ObservedStrike）。
+      if (hostile) actor.__battleRuntime.dealtLog = [...(Array.isArray(actor.__battleRuntime.dealtLog) ? actor.__battleRuntime.dealtLog : []), 0].slice(-6);
+      // 最近一次宣告的单体对敌目标（公开可见，推演 RACE_STICKY 续打用）。
+      const declaredTargets = Array.isArray(declaration?.targetIds) ? declaration.targetIds : [];
+      if (hostile && declaredTargets.length === 1) actor.__battleRuntime.lastTarget = String(declaredTargets[0]);
     }
     const useEffects = previewRuntime.inventoryUseEffects(actor, declaration, combatData, declaration?.skill?._效果数组);
     const explicitEffects = previewRuntime.withStrengthKnockback(actor, declaration, previewRuntime.releaseSkillEffects(actor, declaration,
@@ -11618,8 +11655,14 @@
       // 攻击破绽（BattlePreview attackOpeningOf）：正式行动先清掉旧破绽，进攻留下新的；反应（闪避、防御）不算下一次行动。
       if (actionRole !== 'REACTION') previewRuntime.setAttackOpening(actor, previewRuntime.attackOpeningStrength(combatData, actor, { ...declaration, actionKind },
         targetId => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, targetId))), actionEvent.actionId);
-      // 守护 lasts until the guard's next action: a formal action of its own lifts what it laid.
-      if (actionRole === 'ACTIVE') liftOwnGuard(combatData, actor);
+      // 持续守护（用户 11-22 定、11-23 定运行时照此）：守护者再出别的招，守护不撤，只是之后按这一招的前摇拦得住的份额（guardHoldFor）；
+      // 改去守护别人时撤掉原来那份。GUARD_LIFT_LEGACY 恢复「下一次正式行动就撤」。
+      if (actionRole === 'ACTIVE') {
+        sweepFallenGuards(combatData);
+        // 守护放手（用户 11-23 定 A）：决策推演「放手」更好时声明带 releaseGuard，这一手同时撤掉自己施加的守护。
+        if (root.__LWCS_TUNE__?.GUARD_LIFT_LEGACY === true || actionKind === 'GUARD' || declaration?.releaseGuard === true) liftOwnGuard(combatData, actor);
+        else setOwnGuardHold(combatData, actor, previewRuntime.guardHoldFor(actor, declaration));
+      }
     }
     const pendingActionGrantedEffects = actionRole === 'STATE_TICK' || declaration?.__includeGrantedEffects === false
       ? []
@@ -11634,7 +11677,8 @@
         if (ward && ward !== actor && inferUnitSide(combatData, ward) === inferUnitSide(combatData, actor)) {
           ward.状态效果 = ward.状态效果 && typeof ward.状态效果 === 'object' ? ward.状态效果 : {};
           ward.状态效果[`守护·${previewRuntime.unitName(actor)}`] = { 状态: '护卫', 状态名称: '护卫', 类型: 'buff', 来源角色: previewRuntime.unitName(actor), 来源ID: previewRuntime.unitId(actor),
-            duration: 2, 持续回合: 2, 战斗效果: { guarded: true }, __守护: true, 描述: `${previewRuntime.unitName(actor)}守在身前，单体攻击先落到守护者身上` };
+            ...(root.__LWCS_TUNE__?.GUARD_LIFT_LEGACY === true ? { duration: 2, 持续回合: 2 } : { duration: 1000000, 持续回合: 1000000, __守护挡下: 1 }),
+            战斗效果: { guarded: true }, __守护: true, 描述: `${previewRuntime.unitName(actor)}守在身前，单体攻击先落到守护者身上` };
         }
       }
       const preparedDefense = allowPreparedDefense !== false &&
@@ -15056,7 +15100,46 @@
     });
   }
 
-  // 守护: the guard's own 守护 states lifted (its next formal action ends the guard it set up).
+  // 一次主动行动的意图（intentLog，见记录处）：普攻是 d；魂技按效果——伤害结算打敌人是 d，打敌人的其他效果是 c，目标自身是 s，给队友的是 a；
+  // 守护是 a；防御、闪避、让过、观察、撤离、罢手是 w。
+  function actionIntentOf(combatData = {}, actor = {}, declaration = {}, actionKind = '') {
+    const kind = String(actionKind || '').toUpperCase();
+    if (kind === 'BASIC_ATTACK') return 'd';
+    if (kind === 'GUARD') return 'a';
+    if (kind !== 'RELEASE_SKILL') return ['USE_ITEM', 'EQUIP'].includes(kind) ? 's' : 'w';
+    const side = inferUnitSide(combatData, actor);
+    const targets = (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).map(id => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, id))).filter(Boolean);
+    const hostile = targets.some(unit => unit !== actor && inferUnitSide(combatData, unit) !== side), ally = targets.some(unit => unit !== actor && inferUnitSide(combatData, unit) === side);
+    const tags = new Set();
+    for (const effect of previewRuntime.collectEffects(declaration?.skill || {})) {
+      if (String(effect?.目标 || '').trim() === '自身') { tags.add('s'); continue; }
+      if (previewRuntime.effectTargetsAllies(effect)) { tags.add('a'); continue; }
+      if (hostile) tags.add(String(effect?.原型 || '').trim() === '伤害结算' ? 'd' : 'c');
+    }
+    if (!tags.size) tags.add(hostile ? 'c' : ally ? 'a' : 's');
+    return [...tags].sort().join('');
+  }
+  // 持续守护：守护者倒下（不能再战）后，它施加的守护撤掉——否则被保护者身上一直挂着「守在身前」（每次正式行动开始时清一遍）。
+  function sweepFallenGuards(combatData = {}) {
+    const units = listCombatUnits(combatData);
+    for (const unit of units) {
+      for (const [key, state] of Object.entries(unit?.状态效果 || {})) {
+        if (state?.__守护 !== true) continue;
+        const guard = units.find(other => previewRuntime.unitId(other) === String(state.来源ID || ''));
+        if (!guard || !previewRuntime.isBattleCapable(guard)) delete unit.状态效果[key];
+      }
+    }
+  }
+  // 持续守护：守护者出了别的招之后，它施加的守护按这一招拦得住的份额（__守护挡下）。
+  function setOwnGuardHold(combatData = {}, guard = {}, hold = 1) {
+    const guardId = previewRuntime.unitId(guard);
+    for (const unit of listCombatUnits(combatData)) {
+      for (const [key, state] of Object.entries(unit?.状态效果 || {})) if (state?.__守护 === true && String(state.来源ID || '') === guardId) {
+        unit.状态效果[key] = { ...state, __守护挡下: hold, 描述: `${state.来源角色 || ''}守在身前，正忙于出招时约 ${Math.round((1 - hold) * 100)}% 的单体攻击来不及拦下` };
+      }
+    }
+  }
+  // 守护: the guard's own 守护 states lifted (it guards another ally; GUARD_LIFT_LEGACY: its next formal action ends the guard it set up).
   function liftOwnGuard(combatData = {}, guard = {}) {
     const guardId = previewRuntime.unitId(guard);
     for (const unit of listCombatUnits(combatData)) {
@@ -17129,6 +17212,11 @@
     Math.random = () => {
       randomState = (randomState * 16807) % 2147483647;
       return (randomState - 1) / 2147483646;
+    };
+    // Development hook (absent in play): 分叉回放（11-23）在强制的那一手处换随机流——__LWCS_REPLAY_RESEED__(seed) 重设本场的随机状态。
+    if (root.__LWCS_DECISION_DEBUG__) root.__LWCS_DECISION_DEBUG__.reseed = value => {
+      randomState = Math.max(1, Math.floor(Number(value) || 1)) % 2147483647;
+      if (randomState <= 0) randomState += 2147483646;
     };
     runtimeIdContext = `structured-shadow-${seed.toString(36)}`;
     runtimeIdSequence = 0;
@@ -19334,8 +19422,13 @@
               // 接招习惯（推演—实际对账 11-23，用户定「按观察估对方应对」）：最近 8 次怎么接招，公开可见，BattleDecision r20Meet 按它估这人怎么接。
               if (!summonGuard && node?.state?.intercept !== true) {
                 const kind = String(reactionDeclaration?.actionKind || '').trim().toUpperCase(), mode = String(reactionDeclaration?.engagement?.mode || '').trim().toUpperCase();
+                // 魂技接招：打向敌人的记换血（TRADE），只作用于自己或队友的（加盾、减伤）记防御类魂技（GUARD_SKILL）——此前一律记换血（11-23 对账复核）。
+                const hostileSkill = kind === 'RELEASE_SKILL' && (Array.isArray(reactionDeclaration?.targetIds) ? reactionDeclaration.targetIds : []).some(id => {
+                  const unit = listCombatUnits(combatData).find(entry => isUnitIdentityMatch(entry, id));
+                  return !!unit && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor);
+                });
                 const answer = mode === 'CLASH' || mode === 'PREEMPT' ? mode : kind === 'DEFEND' && reactionDeclaration?.deflect === true ? 'DEFLECT'
-                  : kind === 'DEFEND' || kind === 'GUARD' ? 'DEFEND' : kind === 'EVADE' ? 'EVADE' : kind === 'RELEASE_SKILL' ? 'TRADE' : 'TAKE';
+                  : kind === 'DEFEND' || kind === 'GUARD' ? 'DEFEND' : kind === 'EVADE' ? 'EVADE' : kind === 'RELEASE_SKILL' ? (hostileSkill ? 'TRADE' : 'GUARD_SKILL') : 'TAKE';
                 const log = Array.isArray(actor.__battleRuntime?.answerLog) ? actor.__battleRuntime.answerLog : [];
                 if (!actor.__battleRuntime || typeof actor.__battleRuntime !== 'object') actor.__battleRuntime = {};
                 actor.__battleRuntime.answerLog = [...log, answer].slice(-8);
@@ -20038,9 +20131,14 @@
                 // costs stay paid). It used to demand the whole declared set and failed the battle
                 // (battle_decision_candidate_pool_empty).
                 const declaredTargetIds = Array.isArray(storedCharge?.targetIds) ? storedCharge.targetIds : [];
+                // 敌对魂技锁定的目标已是自己一方（混乱等让蓄力时落到了自己人身上）：当作原目标不可用、在合法目标里重选，
+                // 否则唯一的候选被判目标不合法，整个决策失败（11-23 守护放手回放 mx|55|0 B1 食物系 混乱）。
+                const chargeProfile = String(decisionRuntime.targetProfile?.(chargedSkill) || '');
+                const actorSideNow = inferUnitSide(combatData, actor);
                 const standingTargetIds = declaredTargetIds.filter(id => {
                   const unit = listCombatUnits(combatData).find(entry => isUnitIdentityMatch(entry, id));
-                  return unit && previewRuntime.isBattleCapable(unit);
+                  return unit && previewRuntime.isBattleCapable(unit) &&
+                    !(['HOSTILE_SINGLE', 'HOSTILE_GROUP'].includes(chargeProfile) && inferUnitSide(combatData, unit) === actorSideNow);
                 });
                 // 蓄满握住（用户 2026-11-17「该魂技消耗的10%吧」「注意不要把蓄力骗反击做成常用招了」；神界传说 88 章情绪之神握刀
                 // 不发）: a charge that is full may be held instead of released — the action let go by (PASS) — at
