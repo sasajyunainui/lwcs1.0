@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:b5096b562ab433adc420b7689bc49720bd46ad0f3b7d09608c8f4758d21321de|MVU_Schema_Runtime.js:7295cdf3d1b4250f250c4c00bf5bd5d99a11ff7498b5d9a560f8250d2beec75e|BattlePreview_Module.js:64ecfffe99650f39282594422e09af5abdd24f76e7c9bad98810aac4c018af78|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a5cde7517f584a38fdcee92268e7c1827269444f756a9d967d7464b5c53f1154|BattleRuntime_Module.js:72d405dfac5738877532e64b806a43f68be60ee61ea02e447053a5c268abc02d */
+/* sources-sha256: MVU_Skill_Runtime.js:caa8cde2f76c36e86b6e61e8d5af6113d3bba08bafe4d78d57375c68c7bce0e6|MVU_Schema_Runtime.js:7295cdf3d1b4250f250c4c00bf5bd5d99a11ff7498b5d9a560f8250d2beec75e|BattlePreview_Module.js:bae1113062bab0ec2f06551e18d2edbfecfe463c2d39555186a32e142e688397|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4a6769fde1aafb6ba8b964647cfb016d8c3c3220c67407a0685f50e00b6f3545|BattleRuntime_Module.js:ccbf1143fe058938ba5cbd8eb73a082faf39d54cdf66deec10e667aa753b18b2 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -555,7 +555,12 @@ function 换算魂导器效果_V1(效果列表 = [], 魂导等级 = 0, 名称 = 
       if (原型 === '资源锁定') delete 结果.对应等级; // 锁的是固定量，对应等级不再当目标等级门槛
       return [结果];
     }
-    if (原型 === '护盾变化' && String(效果.护盾模式 || '').trim() === '正向护盾') return [{ ...输出, 数值: 绝对值(比例, 标准.vit_max) }];
+    if (原型 === '护盾变化' && String(效果.护盾模式 || '').trim() === '正向护盾') {
+      // 护盾是固定量，对应等级不再当「只挡不高于该级的攻击」的门槛（同资源锁定）
+      const 结果 = { ...输出, 数值: 绝对值(比例, 标准.vit_max) };
+      delete 结果.对应等级;
+      return [结果];
+    }
     if (原型 === '属性修正') {
       const 属性列表 = 单项(效果.属性);
       if (!属性列表.length || 属性列表.some(属性 => !魂导器绝对值基准键_V1[属性])) return [输出];
@@ -40485,11 +40490,38 @@ try {
     }
     const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
     if (equipment && gear.slot === '武器' && equipment.武器) holder.装备 = { ...equipment, 武器: { ...equipment.武器, 装备状态: '损毁', 耐久: 0 } };
-    else if (equipment && gear.slot === '魂导器' && equipment.魂导器?.装配?.[gear.fitSlot]) {
-      holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: { ...equipment.魂导器.装配,
-        [gear.fitSlot]: { ...equipment.魂导器.装配[gear.fitSlot], 装备状态: '损毁', 耐久: 0 } } } };
-    }
+    else if (gear.slot === '魂导器') scrapSoulTool(holder, gear);
     return { broken: true, before, after, durability, gear };
+  }
+  // 魂导器耐久归零即报废（用户 2026-11-24「耐久归0还是直接报废比较好，从物品里删除」）：从装配里删掉（战后随装备写回，物品就没了），
+  // 它展开的护盾（__魂导器来源）一并消失。兵器打坏仍是「损毁」可修。
+  function scrapSoulTool(holder = {}, gear = {}, world = null) {
+    const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
+    if (equipment?.魂导器?.装配?.[gear.fitSlot]) {
+      const { [gear.fitSlot]: gone, ...rest } = equipment.魂导器.装配;
+      holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: rest } };
+    }
+    const holderId = String(unitId(holder));
+    const sourced = state => state?.__魂导器来源 && String(state.__魂导器来源.holderId) === holderId && state.__魂导器来源.key === gear.key;
+    const units = world ? listUnits(world).map(entry => entry.unit) : [holder];
+    for (const unit of units) {
+      if (!unit?.状态效果 || !Object.values(unit.状态效果).some(sourced)) continue;
+      unit.状态效果 = Object.fromEntries(Object.entries(unit.状态效果).filter(([, state]) => !sourced(state)));
+    }
+  }
+  // 防御类魂导器挡下的伤害扣它自己的耐久（与被砸同一个耐久池 gearHp）；神器以上打不坏（不在 breakableGear 里），剩余按无限算。
+  function soulToolGearLeft(holder = {}, key = '') {
+    const gear = breakableGear(holder).find(entry => entry.key === key);
+    return gear ? gearHpLeft(holder, gear) : Infinity;
+  }
+  function drainSoulToolGear(world = {}, source = {}, amount = 0) {
+    const holder = findUnit(world, source?.holderId);
+    const gear = holder && breakableGear(holder).find(entry => entry.key === source?.key);
+    if (!gear || !(amount > 0)) return null;
+    const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear), after = Math.max(0, before - amount);
+    holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
+    if (after <= 1e-9) scrapSoulTool(holder, gear, world);
+    return { scrapped: after <= 1e-9, before, after, durability, gear, holder };
   }
   /* 投出武器（用户 11-19「离手、召回、磕飞都做」，补充「控鹤擎龙可以召回任意武器」；原作王秋儿投出黄金龙枪、唐三掷昊天锤、
      龙枪被磕飞后瞬移握回）：
@@ -47467,7 +47499,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function armourDurabilityMax(unit = {}, slot = '', item = {}) {
     const declared = Number(item?.耐久上限);
     if (declared > 0) return declared;
-    const level = Math.max(1, Math.floor(Number(slot === '斗铠' ? item?._属性加成?.等效等级 : 0) || Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level) || 1));
+    // 魂导器的耐久按它自己的对应等级（用户 2026-11-24，同「魂导器用自己的对应等级」；MVU 读取魂导器对应等级_V1），不看持有者。
+    const toolLevel = slot === '魂导器' && Number(item?.魂导等级) > 0
+      ? Number(root.__LWCS_SKILL_COST_HELPERS_V1__?.读取魂导器对应等级_V1?.(item.魂导等级, item.名称 || item.name || '')) || Number(item.魂导等级) * 10 : 0;
+    const level = Math.max(1, Math.floor(Number(slot === '斗铠' ? item?._属性加成?.等效等级 : 0) || toolLevel || Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level) || 1));
     const base = Number(root.__LWCS_GET_BASE_STATS__?.(level)?.vit_max) || readResourceMax(unit, '体力') || 1;
     const quality = Math.max(0.1, Number(item?.品质系数) || 1);
     return Math.max(1, Math.round(base * armourGrade(slot, item) * quality));
@@ -64936,7 +64971,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     feintRecord,
     feintShown,
     meditating,
-    beginMeditation, meditationSupplyAmount, dropMeditationSupply,
+    beginMeditation, meditationSupplyAmount, dropMeditationSupply, drainSoulToolGear, soulToolGearLeft,
     interruptMeditation,
     naturalRecoveryRatios,
     spiritReleasedMarker,
@@ -77875,7 +77910,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        const effects = Array.isArray(skill._效果数组) ? { _效果数组: soulToolEffects(skill._效果数组, item.魂导等级, item.名称 || slot) } : {};
+        // __魂导器装配位：它展开的护盾挡下的伤害扣这件魂导器的耐久（BattleRuntime → BattlePreview drainSoulToolGear）
+        const effects = Array.isArray(skill._效果数组) ? { _效果数组: soulToolEffects(skill._效果数组, item.魂导等级, item.名称 || slot)
+          .map(effect => effect && typeof effect === 'object' ? { ...effect, __魂导器装配位: slot } : effect) } : {};
         return [name, { ...skill, ...effects, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));
@@ -120351,6 +120388,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const before = Math.max(0, Number(existing.shield_value || 0));
       existing.shield_value = before + amount;
       if (effect?.对应等级 !== undefined) existing.对应等级 = Math.max(0, Number(effect.对应等级 || 0));
+      if (effect?.__魂导器来源) existing.__魂导器来源 = effect.__魂导器来源;
       return existing.shield_value - before;
     } else {
       unit.状态效果[stateName] = {
@@ -120361,6 +120399,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
         战斗效果: createEmptyCombatEffectMap(), shield_value: amount,
         ...(effect?.对应等级 !== undefined ? { 对应等级: Math.max(0, Number(effect.对应等级 || 0)) } : {}),
+        // 魂导器展开的护盾（用户 2026-11-24）：挡下的伤害扣这件魂导器的耐久（absorbRuntimeShield 之后 drainSoulToolGear）
+        ...(effect?.__魂导器来源 ? { __魂导器来源: effect.__魂导器来源 } : {}),
       };
     }
     return amount;
@@ -133090,7 +133130,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               shieldBefore + hpDamageLimit,
               settledSegmentDamage,
             ));
+            // 魂导器展开的护盾挡下的伤害扣它的耐久，归零即报废（BattlePreview drainSoulToolGear）
+            const toolShieldSources = Object.fromEntries(Object.entries(target?.状态效果 || {})
+              .filter(([, state]) => state?.__魂导器来源 && Number(state.shield_value) > 0).map(([key, state]) => [key, state.__魂导器来源]));
             const shieldResult = absorbRuntimeShield(target, incomingDamage, effect, actor);
+            (shieldResult.absorptions || []).forEach(entry => {
+              const source = toolShieldSources[entry.stateName];
+              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, Number(entry.absorbed) || 0);
+              if (!drained) return;
+              if (drained.scrapped) drained.holder.final = buildCombatFinalStats(drained.holder, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+              facts.push(writeLedgerEvent(combatData, {
+                eventKind: 'resource_change', round: Number(combatData?.回合 || 0),
+                actorId: previewRuntime.unitId(drained.holder), actorName: previewRuntime.unitName(drained.holder),
+                targetId: previewRuntime.unitId(drained.holder), targetName: previewRuntime.unitName(drained.holder),
+                actionName: drained.gear.name, actionType: 'soul_tool_wear', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+                sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS',
+                primaryOutcome: 'resource_reduced', operation: 'REDUCE', ruleCode: drained.scrapped ? 'SOUL_TOOL_SCRAPPED' : 'SOUL_TOOL_WEAR', allowImplicitActionSource: true,
+                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, absorbed: Number(entry.absorbed) || 0,
+                  durabilityBefore: drained.before, durabilityAfter: drained.after, durabilityMax: drained.durability, scrapped: drained.scrapped, sourceEffectId, auditOnly: !drained.scrapped },
+              }));
+            });
             let damage = Math.max(0, Math.min(hpDamageLimit, shieldResult.remainingDamage));
             const deathSave = before > 0 && damage >= before ? previewRuntime.consumeDeathSaveCharges(target, 1, { actionId: actionEvent.actionId })[0] : null;
             const deathSavePreventedDamage = deathSave ? damage - Math.max(0, before - 1) : 0;
@@ -133470,7 +133529,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const shieldStateName = requested >= 0 ? runtimeShieldStateName(actionName) : '';
           if (requested >= 0) {
             const duration = Number(effect?.持续回合) > 0 ? Math.max(1, Number(effect.持续回合)) : null;
-            applyRuntimeShield(target, requested, duration, shieldStateName, effect);
+            // 魂导器展开的护盾：记下来源，护盾不超过这件魂导器剩余的耐久（快坏的护盾展开出来也薄）。
+            const toolKey = effect?.__魂导器装配位 ? `魂导器:${effect.__魂导器装配位}` : '';
+            const toolLeft = toolKey ? Number(previewRuntime.soulToolGearLeft?.(actor, toolKey)) : Infinity;
+            applyRuntimeShield(target, Number.isFinite(toolLeft) ? Math.min(requested, Math.max(0, toolLeft)) : requested, duration, shieldStateName,
+              toolKey ? { ...effect, __魂导器来源: { holderId: previewRuntime.unitId(actor), key: toolKey } } : effect);
           }
           else removeRuntimeShield(target, effect?.数值 || requested);
           const after = currentShieldTotal(target);

@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:69cdbfd7e0a8bf8086c7b6c0cee2fa559537e6abe5faee53e0873b640600fb7c|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:64ecfffe99650f39282594422e09af5abdd24f76e7c9bad98810aac4c018af78|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a5cde7517f584a38fdcee92268e7c1827269444f756a9d967d7464b5c53f1154|BattleRuntime_Module.js:72d405dfac5738877532e64b806a43f68be60ee61ea02e447053a5c268abc02d|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:69cdbfd7e0a8bf8086c7b6c0cee2fa559537e6abe5faee53e0873b640600fb7c|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:bae1113062bab0ec2f06551e18d2edbfecfe463c2d39555186a32e142e688397|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4a6769fde1aafb6ba8b964647cfb016d8c3c3220c67407a0685f50e00b6f3545|BattleRuntime_Module.js:ccbf1143fe058938ba5cbd8eb73a082faf39d54cdf66deec10e667aa753b18b2|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -64072,11 +64072,38 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     }
     const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
     if (equipment && gear.slot === '武器' && equipment.武器) holder.装备 = { ...equipment, 武器: { ...equipment.武器, 装备状态: '损毁', 耐久: 0 } };
-    else if (equipment && gear.slot === '魂导器' && equipment.魂导器?.装配?.[gear.fitSlot]) {
-      holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: { ...equipment.魂导器.装配,
-        [gear.fitSlot]: { ...equipment.魂导器.装配[gear.fitSlot], 装备状态: '损毁', 耐久: 0 } } } };
-    }
+    else if (gear.slot === '魂导器') scrapSoulTool(holder, gear);
     return { broken: true, before, after, durability, gear };
+  }
+  // 魂导器耐久归零即报废（用户 2026-11-24「耐久归0还是直接报废比较好，从物品里删除」）：从装配里删掉（战后随装备写回，物品就没了），
+  // 它展开的护盾（__魂导器来源）一并消失。兵器打坏仍是「损毁」可修。
+  function scrapSoulTool(holder = {}, gear = {}, world = null) {
+    const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
+    if (equipment?.魂导器?.装配?.[gear.fitSlot]) {
+      const { [gear.fitSlot]: gone, ...rest } = equipment.魂导器.装配;
+      holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: rest } };
+    }
+    const holderId = String(unitId(holder));
+    const sourced = state => state?.__魂导器来源 && String(state.__魂导器来源.holderId) === holderId && state.__魂导器来源.key === gear.key;
+    const units = world ? listUnits(world).map(entry => entry.unit) : [holder];
+    for (const unit of units) {
+      if (!unit?.状态效果 || !Object.values(unit.状态效果).some(sourced)) continue;
+      unit.状态效果 = Object.fromEntries(Object.entries(unit.状态效果).filter(([, state]) => !sourced(state)));
+    }
+  }
+  // 防御类魂导器挡下的伤害扣它自己的耐久（与被砸同一个耐久池 gearHp）；神器以上打不坏（不在 breakableGear 里），剩余按无限算。
+  function soulToolGearLeft(holder = {}, key = '') {
+    const gear = breakableGear(holder).find(entry => entry.key === key);
+    return gear ? gearHpLeft(holder, gear) : Infinity;
+  }
+  function drainSoulToolGear(world = {}, source = {}, amount = 0) {
+    const holder = findUnit(world, source?.holderId);
+    const gear = holder && breakableGear(holder).find(entry => entry.key === source?.key);
+    if (!gear || !(amount > 0)) return null;
+    const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear), after = Math.max(0, before - amount);
+    holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
+    if (after <= 1e-9) scrapSoulTool(holder, gear, world);
+    return { scrapped: after <= 1e-9, before, after, durability, gear, holder };
   }
   /* 投出武器（用户 11-19「离手、召回、磕飞都做」，补充「控鹤擎龙可以召回任意武器」；原作王秋儿投出黄金龙枪、唐三掷昊天锤、
      龙枪被磕飞后瞬移握回）：
@@ -71054,7 +71081,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function armourDurabilityMax(unit = {}, slot = '', item = {}) {
     const declared = Number(item?.耐久上限);
     if (declared > 0) return declared;
-    const level = Math.max(1, Math.floor(Number(slot === '斗铠' ? item?._属性加成?.等效等级 : 0) || Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level) || 1));
+    // 魂导器的耐久按它自己的对应等级（用户 2026-11-24，同「魂导器用自己的对应等级」；MVU 读取魂导器对应等级_V1），不看持有者。
+    const toolLevel = slot === '魂导器' && Number(item?.魂导等级) > 0
+      ? Number(root.__LWCS_SKILL_COST_HELPERS_V1__?.读取魂导器对应等级_V1?.(item.魂导等级, item.名称 || item.name || '')) || Number(item.魂导等级) * 10 : 0;
+    const level = Math.max(1, Math.floor(Number(slot === '斗铠' ? item?._属性加成?.等效等级 : 0) || toolLevel || Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level) || 1));
     const base = Number(root.__LWCS_GET_BASE_STATS__?.(level)?.vit_max) || readResourceMax(unit, '体力') || 1;
     const quality = Math.max(0.1, Number(item?.品质系数) || 1);
     return Math.max(1, Math.round(base * armourGrade(slot, item) * quality));
@@ -88523,7 +88553,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     feintRecord,
     feintShown,
     meditating,
-    beginMeditation, meditationSupplyAmount, dropMeditationSupply,
+    beginMeditation, meditationSupplyAmount, dropMeditationSupply, drainSoulToolGear, soulToolGearLeft,
     interruptMeditation,
     naturalRecoveryRatios,
     spiritReleasedMarker,
@@ -101462,7 +101492,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        const effects = Array.isArray(skill._效果数组) ? { _效果数组: soulToolEffects(skill._效果数组, item.魂导等级, item.名称 || slot) } : {};
+        // __魂导器装配位：它展开的护盾挡下的伤害扣这件魂导器的耐久（BattleRuntime → BattlePreview drainSoulToolGear）
+        const effects = Array.isArray(skill._效果数组) ? { _效果数组: soulToolEffects(skill._效果数组, item.魂导等级, item.名称 || slot)
+          .map(effect => effect && typeof effect === 'object' ? { ...effect, __魂导器装配位: slot } : effect) } : {};
         return [name, { ...skill, ...effects, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));
@@ -143938,6 +143970,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const before = Math.max(0, Number(existing.shield_value || 0));
       existing.shield_value = before + amount;
       if (effect?.对应等级 !== undefined) existing.对应等级 = Math.max(0, Number(effect.对应等级 || 0));
+      if (effect?.__魂导器来源) existing.__魂导器来源 = effect.__魂导器来源;
       return existing.shield_value - before;
     } else {
       unit.状态效果[stateName] = {
@@ -143948,6 +143981,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         面板修改比例: { str: 1, def: 1, agi: 1, sp_max: 1 },
         战斗效果: createEmptyCombatEffectMap(), shield_value: amount,
         ...(effect?.对应等级 !== undefined ? { 对应等级: Math.max(0, Number(effect.对应等级 || 0)) } : {}),
+        // 魂导器展开的护盾（用户 2026-11-24）：挡下的伤害扣这件魂导器的耐久（absorbRuntimeShield 之后 drainSoulToolGear）
+        ...(effect?.__魂导器来源 ? { __魂导器来源: effect.__魂导器来源 } : {}),
       };
     }
     return amount;
@@ -156677,7 +156712,26 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               shieldBefore + hpDamageLimit,
               settledSegmentDamage,
             ));
+            // 魂导器展开的护盾挡下的伤害扣它的耐久，归零即报废（BattlePreview drainSoulToolGear）
+            const toolShieldSources = Object.fromEntries(Object.entries(target?.状态效果 || {})
+              .filter(([, state]) => state?.__魂导器来源 && Number(state.shield_value) > 0).map(([key, state]) => [key, state.__魂导器来源]));
             const shieldResult = absorbRuntimeShield(target, incomingDamage, effect, actor);
+            (shieldResult.absorptions || []).forEach(entry => {
+              const source = toolShieldSources[entry.stateName];
+              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, Number(entry.absorbed) || 0);
+              if (!drained) return;
+              if (drained.scrapped) drained.holder.final = buildCombatFinalStats(drained.holder, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
+              facts.push(writeLedgerEvent(combatData, {
+                eventKind: 'resource_change', round: Number(combatData?.回合 || 0),
+                actorId: previewRuntime.unitId(drained.holder), actorName: previewRuntime.unitName(drained.holder),
+                targetId: previewRuntime.unitId(drained.holder), targetName: previewRuntime.unitName(drained.holder),
+                actionName: drained.gear.name, actionType: 'soul_tool_wear', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
+                sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS',
+                primaryOutcome: 'resource_reduced', operation: 'REDUCE', ruleCode: drained.scrapped ? 'SOUL_TOOL_SCRAPPED' : 'SOUL_TOOL_WEAR', allowImplicitActionSource: true,
+                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, absorbed: Number(entry.absorbed) || 0,
+                  durabilityBefore: drained.before, durabilityAfter: drained.after, durabilityMax: drained.durability, scrapped: drained.scrapped, sourceEffectId, auditOnly: !drained.scrapped },
+              }));
+            });
             let damage = Math.max(0, Math.min(hpDamageLimit, shieldResult.remainingDamage));
             const deathSave = before > 0 && damage >= before ? previewRuntime.consumeDeathSaveCharges(target, 1, { actionId: actionEvent.actionId })[0] : null;
             const deathSavePreventedDamage = deathSave ? damage - Math.max(0, before - 1) : 0;
@@ -157057,7 +157111,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const shieldStateName = requested >= 0 ? runtimeShieldStateName(actionName) : '';
           if (requested >= 0) {
             const duration = Number(effect?.持续回合) > 0 ? Math.max(1, Number(effect.持续回合)) : null;
-            applyRuntimeShield(target, requested, duration, shieldStateName, effect);
+            // 魂导器展开的护盾：记下来源，护盾不超过这件魂导器剩余的耐久（快坏的护盾展开出来也薄）。
+            const toolKey = effect?.__魂导器装配位 ? `魂导器:${effect.__魂导器装配位}` : '';
+            const toolLeft = toolKey ? Number(previewRuntime.soulToolGearLeft?.(actor, toolKey)) : Infinity;
+            applyRuntimeShield(target, Number.isFinite(toolLeft) ? Math.min(requested, Math.max(0, toolLeft)) : requested, duration, shieldStateName,
+              toolKey ? { ...effect, __魂导器来源: { holderId: previewRuntime.unitId(actor), key: toolKey } } : effect);
           }
           else removeRuntimeShield(target, effect?.数值 || requested);
           const after = currentShieldTotal(target);

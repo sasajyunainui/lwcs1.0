@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:b5096b562ab433adc420b7689bc49720bd46ad0f3b7d09608c8f4758d21321de|MVU_Schema_Runtime.js:7295cdf3d1b4250f250c4c00bf5bd5d99a11ff7498b5d9a560f8250d2beec75e|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:caa8cde2f76c36e86b6e61e8d5af6113d3bba08bafe4d78d57375c68c7bce0e6|MVU_Schema_Runtime.js:7295cdf3d1b4250f250c4c00bf5bd5d99a11ff7498b5d9a560f8250d2beec75e|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -5185,7 +5185,12 @@ function 换算魂导器效果_V1(效果列表 = [], 魂导等级 = 0, 名称 = 
       if (原型 === '资源锁定') delete 结果.对应等级; // 锁的是固定量，对应等级不再当目标等级门槛
       return [结果];
     }
-    if (原型 === '护盾变化' && String(效果.护盾模式 || '').trim() === '正向护盾') return [{ ...输出, 数值: 绝对值(比例, 标准.vit_max) }];
+    if (原型 === '护盾变化' && String(效果.护盾模式 || '').trim() === '正向护盾') {
+      // 护盾是固定量，对应等级不再当「只挡不高于该级的攻击」的门槛（同资源锁定）
+      const 结果 = { ...输出, 数值: 绝对值(比例, 标准.vit_max) };
+      delete 结果.对应等级;
+      return [结果];
+    }
     if (原型 === '属性修正') {
       const 属性列表 = 单项(效果.属性);
       if (!属性列表.length || 属性列表.some(属性 => !魂导器绝对值基准键_V1[属性])) return [输出];
