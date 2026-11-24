@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:c2560ba27e72ec5dc8f9d82ed76c2e52c1f9371e42865727528ae11a977064b6|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:40e9ababd8492e64ef505bf3a5eca4204c20690c5bfb97e68f45b9ee9d0c841b|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -22330,7 +22330,11 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   const 被动魂导器 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 && String(技能?.承载方式 || '').trim() === '被动';
   const 魂导器缺省消耗 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 &&
     (!技能?.消耗 || String(技能.消耗).trim() === '无');
-  const 消耗倍数 = 魂导器缺省消耗
+  // 自带能源的魂导器（用户 2026-11-24「就这样吧」，例：封魂手铐）：明写不耗魂力（魂力:0）且带使用次数限制（触发限制，如每战 1 次）的，
+  // 代价由魂导器自己承担，预算仍按标准消耗（倍数 1）；不带次数限制的照常按零消耗压低预算。
+  const 魂导器自带能源 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 && !魂导器缺省消耗 &&
+    Number.isFinite(标准消耗) && 实际消耗 === 0 && 评估触发限制档_V1(技能) !== '无';
+  const 消耗倍数 = 魂导器缺省消耗 || 魂导器自带能源
     ? 1
     : 武魂真身百分比消耗 || 武魂融合技百分比消耗
     ? Math.max(0.05, Math.min(4, 承载消耗比例 / 获取武魂真身运转标准消耗比例_V1()))

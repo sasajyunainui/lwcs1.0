@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:c2560ba27e72ec5dc8f9d82ed76c2e52c1f9371e42865727528ae11a977064b6|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|BattlePreview_Module.js:138d5baf921836d2a339c56ca242953a958d3c796b850f6b790d884a3ce2d8fc|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a8c115780b77818466ab8d80c2593fee1513a1d816af728e0cacfec9e55aeea7|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149 */
+/* sources-sha256: MVU_Skill_Runtime.js:40e9ababd8492e64ef505bf3a5eca4204c20690c5bfb97e68f45b9ee9d0c841b|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|BattlePreview_Module.js:138d5baf921836d2a339c56ca242953a958d3c796b850f6b790d884a3ce2d8fc|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a8c115780b77818466ab8d80c2593fee1513a1d816af728e0cacfec9e55aeea7|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -17700,7 +17700,11 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   const 被动魂导器 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 && String(技能?.承载方式 || '').trim() === '被动';
   const 魂导器缺省消耗 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 &&
     (!技能?.消耗 || String(技能.消耗).trim() === '无');
-  const 消耗倍数 = 魂导器缺省消耗
+  // 自带能源的魂导器（用户 2026-11-24「就这样吧」，例：封魂手铐）：明写不耗魂力（魂力:0）且带使用次数限制（触发限制，如每战 1 次）的，
+  // 代价由魂导器自己承担，预算仍按标准消耗（倍数 1）；不带次数限制的照常按零消耗压低预算。
+  const 魂导器自带能源 = 来源 === '装备技能' && Number(上下文?.魂导等级) > 0 && !魂导器缺省消耗 &&
+    Number.isFinite(标准消耗) && 实际消耗 === 0 && 评估触发限制档_V1(技能) !== '无';
+  const 消耗倍数 = 魂导器缺省消耗 || 魂导器自带能源
     ? 1
     : 武魂真身百分比消耗 || 武魂融合技百分比消耗
     ? Math.max(0.05, Math.min(4, 承载消耗比例 / 获取武魂真身运转标准消耗比例_V1()))
