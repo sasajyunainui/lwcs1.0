@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: CharacterLibrary.js:7be536f58fbe90917b557e0636e813b2f59348e3414c625e513000513bf7f85f|ItemLibrary.js:53e750d099211e29a9b2418d841a675ee65ce283746aea6d12fcf943a72c58c1|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:2846d5768127291aa960977844bb4601e2a3dc5a47277beb72655a0788fc5a72|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
+/* sources-sha256: CharacterLibrary.js:7be536f58fbe90917b557e0636e813b2f59348e3414c625e513000513bf7f85f|ItemLibrary.js:bc63bc6717286ecaac93468db2f187b10e617ea882ddb504db5d6766a4c1d01a|FactionLibrary.js:255b37b457bfca7deb43134747c9165b31dded4ad76838ba20c369eaee318200|LocationLibrary.js:2846d5768127291aa960977844bb4601e2a3dc5a47277beb72655a0788fc5a72|timeline.js:26b59eba2d288d6ce89b4e1fa60d9ea3c39ffec882d6deaccf2c8b20316ac35d */
 ;
 /* source: CharacterLibrary.js */
 !(function () {
@@ -35749,7 +35749,7 @@
           "原型": "伤害结算",
           "目标": "单体",
           "威力倍率": 600,
-          "对应等级": 89,
+          "对应等级": 80,
           "伤害类型": "近身攻击",
           "防御穿透": 30
         },
@@ -35758,7 +35758,7 @@
           "目标": "单体",
           "状态": "眩晕",
           "持续回合": 1,
-          "对应等级": 89,
+          "对应等级": 80,
           "触发方式": "立即触发"
         }
       ],
@@ -35776,7 +35776,7 @@
           "原型": "伤害结算",
           "目标": "单体",
           "威力倍率": 1200,
-          "对应等级": 99,
+          "对应等级": 90,
           "伤害类型": "远程攻击",
           "防御穿透": 20
         },
@@ -35784,7 +35784,7 @@
           "原型": "伤害结算",
           "目标": "单体",
           "威力倍率": 1200,
-          "对应等级": 99,
+          "对应等级": 90,
           "伤害类型": "近身攻击",
           "防御穿透": 20
         }
@@ -36802,7 +36802,7 @@
           "原型": "伤害结算",
           "目标": "群体",
           "威力倍率": 420,
-          "对应等级": 69,
+          "对应等级": 79,
           "伤害类型": "近身攻击",
           "防御穿透": 18
         }

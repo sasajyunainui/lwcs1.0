@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:cdfe0d345d0e6daacf7877a14d506f1c48b83f833c677a52cc3bbd9b638d7f9c|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:d8e575c76d4518aa0fe3cb508ead6ae9f52fa5d238c0a92fa56b62f887de0ba6|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:fa93693e60a23a8f250b0039d0bf1e006244b586b89c0dcb327c581c8b50831f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:016c430f93613c7ebd048642a6272b4e62666820fc1d715557ef705affa7db9e|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:cdfe0d345d0e6daacf7877a14d506f1c48b83f833c677a52cc3bbd9b638d7f9c|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:3415ac484ac6aaa91d3b47e9ef95b49f4eb125605a5e531b76ce313739ddf32e|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:fa93693e60a23a8f250b0039d0bf1e006244b586b89c0dcb327c581c8b50831f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:0227845591148346a9bcd1c3437a5eb9935eee6c654052ff7c8d3a7c672554a5|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -59466,7 +59466,8 @@ class ProfessionUIComponent {
 
     if (分类 === '远程武器') {
       const 等级 = Math.max(0, Math.floor(Number(魂导等级 || 0)));
-      const 对应等级 = 等级 > 0 ? Math.min(120, 等级 * 10 + 9) : Math.min(99, 强度 * 20 + 19);
+      // 魂导器默认对应 N×10 级，定装武器（枪、炮、定装弹）N×10+9（11-24）
+      const 对应等级 = 等级 > 0 ? Math.min(120, 等级 * 10 + (等级 < 10 && /枪|炮|定装/.test(targetName) ? 9 : 0)) : Math.min(99, 强度 * 20 + 19);
       const 穿透 = 特性效果.防御穿透 ? 5 : 0;
       const 威力倍率 = Math.round((100 + 强度 * 45) * 质量倍率);
       输出.基础使用次数 = /弹|炸弹/.test(targetName) ? 1 : 10;
@@ -101350,10 +101351,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
     .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '') + (/损毁/.test(String(item?.装备状态 || '')) ? `${slot}:损毁` : '')).filter(Boolean).join('|');
-  // 魂导等级 N 对标第 N 环：1～9 级按 N×10+9（与物品库、工坊产物同口径），10 级以上按 N×10。
-  const soulToolEquivalentLevel = tier => {
+  // 魂导等级 N 对标第 N 环，默认对应 N×10 级；定装武器（枪、炮、定装弹）按 N×10+9（用户 11-24「统一n*10，只有定装武器是
+  // n*10+9」「枪，炮都是定装武器」）。10 级以上逐件单独定义，没写时才按 N×10 兜底。
+  const soulToolEquivalentLevel = (tier, name = '') => {
     const value = Math.max(1, Math.floor(Number(tier) || 1));
-    return value >= 10 ? value * 10 : value * 10 + 9;
+    return value < 10 && /枪|炮|定装/.test(String(name || '')) ? value * 10 + 9 : value * 10;
   };
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
@@ -101373,7 +101375,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
         // 威力是魂导器自己的（11-24）：没写对应等级的伤害按魂导等级补上，伤害公式按这一级的标准属性出手（BattlePreview calculateDamageFormula）。
         const effects = Array.isArray(skill._效果数组) && skill._效果数组.some(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0))
-          ? { _效果数组: skill._效果数组.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0) ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级) } : effect) }
+          ? { _效果数组: skill._效果数组.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0) ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级, item.名称 || slot) } : effect) }
           : {};
         return [name, { ...skill, ...effects, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
@@ -104286,6 +104288,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       usableEffects = preview.inventoryUseEffects(actor, { actionKind: 'USE_ITEM', skill: item,
         irreversibleAsset: { assetId: entry.id } }, worldSnapshot, usableEffects);
       const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;
+      // 一次性魂导器（定装弹等，从背包使用）：没写对应等级的伤害同样按魂导等级补上（soulToolEquivalentLevel）。
+      if (Number(item?.魂导等级) > 0 && usableEffects.some(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0))) {
+        usableEffects = usableEffects.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0)
+          ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级, itemName) } : effect);
+      }
       const usableItem = {
         ...item,
         name: itemName,
