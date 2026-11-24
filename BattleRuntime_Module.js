@@ -13216,13 +13216,16 @@
               shieldBefore + hpDamageLimit,
               settledSegmentDamage,
             ));
-            // 魂导器展开的护盾挡下的伤害扣它的耐久，归零即报废（BattlePreview drainSoulToolGear）
+            // 魂导器展开的护盾（用户 2026-11-24 选甲）：挡在护盾以内的伤害不伤魂导器；这一下把它打穿时，穿过去的那部分照常打到人，
+            // 同时按同样的量扣魂导器耐久，归零即报废（BattlePreview drainSoulToolGear）。
             const toolShieldSources = Object.fromEntries(Object.entries(target?.状态效果 || {})
               .filter(([, state]) => state?.__魂导器来源 && Number(state.shield_value) > 0).map(([key, state]) => [key, state.__魂导器来源]));
             const shieldResult = absorbRuntimeShield(target, incomingDamage, effect, actor);
-            (shieldResult.absorptions || []).forEach(entry => {
+            const overflow = Math.max(0, Number(shieldResult.remainingDamage) || 0);
+            const brokenTool = overflow > 0 ? [...(shieldResult.absorptions || [])].reverse().find(entry => toolShieldSources[entry.stateName] && !(Number(entry.after) > 0)) : null;
+            (brokenTool ? [brokenTool] : []).forEach(entry => {
               const source = toolShieldSources[entry.stateName];
-              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, Number(entry.absorbed) || 0);
+              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, overflow);
               if (!drained) return;
               if (drained.scrapped) drained.holder.final = buildCombatFinalStats(drained.holder, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
               facts.push(writeLedgerEvent(combatData, {
@@ -13232,7 +13235,7 @@
                 actionName: drained.gear.name, actionType: 'soul_tool_wear', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
                 sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS',
                 primaryOutcome: 'resource_reduced', operation: 'REDUCE', ruleCode: drained.scrapped ? 'SOUL_TOOL_SCRAPPED' : 'SOUL_TOOL_WEAR', allowImplicitActionSource: true,
-                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, absorbed: Number(entry.absorbed) || 0,
+                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, overflow,
                   durabilityBefore: drained.before, durabilityAfter: drained.after, durabilityMax: drained.durability, scrapped: drained.scrapped, sourceEffectId, auditOnly: !drained.scrapped },
               }));
             });

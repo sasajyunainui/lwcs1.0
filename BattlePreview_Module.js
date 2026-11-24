@@ -2550,9 +2550,17 @@
     return out;
   }
   const gearDurabilityMax = (unit, gear) => armourDurabilityMax(unit, gear.slot, gear.item);
+  // 魂导器的耐久跨场延续（用户 2026-11-25「战后只能修理」）：这场没记过就从装配件的 耐久 开始（armourDurability），掉了随即写回（writeSoulToolWear）。
   function gearHpLeft(unit = {}, gear = {}) {
     const stored = Number(unit?.__battleRuntime?.gearHp?.[gear.key]);
-    return Number.isFinite(stored) ? Math.max(0, stored) : gearDurabilityMax(unit, gear);
+    return Number.isFinite(stored) ? Math.max(0, stored) : gear.slot === '魂导器' ? armourDurability(unit, '魂导器', gear.item) : gearDurabilityMax(unit, gear);
+  }
+  function writeSoulToolWear(holder = {}, gear = {}, left = 0, durability = 0) {
+    const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
+    const item = equipment?.魂导器?.装配?.[gear.fitSlot];
+    if (!item) return;
+    holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: { ...equipment.魂导器.装配,
+      [gear.fitSlot]: { ...item, 耐久: Math.max(0, Math.round(left)), 耐久上限: Math.max(1, Math.round(durability)) } } } };
   }
   function gearStrikeDamage(actor = {}, holder = {}) {
     return Math.max(0, calculateBaseDamage(BASIC_ATTACK_EFFECT, actor, holder, null, { targetCount: 1, resourceDriveEnabled: false }));
@@ -2580,7 +2588,7 @@
     const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear);
     const after = Math.max(0, before - Math.max(0, Number(strike?.damage) || 0));
     holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
-    if (after > 1e-9) return { broken: false, before, after, durability, gear };
+    if (after > 1e-9) { if (gear.slot === '魂导器') writeSoulToolWear(holder, gear, after, durability); return { broken: false, before, after, durability, gear }; }
     if (gear.slot === '武器') {
       const seal = equipmentSealEffect({ 原型: '状态施加', 状态: GEAR_BROKEN_STATE }, {}, holder, holder);
       holder.状态效果 = { ...(holder.状态效果 || {}), [GEAR_BROKEN_KEY]: { 状态: GEAR_BROKEN_STATE, 状态名称: GEAR_BROKEN_STATE, 类型: 'debuff',
@@ -2620,6 +2628,7 @@
     const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear), after = Math.max(0, before - amount);
     holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
     if (after <= 1e-9) scrapSoulTool(holder, gear, world);
+    else writeSoulToolWear(holder, gear, after, durability);
     return { scrapped: after <= 1e-9, before, after, durability, gear, holder };
   }
   /* 投出武器（用户 11-19「离手、召回、磕飞都做」，补充「控鹤擎龙可以召回任意武器」；原作王秋儿投出黄金龙枪、唐三掷昊天锤、
