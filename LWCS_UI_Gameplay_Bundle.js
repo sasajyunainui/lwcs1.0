@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:bae1113062bab0ec2f06551e18d2edbfecfe463c2d39555186a32e142e688397|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4a6769fde1aafb6ba8b964647cfb016d8c3c3220c67407a0685f50e00b6f3545|BattleRuntime_Module.js:ccbf1143fe058938ba5cbd8eb73a082faf39d54cdf66deec10e667aa753b18b2|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:af91661c4bdf4f5199db4063c510d7d5cd74f039955b58b37cbe757247e77b8b|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4a6769fde1aafb6ba8b964647cfb016d8c3c3220c67407a0685f50e00b6f3545|BattleRuntime_Module.js:8246fe4c2cf09c7ba97fad29fbf2c53e21bfb7280a17e55d00e19a797dd2a30d|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -9284,9 +9284,17 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     return out;
   }
   const gearDurabilityMax = (unit, gear) => armourDurabilityMax(unit, gear.slot, gear.item);
+  // 魂导器的耐久跨场延续（用户 2026-11-25「战后只能修理」）：这场没记过就从装配件的 耐久 开始（armourDurability），掉了随即写回（writeSoulToolWear）。
   function gearHpLeft(unit = {}, gear = {}) {
     const stored = Number(unit?.__battleRuntime?.gearHp?.[gear.key]);
-    return Number.isFinite(stored) ? Math.max(0, stored) : gearDurabilityMax(unit, gear);
+    return Number.isFinite(stored) ? Math.max(0, stored) : gear.slot === '魂导器' ? armourDurability(unit, '魂导器', gear.item) : gearDurabilityMax(unit, gear);
+  }
+  function writeSoulToolWear(holder = {}, gear = {}, left = 0, durability = 0) {
+    const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
+    const item = equipment?.魂导器?.装配?.[gear.fitSlot];
+    if (!item) return;
+    holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: { ...equipment.魂导器.装配,
+      [gear.fitSlot]: { ...item, 耐久: Math.max(0, Math.round(left)), 耐久上限: Math.max(1, Math.round(durability)) } } } };
   }
   function gearStrikeDamage(actor = {}, holder = {}) {
     return Math.max(0, calculateBaseDamage(BASIC_ATTACK_EFFECT, actor, holder, null, { targetCount: 1, resourceDriveEnabled: false }));
@@ -9314,7 +9322,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear);
     const after = Math.max(0, before - Math.max(0, Number(strike?.damage) || 0));
     holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
-    if (after > 1e-9) return { broken: false, before, after, durability, gear };
+    if (after > 1e-9) { if (gear.slot === '魂导器') writeSoulToolWear(holder, gear, after, durability); return { broken: false, before, after, durability, gear }; }
     if (gear.slot === '武器') {
       const seal = equipmentSealEffect({ 原型: '状态施加', 状态: GEAR_BROKEN_STATE }, {}, holder, holder);
       holder.状态效果 = { ...(holder.状态效果 || {}), [GEAR_BROKEN_KEY]: { 状态: GEAR_BROKEN_STATE, 状态名称: GEAR_BROKEN_STATE, 类型: 'debuff',
@@ -9354,6 +9362,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear), after = Math.max(0, before - amount);
     holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
     if (after <= 1e-9) scrapSoulTool(holder, gear, world);
+    else writeSoulToolWear(holder, gear, after, durability);
     return { scrapped: after <= 1e-9, before, after, durability, gear, holder };
   }
   /* 投出武器（用户 11-19「离手、召回、磕飞都做」，补充「控鹤擎龙可以召回任意武器」；原作王秋儿投出黄金龙枪、唐三掷昊天锤、
@@ -101963,13 +101972,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               shieldBefore + hpDamageLimit,
               settledSegmentDamage,
             ));
-            // 魂导器展开的护盾挡下的伤害扣它的耐久，归零即报废（BattlePreview drainSoulToolGear）
+            // 魂导器展开的护盾（用户 2026-11-24 选甲）：挡在护盾以内的伤害不伤魂导器；这一下把它打穿时，穿过去的那部分照常打到人，
+            // 同时按同样的量扣魂导器耐久，归零即报废（BattlePreview drainSoulToolGear）。
             const toolShieldSources = Object.fromEntries(Object.entries(target?.状态效果 || {})
               .filter(([, state]) => state?.__魂导器来源 && Number(state.shield_value) > 0).map(([key, state]) => [key, state.__魂导器来源]));
             const shieldResult = absorbRuntimeShield(target, incomingDamage, effect, actor);
-            (shieldResult.absorptions || []).forEach(entry => {
+            const overflow = Math.max(0, Number(shieldResult.remainingDamage) || 0);
+            const brokenTool = overflow > 0 ? [...(shieldResult.absorptions || [])].reverse().find(entry => toolShieldSources[entry.stateName] && !(Number(entry.after) > 0)) : null;
+            (brokenTool ? [brokenTool] : []).forEach(entry => {
               const source = toolShieldSources[entry.stateName];
-              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, Number(entry.absorbed) || 0);
+              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, overflow);
               if (!drained) return;
               if (drained.scrapped) drained.holder.final = buildCombatFinalStats(drained.holder, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
               facts.push(writeLedgerEvent(combatData, {
@@ -101979,7 +101991,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 actionName: drained.gear.name, actionType: 'soul_tool_wear', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
                 sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS',
                 primaryOutcome: 'resource_reduced', operation: 'REDUCE', ruleCode: drained.scrapped ? 'SOUL_TOOL_SCRAPPED' : 'SOUL_TOOL_WEAR', allowImplicitActionSource: true,
-                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, absorbed: Number(entry.absorbed) || 0,
+                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, overflow,
                   durabilityBefore: drained.before, durabilityAfter: drained.after, durabilityMax: drained.durability, scrapped: drained.scrapped, sourceEffectId, auditOnly: !drained.scrapped },
               }));
             });

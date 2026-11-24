@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:caa8cde2f76c36e86b6e61e8d5af6113d3bba08bafe4d78d57375c68c7bce0e6|MVU_Schema_Runtime.js:7295cdf3d1b4250f250c4c00bf5bd5d99a11ff7498b5d9a560f8250d2beec75e|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:caa8cde2f76c36e86b6e61e8d5af6113d3bba08bafe4d78d57375c68c7bce0e6|MVU_Schema_Runtime.js:9a07d792f32f50affc0bc95ba8219bc4736b872026523caff4b763b4cc027c03|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -33510,7 +33510,7 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
     return 输出;
   }
   if (Number(来源.魂导等级 || 0) > 0) 输出.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(来源.魂导等级 || 0))));
-  const 是魂导器 = Number(输出.魂导等级 || 0) > 0 && !(物品分类 === '一次性道具' || /奶瓶|定装|炮弹|炸弹|爆弹/.test(`${物品名} ${物品分类} ${输出.描述}`) || /弹$/.test(String(物品名 || '').trim()));
+  const 是魂导器 = Number(输出.魂导等级 || 0) > 0 && !(物品分类 === '一次性道具' || /一次性|奶瓶|炮弹|炸弹|爆弹/.test(String(物品名 || '').trim()) || /定装/.test(String(物品名 || '').trim()) && !/炮$/.test(String(物品名 || '').trim()) || /弹$/.test(String(物品名 || '').trim()));
   if (来源.使用后消耗 !== undefined) {
     if (typeof 来源.使用后消耗 !== 'boolean') throw new Error(`物品定义使用后消耗无效：${物品名}`);
     输出.使用后消耗 = 来源.使用后消耗;

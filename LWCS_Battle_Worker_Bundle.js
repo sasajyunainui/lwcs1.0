@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:caa8cde2f76c36e86b6e61e8d5af6113d3bba08bafe4d78d57375c68c7bce0e6|MVU_Schema_Runtime.js:7295cdf3d1b4250f250c4c00bf5bd5d99a11ff7498b5d9a560f8250d2beec75e|BattlePreview_Module.js:bae1113062bab0ec2f06551e18d2edbfecfe463c2d39555186a32e142e688397|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4a6769fde1aafb6ba8b964647cfb016d8c3c3220c67407a0685f50e00b6f3545|BattleRuntime_Module.js:ccbf1143fe058938ba5cbd8eb73a082faf39d54cdf66deec10e667aa753b18b2 */
+/* sources-sha256: MVU_Skill_Runtime.js:caa8cde2f76c36e86b6e61e8d5af6113d3bba08bafe4d78d57375c68c7bce0e6|MVU_Schema_Runtime.js:9a07d792f32f50affc0bc95ba8219bc4736b872026523caff4b763b4cc027c03|BattlePreview_Module.js:af91661c4bdf4f5199db4063c510d7d5cd74f039955b58b37cbe757247e77b8b|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4a6769fde1aafb6ba8b964647cfb016d8c3c3220c67407a0685f50e00b6f3545|BattleRuntime_Module.js:8246fe4c2cf09c7ba97fad29fbf2c53e21bfb7280a17e55d00e19a797dd2a30d */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -28880,7 +28880,7 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
     return 输出;
   }
   if (Number(来源.魂导等级 || 0) > 0) 输出.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(来源.魂导等级 || 0))));
-  const 是魂导器 = Number(输出.魂导等级 || 0) > 0 && !(物品分类 === '一次性道具' || /奶瓶|定装|炮弹|炸弹|爆弹/.test(`${物品名} ${物品分类} ${输出.描述}`) || /弹$/.test(String(物品名 || '').trim()));
+  const 是魂导器 = Number(输出.魂导等级 || 0) > 0 && !(物品分类 === '一次性道具' || /一次性|奶瓶|炮弹|炸弹|爆弹/.test(String(物品名 || '').trim()) || /定装/.test(String(物品名 || '').trim()) && !/炮$/.test(String(物品名 || '').trim()) || /弹$/.test(String(物品名 || '').trim()));
   if (来源.使用后消耗 !== undefined) {
     if (typeof 来源.使用后消耗 !== 'boolean') throw new Error(`物品定义使用后消耗无效：${物品名}`);
     输出.使用后消耗 = 来源.使用后消耗;
@@ -40451,9 +40451,17 @@ try {
     return out;
   }
   const gearDurabilityMax = (unit, gear) => armourDurabilityMax(unit, gear.slot, gear.item);
+  // 魂导器的耐久跨场延续（用户 2026-11-25「战后只能修理」）：这场没记过就从装配件的 耐久 开始（armourDurability），掉了随即写回（writeSoulToolWear）。
   function gearHpLeft(unit = {}, gear = {}) {
     const stored = Number(unit?.__battleRuntime?.gearHp?.[gear.key]);
-    return Number.isFinite(stored) ? Math.max(0, stored) : gearDurabilityMax(unit, gear);
+    return Number.isFinite(stored) ? Math.max(0, stored) : gear.slot === '魂导器' ? armourDurability(unit, '魂导器', gear.item) : gearDurabilityMax(unit, gear);
+  }
+  function writeSoulToolWear(holder = {}, gear = {}, left = 0, durability = 0) {
+    const equipment = holder?.装备 && typeof holder.装备 === 'object' ? holder.装备 : null;
+    const item = equipment?.魂导器?.装配?.[gear.fitSlot];
+    if (!item) return;
+    holder.装备 = { ...equipment, 魂导器: { ...equipment.魂导器, 装配: { ...equipment.魂导器.装配,
+      [gear.fitSlot]: { ...item, 耐久: Math.max(0, Math.round(left)), 耐久上限: Math.max(1, Math.round(durability)) } } } };
   }
   function gearStrikeDamage(actor = {}, holder = {}) {
     return Math.max(0, calculateBaseDamage(BASIC_ATTACK_EFFECT, actor, holder, null, { targetCount: 1, resourceDriveEnabled: false }));
@@ -40481,7 +40489,7 @@ try {
     const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear);
     const after = Math.max(0, before - Math.max(0, Number(strike?.damage) || 0));
     holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
-    if (after > 1e-9) return { broken: false, before, after, durability, gear };
+    if (after > 1e-9) { if (gear.slot === '魂导器') writeSoulToolWear(holder, gear, after, durability); return { broken: false, before, after, durability, gear }; }
     if (gear.slot === '武器') {
       const seal = equipmentSealEffect({ 原型: '状态施加', 状态: GEAR_BROKEN_STATE }, {}, holder, holder);
       holder.状态效果 = { ...(holder.状态效果 || {}), [GEAR_BROKEN_KEY]: { 状态: GEAR_BROKEN_STATE, 状态名称: GEAR_BROKEN_STATE, 类型: 'debuff',
@@ -40521,6 +40529,7 @@ try {
     const durability = gearDurabilityMax(holder, gear), before = gearHpLeft(holder, gear), after = Math.max(0, before - amount);
     holder.__battleRuntime = { ...(holder.__battleRuntime || {}), gearHp: { ...(holder.__battleRuntime?.gearHp || {}), [gear.key]: after } };
     if (after <= 1e-9) scrapSoulTool(holder, gear, world);
+    else writeSoulToolWear(holder, gear, after, durability);
     return { scrapped: after <= 1e-9, before, after, durability, gear, holder };
   }
   /* 投出武器（用户 11-19「离手、召回、磕飞都做」，补充「控鹤擎龙可以召回任意武器」；原作王秋儿投出黄金龙枪、唐三掷昊天锤、
@@ -133130,13 +133139,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               shieldBefore + hpDamageLimit,
               settledSegmentDamage,
             ));
-            // 魂导器展开的护盾挡下的伤害扣它的耐久，归零即报废（BattlePreview drainSoulToolGear）
+            // 魂导器展开的护盾（用户 2026-11-24 选甲）：挡在护盾以内的伤害不伤魂导器；这一下把它打穿时，穿过去的那部分照常打到人，
+            // 同时按同样的量扣魂导器耐久，归零即报废（BattlePreview drainSoulToolGear）。
             const toolShieldSources = Object.fromEntries(Object.entries(target?.状态效果 || {})
               .filter(([, state]) => state?.__魂导器来源 && Number(state.shield_value) > 0).map(([key, state]) => [key, state.__魂导器来源]));
             const shieldResult = absorbRuntimeShield(target, incomingDamage, effect, actor);
-            (shieldResult.absorptions || []).forEach(entry => {
+            const overflow = Math.max(0, Number(shieldResult.remainingDamage) || 0);
+            const brokenTool = overflow > 0 ? [...(shieldResult.absorptions || [])].reverse().find(entry => toolShieldSources[entry.stateName] && !(Number(entry.after) > 0)) : null;
+            (brokenTool ? [brokenTool] : []).forEach(entry => {
               const source = toolShieldSources[entry.stateName];
-              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, Number(entry.absorbed) || 0);
+              const drained = source && previewRuntime.drainSoulToolGear?.(combatData, source, overflow);
               if (!drained) return;
               if (drained.scrapped) drained.holder.final = buildCombatFinalStats(drained.holder, Number(combatData?.当前世界tick ?? combatData?.当前tick ?? 0));
               facts.push(writeLedgerEvent(combatData, {
@@ -133146,7 +133158,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 actionName: drained.gear.name, actionType: 'soul_tool_wear', actorControl: 'SYSTEM', actionRole: 'STATE_TICK',
                 sourceActionId: String(actionEvent?.actionId || ''), result: 'loss', resultState: 'LOSS',
                 primaryOutcome: 'resource_reduced', operation: 'REDUCE', ruleCode: drained.scrapped ? 'SOUL_TOOL_SCRAPPED' : 'SOUL_TOOL_WEAR', allowImplicitActionSource: true,
-                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, absorbed: Number(entry.absorbed) || 0,
+                meta: { source: 'soul_tool_wear', gearName: drained.gear.name, gearKey: drained.gear.key, overflow,
                   durabilityBefore: drained.before, durabilityAfter: drained.after, durabilityMax: drained.durability, scrapped: drained.scrapped, sourceEffectId, auditOnly: !drained.scrapped },
               }));
             });
