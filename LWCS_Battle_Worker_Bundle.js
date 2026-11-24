@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:40e9ababd8492e64ef505bf3a5eca4204c20690c5bfb97e68f45b9ee9d0c841b|MVU_Schema_Runtime.js:fdde68d9cfefdfae044c30cea2d7753e82689d46811a9571b17ba856ace1c4b5|BattlePreview_Module.js:138d5baf921836d2a339c56ca242953a958d3c796b850f6b790d884a3ce2d8fc|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a8c115780b77818466ab8d80c2593fee1513a1d816af728e0cacfec9e55aeea7|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149 */
+/* sources-sha256: MVU_Skill_Runtime.js:b5096b562ab433adc420b7689bc49720bd46ad0f3b7d09608c8f4758d21321de|MVU_Schema_Runtime.js:7295cdf3d1b4250f250c4c00bf5bd5d99a11ff7498b5d9a560f8250d2beec75e|BattlePreview_Module.js:64ecfffe99650f39282594422e09af5abdd24f76e7c9bad98810aac4c018af78|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a5cde7517f584a38fdcee92268e7c1827269444f756a9d967d7464b5c53f1154|BattleRuntime_Module.js:72d405dfac5738877532e64b806a43f68be60ee61ea02e447053a5c268abc02d */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -17678,6 +17678,8 @@ function 评估技能预算_V1(技能 = {}, 上下文或魂技位 = {}, 旧上�
   if (上下文?.魂环位 === undefined && 上下文?.ringIndex !== undefined) {
     上下文.魂环位 = Math.max(1, Math.floor(Number(上下文.ringIndex || 1)) || 1);
   }
+  // 一次性道具（用户 2026-11-24 A「没问题」：定装弹、炸弹等用掉就没了，本身就是次数限制）：没写触发限制的按「每战 1 次」同样抵扣。
+  if (上下文?.一次性道具 === true && 技能 && typeof 技能 === 'object' && !技能.触发限制) 技能 = { ...技能, 触发限制: { 周期: '每战', 次数: 1 } };
   const 来源判定 = 判定技能消耗来源_V1(技能, 上下文);
   const 来源 = 来源判定.有效来源 || 来源判定.来源;
   const 来源承载 = 来源承载系数_V1(来源);
@@ -28873,7 +28875,7 @@ function 规范化物品定义_V1(物品名 = '', 定义 = {}, 分类 = '') {
     return 输出;
   }
   if (Number(来源.魂导等级 || 0) > 0) 输出.魂导等级 = Math.max(1, Math.min(12, Math.floor(Number(来源.魂导等级 || 0))));
-  const 是魂导器 = Number(输出.魂导等级 || 0) > 0 && !(物品分类 === '一次性道具' || /奶瓶|定装|炮弹|炸弹|爆弹|弹\b|弹$/.test(`${物品名} ${物品分类} ${输出.描述}`));
+  const 是魂导器 = Number(输出.魂导等级 || 0) > 0 && !(物品分类 === '一次性道具' || /奶瓶|定装|炮弹|炸弹|爆弹/.test(`${物品名} ${物品分类} ${输出.描述}`) || /弹$/.test(String(物品名 || '').trim()));
   if (来源.使用后消耗 !== undefined) {
     if (typeof 来源.使用后消耗 !== 'boolean') throw new Error(`物品定义使用后消耗无效：${物品名}`);
     输出.使用后消耗 = 来源.使用后消耗;
@@ -47724,9 +47726,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return true;
   }
   // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
+  // 冥想补给（密封奶瓶，用户 2026-11-24「不是直接回复魂力，而是增加冥想效果」选甲）：喝下奶瓶即坐下冥想，同时记一个「冥想补给」
+  // 状态，数值是额外恢复的固定魂力；冥想撑到下次行动时加进恢复（BattleRuntime），被打断就作废。
+  const MEDITATION_SUPPLY_STATE = '冥想补给';
+  const isMeditationSupply = state => String(state?.状态 || state?.状态名称 || '').trim() === MEDITATION_SUPPLY_STATE;
+  function meditationSupplyAmount(unit = {}) {
+    return Object.values(unit?.状态效果 || {}).reduce((sum, state) => isMeditationSupply(state) ? sum + Math.max(0, parseSignedValue(state?.数值, 0)) : sum, 0);
+  }
+  function dropMeditationSupply(unit = {}) {
+    if (!Object.values(unit?.状态效果 || {}).some(isMeditationSupply)) return;
+    unit.状态效果 = Object.fromEntries(Object.entries(unit.状态效果).filter(([, state]) => !isMeditationSupply(state)));
+  }
   function interruptMeditation(unit = {}) {
     const state = unit?.状态效果?.[MEDITATION_KEY];
     if (!state || state.__冥想中断 === true) return false;
+    dropMeditationSupply(unit);
     const effects = state.战斗效果 || {};
     if (state.__冥想回复) {
       // 撑到下次行动的冥想：被攻击就打断，什么也不回，又能应对。
@@ -64922,7 +64936,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     feintRecord,
     feintShown,
     meditating,
-    beginMeditation,
+    beginMeditation, meditationSupplyAmount, dropMeditationSupply,
     interruptMeditation,
     naturalRecoveryRatios,
     spiritReleasedMarker,
@@ -80770,6 +80784,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? item._效果数组
         : Array.isArray(item?.使用效果) ? item.使用效果 : [];
       if (!usableEffects.length || !preview.inventoryItemAvailable(item, worldSnapshot, actor)) return;
+      // 带冥想的物品（密封奶瓶：喝下即坐下冥想）和冥想动作同一个条件：缺魂力或精神力、此刻能安全坐下（meditationOptions）。
+      if (usableEffects.some(effect => effect?.原型 === '状态施加' && String(effect?.状态 || '').trim() === '冥想') &&
+        !preview.meditationOptions(actor, worldSnapshot).length) return;
       usableEffects = preview.inventoryUseEffects(actor, { actionKind: 'USE_ITEM', skill: item,
         irreversibleAsset: { assetId: entry.id } }, worldSnapshot, usableEffects);
       const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;
@@ -139164,16 +139181,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const meditation = actor.状态效果[previewRuntime.MEDITATION_KEY], owed = meditation.__冥想回复;
             if (owed && meditation.__冥想中断 !== true) {
               const pools = [['sp', '魂力', 1], ['men', '精神力', Number(owed.精神力上限比) || 1]];
+              // 冥想补给（密封奶瓶）：额外恢复的固定魂力（BattlePreview meditationSupplyAmount）。
+              const supply = { 魂力: Number(previewRuntime.meditationSupplyAmount?.(actor)) || 0 };
               for (const [key, name, ceiling] of pools) {
                 const maximum = Math.max(0, Number(previewRuntime.readResourceMax(actor, name)) || 0), now = Number(previewRuntime.readResource(actor, name)) || 0;
-                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0)));
+                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0) + (supply[name] || 0)));
                 if (target > now) {
                   writeCombatResource(actor, key, target);
                   writeRoundEndResourceEvent(combatData, actor, '冥想', key, target - now, { reasonCode: 'MEDITATION_RECOVERY', operation: 'RESTORE' });
                 }
               }
             }
-            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; }
+            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; previewRuntime.dropMeditationSupply?.(actor); }
           }
           // 压制（用户 11-23「1v1 也可以全场压制得对方难有主动出手机会」）：主动机会开始时读出被占用的时间并清空围攻记录（pressedTurn 记下这次
           // 行动只剩多少，蓄力、施法与连续行动按它算）；剩下的不够一记普攻就失去这次行动——被压着打，没有出手机会。

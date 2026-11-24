@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:cdfe0d345d0e6daacf7877a14d506f1c48b83f833c677a52cc3bbd9b638d7f9c|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:138d5baf921836d2a339c56ca242953a958d3c796b850f6b790d884a3ce2d8fc|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a8c115780b77818466ab8d80c2593fee1513a1d816af728e0cacfec9e55aeea7|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:9608d78c1339e19a462e63d2a06d8b05ef46d0360d854bdfd66fe5206fb06ce2|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:95282fe01b2410669103b3b28bbf8a0d6a015f43650deb955b607230d119be94|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:64ecfffe99650f39282594422e09af5abdd24f76e7c9bad98810aac4c018af78|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a5cde7517f584a38fdcee92268e7c1827269444f756a9d967d7464b5c53f1154|BattleRuntime_Module.js:72d405dfac5738877532e64b806a43f68be60ee61ea02e447053a5c268abc02d|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -2644,7 +2644,8 @@
   function 判断一次性魂导道具_桥接(物品名 = '', 物品数据 = {}) {
     const 分类 = toText(物品数据 && (物品数据.物品分类 || 物品数据.分类), '');
     const 文本 = `${物品名} ${分类} ${toText(物品数据 && 物品数据.描述, '')}`;
-    return 分类 === '一次性道具' || /奶瓶|定装|炮弹|炸弹|爆弹|弹\b|弹$/.test(文本);
+    // 名字以「弹」结尾的是弹药（捕捉弹、腐蚀弹……）；原先的 弹\b 对中文永远匹配不上（11-24）。
+    return 分类 === '一次性道具' || /奶瓶|定装|炮弹|炸弹|爆弹/.test(文本) || /弹$/.test(toText(物品名, '').trim());
   }
 
   function 判断可装配魂导器_桥接(物品名 = '', 物品数据 = {}) {
@@ -71249,9 +71250,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return true;
   }
   // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
+  // 冥想补给（密封奶瓶，用户 2026-11-24「不是直接回复魂力，而是增加冥想效果」选甲）：喝下奶瓶即坐下冥想，同时记一个「冥想补给」
+  // 状态，数值是额外恢复的固定魂力；冥想撑到下次行动时加进恢复（BattleRuntime），被打断就作废。
+  const MEDITATION_SUPPLY_STATE = '冥想补给';
+  const isMeditationSupply = state => String(state?.状态 || state?.状态名称 || '').trim() === MEDITATION_SUPPLY_STATE;
+  function meditationSupplyAmount(unit = {}) {
+    return Object.values(unit?.状态效果 || {}).reduce((sum, state) => isMeditationSupply(state) ? sum + Math.max(0, parseSignedValue(state?.数值, 0)) : sum, 0);
+  }
+  function dropMeditationSupply(unit = {}) {
+    if (!Object.values(unit?.状态效果 || {}).some(isMeditationSupply)) return;
+    unit.状态效果 = Object.fromEntries(Object.entries(unit.状态效果).filter(([, state]) => !isMeditationSupply(state)));
+  }
   function interruptMeditation(unit = {}) {
     const state = unit?.状态效果?.[MEDITATION_KEY];
     if (!state || state.__冥想中断 === true) return false;
+    dropMeditationSupply(unit);
     const effects = state.战斗效果 || {};
     if (state.__冥想回复) {
       // 撑到下次行动的冥想：被攻击就打断，什么也不回，又能应对。
@@ -88447,7 +88460,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     feintRecord,
     feintShown,
     meditating,
-    beginMeditation,
+    beginMeditation, meditationSupplyAmount, dropMeditationSupply,
     interruptMeditation,
     naturalRecoveryRatios,
     spiritReleasedMarker,
@@ -104295,6 +104308,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? item._效果数组
         : Array.isArray(item?.使用效果) ? item.使用效果 : [];
       if (!usableEffects.length || !preview.inventoryItemAvailable(item, worldSnapshot, actor)) return;
+      // 带冥想的物品（密封奶瓶：喝下即坐下冥想）和冥想动作同一个条件：缺魂力或精神力、此刻能安全坐下（meditationOptions）。
+      if (usableEffects.some(effect => effect?.原型 === '状态施加' && String(effect?.状态 || '').trim() === '冥想') &&
+        !preview.meditationOptions(actor, worldSnapshot).length) return;
       usableEffects = preview.inventoryUseEffects(actor, { actionKind: 'USE_ITEM', skill: item,
         irreversibleAsset: { assetId: entry.id } }, worldSnapshot, usableEffects);
       const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;
@@ -162689,16 +162705,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const meditation = actor.状态效果[previewRuntime.MEDITATION_KEY], owed = meditation.__冥想回复;
             if (owed && meditation.__冥想中断 !== true) {
               const pools = [['sp', '魂力', 1], ['men', '精神力', Number(owed.精神力上限比) || 1]];
+              // 冥想补给（密封奶瓶）：额外恢复的固定魂力（BattlePreview meditationSupplyAmount）。
+              const supply = { 魂力: Number(previewRuntime.meditationSupplyAmount?.(actor)) || 0 };
               for (const [key, name, ceiling] of pools) {
                 const maximum = Math.max(0, Number(previewRuntime.readResourceMax(actor, name)) || 0), now = Number(previewRuntime.readResource(actor, name)) || 0;
-                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0)));
+                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0) + (supply[name] || 0)));
                 if (target > now) {
                   writeCombatResource(actor, key, target);
                   writeRoundEndResourceEvent(combatData, actor, '冥想', key, target - now, { reasonCode: 'MEDITATION_RECOVERY', operation: 'RESTORE' });
                 }
               }
             }
-            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; }
+            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; previewRuntime.dropMeditationSupply?.(actor); }
           }
           // 压制（用户 11-23「1v1 也可以全场压制得对方难有主动出手机会」）：主动机会开始时读出被占用的时间并清空围攻记录（pressedTurn 记下这次
           // 行动只剩多少，蓄力、施法与连续行动按它算）；剩下的不够一记普攻就失去这次行动——被压着打，没有出手机会。

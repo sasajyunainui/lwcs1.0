@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:138d5baf921836d2a339c56ca242953a958d3c796b850f6b790d884a3ce2d8fc|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a8c115780b77818466ab8d80c2593fee1513a1d816af728e0cacfec9e55aeea7|BattleRuntime_Module.js:e01f8e709d3a757f3180c09b1f0edbbe9d6b8c11f1ee3660c17e770bd6c40149|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:64ecfffe99650f39282594422e09af5abdd24f76e7c9bad98810aac4c018af78|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:a5cde7517f584a38fdcee92268e7c1827269444f756a9d967d7464b5c53f1154|BattleRuntime_Module.js:72d405dfac5738877532e64b806a43f68be60ee61ea02e447053a5c268abc02d|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -16564,9 +16564,21 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     return true;
   }
   // A hit on a meditating unit breaks it: half the recovery, and it answers again. A new state object (frozen battles).
+  // 冥想补给（密封奶瓶，用户 2026-11-24「不是直接回复魂力，而是增加冥想效果」选甲）：喝下奶瓶即坐下冥想，同时记一个「冥想补给」
+  // 状态，数值是额外恢复的固定魂力；冥想撑到下次行动时加进恢复（BattleRuntime），被打断就作废。
+  const MEDITATION_SUPPLY_STATE = '冥想补给';
+  const isMeditationSupply = state => String(state?.状态 || state?.状态名称 || '').trim() === MEDITATION_SUPPLY_STATE;
+  function meditationSupplyAmount(unit = {}) {
+    return Object.values(unit?.状态效果 || {}).reduce((sum, state) => isMeditationSupply(state) ? sum + Math.max(0, parseSignedValue(state?.数值, 0)) : sum, 0);
+  }
+  function dropMeditationSupply(unit = {}) {
+    if (!Object.values(unit?.状态效果 || {}).some(isMeditationSupply)) return;
+    unit.状态效果 = Object.fromEntries(Object.entries(unit.状态效果).filter(([, state]) => !isMeditationSupply(state)));
+  }
   function interruptMeditation(unit = {}) {
     const state = unit?.状态效果?.[MEDITATION_KEY];
     if (!state || state.__冥想中断 === true) return false;
+    dropMeditationSupply(unit);
     const effects = state.战斗效果 || {};
     if (state.__冥想回复) {
       // 撑到下次行动的冥想：被攻击就打断，什么也不回，又能应对。
@@ -33762,7 +33774,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     feintRecord,
     feintShown,
     meditating,
-    beginMeditation,
+    beginMeditation, meditationSupplyAmount, dropMeditationSupply,
     interruptMeditation,
     naturalRecoveryRatios,
     spiritReleasedMarker,
@@ -49610,6 +49622,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ? item._效果数组
         : Array.isArray(item?.使用效果) ? item.使用效果 : [];
       if (!usableEffects.length || !preview.inventoryItemAvailable(item, worldSnapshot, actor)) return;
+      // 带冥想的物品（密封奶瓶：喝下即坐下冥想）和冥想动作同一个条件：缺魂力或精神力、此刻能安全坐下（meditationOptions）。
+      if (usableEffects.some(effect => effect?.原型 === '状态施加' && String(effect?.状态 || '').trim() === '冥想') &&
+        !preview.meditationOptions(actor, worldSnapshot).length) return;
       usableEffects = preview.inventoryUseEffects(actor, { actionKind: 'USE_ITEM', skill: item,
         irreversibleAsset: { assetId: entry.id } }, worldSnapshot, usableEffects);
       const itemName = String(item?.name || item?.名称 || item?.物品名 || entry.id).trim() || entry.id;
@@ -108004,16 +108019,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const meditation = actor.状态效果[previewRuntime.MEDITATION_KEY], owed = meditation.__冥想回复;
             if (owed && meditation.__冥想中断 !== true) {
               const pools = [['sp', '魂力', 1], ['men', '精神力', Number(owed.精神力上限比) || 1]];
+              // 冥想补给（密封奶瓶）：额外恢复的固定魂力（BattlePreview meditationSupplyAmount）。
+              const supply = { 魂力: Number(previewRuntime.meditationSupplyAmount?.(actor)) || 0 };
               for (const [key, name, ceiling] of pools) {
                 const maximum = Math.max(0, Number(previewRuntime.readResourceMax(actor, name)) || 0), now = Number(previewRuntime.readResource(actor, name)) || 0;
-                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0)));
+                const target = Math.max(now, Math.min(maximum * ceiling, now + maximum * (Number(owed[name]) || 0) + (supply[name] || 0)));
                 if (target > now) {
                   writeCombatResource(actor, key, target);
                   writeRoundEndResourceEvent(combatData, actor, '冥想', key, target - now, { reasonCode: 'MEDITATION_RECOVERY', operation: 'RESTORE' });
                 }
               }
             }
-            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; }
+            if (owed) { const { [previewRuntime.MEDITATION_KEY]: done, ...rest } = actor.状态效果; actor.状态效果 = rest; previewRuntime.dropMeditationSupply?.(actor); }
           }
           // 压制（用户 11-23「1v1 也可以全场压制得对方难有主动出手机会」）：主动机会开始时读出被占用的时间并清空围攻记录（pressedTurn 记下这次
           // 行动只剩多少，蓄力、施法与连续行动按它算）；剩下的不够一记普攻就失去这次行动——被压着打，没有出手机会。
