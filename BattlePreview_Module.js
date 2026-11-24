@@ -2414,6 +2414,14 @@
     // 默认关（用户 11-24：被压的人照样能接，压制到位体现在抢不回主动、抓不到反击空当）；PRESS_OUT_ON 开。
     return root.__LWCS_TUNE__?.PRESS_OUT_ON === true && root.__LWCS_TUNE__?.PRESSURE_OFF !== true && pressedBudget(unit) <= 1e-9;
   }
+  // 被压后的这次主动机会归谁（运行时与推演共用，11-24 第一阶段：此前推演按效率损失部分转给压制者，运行时只在整次丢掉时转，两份规则不一致）：
+  // 剩下的时间不够一记普攻（remaining < basicWindup）就丢掉这次主动行动，整次转给按占用时间排序后第一个能接的敌方压制者（pressers：
+  // [{ id, eligible }]，从多到少）；够的话照常行动，谁也不多得。返回 { lost, presserId }（presserId 为 null：丢了但没人能接）。
+  function pressedOpportunityOutcome(remaining = CONTINUOUS_ACTION_BUDGET, basicWindup = 10, pressers = []) {
+    if (!(Number(remaining) < Math.max(1, Number(basicWindup) || 10))) return { lost: false, presserId: null };
+    const presser = (Array.isArray(pressers) ? pressers : []).find(entry => entry && entry.eligible);
+    return { lost: true, presserId: presser ? presser.id : null };
+  }
   // 夹击：同一回合里这个单位挨过 attacker 一方别人的近身攻击。
   function pincerCut(reactor = {}, attacker = {}, round = null) {
     const struck = reactor?.__battleRuntime?.closeStruck;
@@ -19597,6 +19605,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
+  const CELL_DOT_ROUNDS = 6;
   function calculateBaseActionValue(actor = {}, target = {}, declaration = {}) {
     const projectionContext = declaration?.projectionContext ?? null;
     const effects = declaration?.actionKind === 'BASIC_ATTACK'
@@ -19653,6 +19662,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         );
         remainingShieldAbsorptionCap = Math.max(0, remainingShieldAbsorptionCap - realizedShield);
         return sum + realizedShield / base * 100;
+      }
+      // 持续伤害进单招估值（CELL_DOT，11-24 推演对账：中毒、流血、灼烧、冻伤、持续创伤这类「状态施加」从没进格子，推演里新挂上的持续伤害不存在——
+      // 1v1 行动者挂上的持续伤害 推演 0 / 实际 2.3%，挨的 0.3 / 2.2%）：每回合比例（deriveStateCombatEffect dot_damage_ratio，目标生命上限的份额）×
+      // 持续回合（至多 CELL_DOT_ROUNDS）× 触发概率 × 挂上的概率（抗性）× 命中；目标身上已有同名状态时只算多出来的回合（同技能不叠加）。
+      // 11-24 定默认开（sq8 同局面 3v3 对手两窗 18.1→20.4 / 实际 26.3；n32d 行为几乎不变）；LWCS_TUNE {"CELL_DOT":false} 关回。
+      if (root.__LWCS_TUNE__?.CELL_DOT !== false && String(effect?.原型 || '').trim() === '状态施加' && target && !/自身|己方|友方/.test(String(effect?.目标 || ''))) {
+        const ratio = Number(deriveStateCombatEffect(effect)?.dot_damage_ratio) || 0;
+        if (ratio > 0 && !negativeEffectIsImmune(target, effect)) {
+          const rounds = Math.min(CELL_DOT_ROUNDS, Math.max(1, Number(effect?.持续回合) || 1)), name = String(effect?.状态 || '').trim();
+          const left = Object.values(target?.状态效果 || {}).reduce((most, state) => String(state?.状态 || state?.状态名称 || '').trim() === name
+            ? Math.max(most, Number(state?.duration ?? state?.持续回合 ?? 0) || 0) : most, 0);
+          const extra = Math.max(0, rounds - Math.min(left, CELL_DOT_ROUNDS));
+          const chance = normalizeEffectProbability(effect?.触发概率, 1) * stateApplicationProbabilityMultiplier(target, effect, actor) *
+            estimateHitProbability(actor, target, effect, projectionContext, declaration?.environmentContext || null);
+          const availableHp = declaration?.capacityMode === true ? readHpMax(target) : readHp(target);
+          return sum + Math.min(availableHp, readHpMax(target) * ratio * extra) * clamp(chance, 0, 1) / readHpMax(target) * 100;
+        }
       }
       return sum;
     }, 0);
@@ -27108,7 +27134,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     suppressionBlocksSkill,
     meditationOptions, meditationSafe, MEDITATION_KEY, guardHoldFor,
     // 两档距离（T25）
-    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, besiegeFactor, pressTime, pressThreat, basicAttackEffect, PRESS_THREAT_BASE, PRESS_TAKE_SHARE, HIT_RUN_WINDUP, HIT_RUN_COUNTER_MULT, PRESS_SPEED_MIN, PRESS_SPEED_MAX, pressedBudget, isPressedOut, BESIEGE_KEEP, PRESS_SHARE, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
+    POSITION_FRONT, POSITION_BACK, ADVANCE_WINDUP_BASE, bodyCondensation, elementDamageProfile, attackElementsOf, bodyElementOf, elementPair, humanShieldOptions, BAIT_OPENING, BAIT_COUNTER_BONUS, FEINT_STRIKE_STAMINA, FEINT_STRIKE_WINDOW, feintStrikeFooled, answerWindup, canFeintStrike, canDeflect, deflectForce, deflectOutcome, applyDeflectUnbalance, DEFLECT_UNBALANCE, DEFLECT_CATCH_BONUS, isEntityControl, entityControls, controlDurability, controlHpLeft, controlStrikeDamage, controlStrikeOptions, controlStrikeOf, applyControlStrike, CONTROL_STRIKE_STATE, advanceStaminaCost, advanceStaminaShares, classifyDamageType, canFlank, flankDetourFor, pincerCut, besiegeFactor, pressTime, pressThreat, basicAttackEffect, PRESS_THREAT_BASE, PRESS_TAKE_SHARE, HIT_RUN_WINDUP, HIT_RUN_COUNTER_MULT, PRESS_SPEED_MIN, PRESS_SPEED_MAX, pressedBudget, isPressedOut, pressedOpportunityOutcome, BESIEGE_KEEP, PRESS_SHARE, FLANK_SURPRISE, unitPosition, setUnitPosition, unitsEngaged, unitsLocked, lockedOpponentsOf, disengageIsSafe, disengageCost, advanceWindupFor, withAdvanceWindup, positionOptions,
     positionMoveOf, positionShiftOf,
     isFeint,
     feintRecord,

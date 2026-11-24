@@ -11234,6 +11234,7 @@
           : [],
       },
     });
+    if (!stateTick && actionRole === 'ACTIVE' && root.__LWCS_TUNE__?.LOG_AT_COMMIT !== false) recordActiveActionLogs(combatData, actor, declaration, actionKind);
     return {
       combatData,
       declaration,
@@ -11437,6 +11438,46 @@
     return { actionEvent, facts: facts.filter(Boolean), actor, target: primaryTarget, terminal };
   }
 
+  // 公开出手记录（attackLog / intentLog / moveLog / turnLog / dealtLog / pressLog / lastTarget）：宣告确定时就记（11-25 最差 3 局对账：此前在结算里记，
+  // 被抢先、收招打断的主动行动主结算取消，一条都不留——推演按这些记录估进攻率、每回合出手次数、魂技占比、观察到的伤害与压制，全漏掉对抗最激烈的那几下）。
+  // LOG_AT_COMMIT false 回旧（结算时记）。
+  function recordActiveActionLogs(combatData, actor, declaration, actionKind) {
+    if (!actor) return;
+    actor.__battleRuntime = actor.__battleRuntime && typeof actor.__battleRuntime === 'object' ? actor.__battleRuntime : {};
+    // 进攻倾向（推演—实际对账 11-23：推演把别人都当每回合进攻，实际常在等 → 互等）：最近 6 次主动行动是否对敌人出手（普攻或魂技），
+    // 公开可见，BattleDecision 推演按它折算别人的出手。
+    const actorSideNow = inferUnitSide(combatData, actor);
+    const hostile = ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(actionKind) && (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).some(id => {
+      const unit = listCombatUnits(combatData).find(entry => isUnitIdentityMatch(entry, id));
+      return !!unit && unit !== actor && inferUnitSide(combatData, unit) !== actorSideNow;
+    });
+    const log = Array.isArray(actor.__battleRuntime.attackLog) ? actor.__battleRuntime.attackLog : [];
+    actor.__battleRuntime.attackLog = [...log, hostile ? 1 : 0].slice(-6);
+    // 出手意图（按意图估出手，11-24 对账：推演把对敌出手都按最好的一招算伤害，实际约 35% 对敌出手不带伤害）：最近 6 次主动行动
+    // 各记一条，可兼有——d 对敌带伤害、c 对敌控制减益、s 只给自己、a 给队友、w 等待（防御、闪避、让过、观察）。开武魂不记。
+    // 公开可见，BattleDecision r20DamageShare。
+    if (actionKind !== 'EQUIP') actor.__battleRuntime.intentLog = [...(Array.isArray(actor.__battleRuntime.intentLog) ? actor.__battleRuntime.intentLog : []),
+      actionIntentOf(combatData, actor, declaration, actionKind)].slice(-6);
+    // 招式混合（11-24 对账：实际带伤害的出手普攻占 1v1 78%、3v3 61%，推演格子却按「魂力够就放最好的技能」）：最近 6 次带伤害的主动出手
+    // 是魂技（1）还是普攻（0）。公开可见，BattleDecision r20SkillShare。
+    if (actionKind === 'BASIC_ATTACK' || actionKind === 'RELEASE_SKILL' && String(actor.__battleRuntime.intentLog?.[actor.__battleRuntime.intentLog.length - 1] || '').includes('d'))
+      actor.__battleRuntime.moveLog = [...(Array.isArray(actor.__battleRuntime.moveLog) ? actor.__battleRuntime.moveLog : []), actionKind === 'RELEASE_SKILL' ? 1 : 0].slice(-6);
+    // 每回合出手次数（公开可见，BattleDecision r20ActionCount）：最近 4 个有出手的回合各几次（连续行动算在同一回合；开武魂不算）。
+    if (actionKind !== 'EQUIP') {
+      const roundNow = Number(combatData.回合 || 0), turns = Array.isArray(actor.__battleRuntime.turnLog) ? actor.__battleRuntime.turnLog : [];
+      actor.__battleRuntime.turnLog = actor.__battleRuntime.turnLogRound === roundNow && turns.length
+        ? [...turns.slice(0, -1), Number(turns[turns.length - 1] || 0) + 1] : [...turns, 1].slice(-4);
+      actor.__battleRuntime.turnLogRound = roundNow;
+    }
+    // 最近 6 次对敌出手各打出多少（扣血＋护盾挡下的，绝对值；这一手的命中在 writeLedgerEvent 里加到最后一格）。公开可见，推演按它校准产出（r20ObservedStrike）。
+    if (hostile) actor.__battleRuntime.dealtLog = [...(Array.isArray(actor.__battleRuntime.dealtLog) ? actor.__battleRuntime.dealtLog : []), 0].slice(-6);
+    // 压制记录（11-25 推演对账：推演自己按公式估每一下占对方多少时间，与实际差在打完就走、威胁口径、出什么招）：最近 6 次对敌出手各占了对方
+    // 多少时间（recordPressure 加到最后一格；打完就走、没被接的为 0）。公开可见，推演 r20PressPerHit。
+    if (hostile) actor.__battleRuntime.pressLog = [...(Array.isArray(actor.__battleRuntime.pressLog) ? actor.__battleRuntime.pressLog : []), 0].slice(-6);
+    // 最近一次宣告的单体对敌目标（公开可见，推演 RACE_STICKY 续打用）。
+    const declaredTargets = Array.isArray(declaration?.targetIds) ? declaration.targetIds : [];
+    if (hostile && declaredTargets.length === 1) actor.__battleRuntime.lastTarget = String(declaredTargets[0]);
+  }
   function executeStructuredDeclaration(input = {}) {
     const context = input?.actionContext && typeof input.actionContext === 'object'
       ? input.actionContext
@@ -11487,36 +11528,7 @@
       actor.__battleRuntime = actor.__battleRuntime && typeof actor.__battleRuntime === 'object' ? actor.__battleRuntime : {};
       if (['DEFEND', 'EVADE', 'PASS_OPPORTUNITY'].includes(actionKind)) actor.__battleRuntime.passiveStreak = Math.max(0, Number(actor.__battleRuntime.passiveStreak || 0)) + 1;
       else if (['BASIC_ATTACK', 'RELEASE_SKILL', 'USE_ITEM'].includes(actionKind)) actor.__battleRuntime.passiveStreak = 0;
-      // 进攻倾向（推演—实际对账 11-23：推演把别人都当每回合进攻，实际常在等 → 互等）：最近 6 次主动行动是否对敌人出手（普攻或魂技），
-      // 公开可见，BattleDecision 推演按它折算别人的出手。
-      const actorSideNow = inferUnitSide(combatData, actor);
-      const hostile = ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(actionKind) && (Array.isArray(declaration?.targetIds) ? declaration.targetIds : []).some(id => {
-        const unit = listCombatUnits(combatData).find(entry => isUnitIdentityMatch(entry, id));
-        return !!unit && unit !== actor && inferUnitSide(combatData, unit) !== actorSideNow;
-      });
-      const log = Array.isArray(actor.__battleRuntime.attackLog) ? actor.__battleRuntime.attackLog : [];
-      actor.__battleRuntime.attackLog = [...log, hostile ? 1 : 0].slice(-6);
-      // 出手意图（按意图估出手，11-24 对账：推演把对敌出手都按最好的一招算伤害，实际约 35% 对敌出手不带伤害）：最近 6 次主动行动
-      // 各记一条，可兼有——d 对敌带伤害、c 对敌控制减益、s 只给自己、a 给队友、w 等待（防御、闪避、让过、观察）。开武魂不记。
-      // 公开可见，BattleDecision r20DamageShare。
-      if (actionKind !== 'EQUIP') actor.__battleRuntime.intentLog = [...(Array.isArray(actor.__battleRuntime.intentLog) ? actor.__battleRuntime.intentLog : []),
-        actionIntentOf(combatData, actor, declaration, actionKind)].slice(-6);
-      // 招式混合（11-24 对账：实际带伤害的出手普攻占 1v1 78%、3v3 61%，推演格子却按「魂力够就放最好的技能」）：最近 6 次带伤害的主动出手
-      // 是魂技（1）还是普攻（0）。公开可见，BattleDecision r20SkillShare。
-      if (actionKind === 'BASIC_ATTACK' || actionKind === 'RELEASE_SKILL' && String(actor.__battleRuntime.intentLog?.[actor.__battleRuntime.intentLog.length - 1] || '').includes('d'))
-        actor.__battleRuntime.moveLog = [...(Array.isArray(actor.__battleRuntime.moveLog) ? actor.__battleRuntime.moveLog : []), actionKind === 'RELEASE_SKILL' ? 1 : 0].slice(-6);
-      // 每回合出手次数（公开可见，BattleDecision r20ActionCount）：最近 4 个有出手的回合各几次（连续行动算在同一回合；开武魂不算）。
-      if (actionKind !== 'EQUIP') {
-        const roundNow = Number(combatData.回合 || 0), turns = Array.isArray(actor.__battleRuntime.turnLog) ? actor.__battleRuntime.turnLog : [];
-        actor.__battleRuntime.turnLog = actor.__battleRuntime.turnLogRound === roundNow && turns.length
-          ? [...turns.slice(0, -1), Number(turns[turns.length - 1] || 0) + 1] : [...turns, 1].slice(-4);
-        actor.__battleRuntime.turnLogRound = roundNow;
-      }
-      // 最近 6 次对敌出手各打出多少（扣血＋护盾挡下的，绝对值；这一手的命中在 writeLedgerEvent 里加到最后一格）。公开可见，推演按它校准产出（r20ObservedStrike）。
-      if (hostile) actor.__battleRuntime.dealtLog = [...(Array.isArray(actor.__battleRuntime.dealtLog) ? actor.__battleRuntime.dealtLog : []), 0].slice(-6);
-      // 最近一次宣告的单体对敌目标（公开可见，推演 RACE_STICKY 续打用）。
-      const declaredTargets = Array.isArray(declaration?.targetIds) ? declaration.targetIds : [];
-      if (hostile && declaredTargets.length === 1) actor.__battleRuntime.lastTarget = String(declaredTargets[0]);
+      if (root.__LWCS_TUNE__?.LOG_AT_COMMIT === false) recordActiveActionLogs(combatData, actor, declaration, actionKind);
     }
     const useEffects = previewRuntime.inventoryUseEffects(actor, declaration, combatData, declaration?.skill?._效果数组);
     const explicitEffects = previewRuntime.withStrengthKnockback(actor, declaration, previewRuntime.releaseSkillEffects(actor, declaration,
@@ -18411,6 +18423,8 @@
           const time = timed ? Math.max(0, Number(previewRuntime.pressTime?.(attacker, declaration || {}, reactor, combatData)) || 0) * Math.max(0, Number(scale) || 0) : 0, used = Number(before?.used || 0) + time;
           // from：每个攻击者占掉的时间（节奏转移按它找压得最多的人）。
           const from = { ...(before?.from || {}) }; from[id] = (Number(from[id]) || 0) + time;
+          const pressLog = attacker.__battleRuntime?.pressLog;
+          if (time > 0 && Array.isArray(pressLog) && pressLog.length) attacker.__battleRuntime.pressLog = [...pressLog.slice(0, -1), Number(pressLog[pressLog.length - 1] || 0) + time];
           reactor.__battleRuntime = { ...(reactor.__battleRuntime || {}), pressure: { by: by.includes(id) ? by : [...by, id], used, from, recent: timed ? Number(before?.recent || 0) + time : 0 } };
         };
         // 自己出手花的时间（反击、接招出手）记在逼它出手的那个攻击者名下（sourceId；没有时记给最近一个来袭者）。
@@ -19352,7 +19366,9 @@
             const budget = typeof previewRuntime.pressedBudget === 'function' ? previewRuntime.pressedBudget(actor) : naturalActionBudget;
             const { pressure, pressedTurn, ...rest } = actor.__battleRuntime;
             actor.__battleRuntime = { ...rest, ...(budget < naturalActionBudget ? { pressedTurn: { grantId: String(node.grantId || ''), used: naturalActionBudget - budget } } : {}) };
-            if (budget < Math.max(1, Number(previewRuntime.basicAttackWindup?.(actor)) || 10)) {
+            // 这次机会归谁：与推演共用 BattlePreview pressedOpportunityOutcome（第一阶段 11-24）。先判丢不丢，丢了才去列能接的压制者（同此前的先后）。
+            const basicWindupNow = previewRuntime.basicAttackWindup?.(actor);
+            if (previewRuntime.pressedOpportunityOutcome(budget, basicWindupNow, []).lost) {
               if (naturalOpportunity && String(naturalOpportunity?.status || '').trim() === 'PENDING') { naturalOpportunity.status = 'LOST'; naturalOpportunity.reason = 'PRESSED'; }
               writeLedgerEvent(combatData, {
                 eventKind: 'blocked_action', round: Number(combatData.回合 || 0),
@@ -19370,9 +19386,11 @@
               // （同连续行动，满额 40）。此前只是被压者丢掉行动、压的人什么也不多得，1v1 总出手变少、仗变长。PRESS_TRANSFER_OFF 回旧。
               if (root.__LWCS_TUNE__?.PRESS_TRANSFER_OFF !== true) {
                 const from = pressure?.from && typeof pressure.from === 'object' ? pressure.from : {};
-                const presser = Object.entries(from).sort((a, b) => Number(b[1]) - Number(a[1])).map(([id]) => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, id)))
-                  .find(unit => unit && unit !== actor && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor) && structuredActorPhysicallyAlive(unit) &&
-                    structuredActorCanAct(unit, 'ACTIVE') && !unit.蓄力技能);
+                const ranked = Object.entries(from).sort((a, b) => Number(b[1]) - Number(a[1])).map(([id]) => listCombatUnits(combatData).find(unit => isUnitIdentityMatch(unit, id)));
+                const pressers = ranked.map((unit, at) => ({ id: at, get eligible() { return !!unit && unit !== actor && inferUnitSide(combatData, unit) !== inferUnitSide(combatData, actor) && structuredActorPhysicallyAlive(unit) &&
+                    structuredActorCanAct(unit, 'ACTIVE') && !unit.蓄力技能; } }));
+                const outcome = previewRuntime.pressedOpportunityOutcome(budget, basicWindupNow, pressers);
+                const presser = outcome.presserId !== null ? ranked[outcome.presserId] : undefined;
                 if (presser) {
                   const presserId = String(previewRuntime.unitId(presser) || '');
                   writeLedgerEvent(combatData, {
@@ -19518,6 +19536,9 @@
               // （用户 11-24 选「接招也算花时间」：原著 1v1 一方连着出手、对方只能接的段占 36%，AI 9%——用技能接完下一回合照样满额反打）。
               // 防御、闪避前摇为 0 不变。REACT_PRESS_OFF 回旧。
               if (reactionDeclaration && root.__LWCS_TUNE__?.REACT_PRESS_OFF !== true) addPressTime(actor, previewRuntime.actionWindup(actor, reactionDeclaration, { travel: false }), sourceActorId);
+              // 接招花的时间（11-25 推演对账：推演按先验份额 × 主力前摇估，实际防御系每下对轰 +20、精神系从不出手接）：最近 8 次应对各花了多少，公开可见，推演 r20AnswerTime。
+              if (reactionDeclaration && !summonGuard) actor.__battleRuntime = { ...(actor.__battleRuntime || {}), answerTimeLog: [...(Array.isArray(actor.__battleRuntime?.answerTimeLog) ? actor.__battleRuntime.answerTimeLog : []),
+                root.__LWCS_TUNE__?.REACT_PRESS_OFF === true ? 0 : Math.max(0, Number(previewRuntime.actionWindup(actor, reactionDeclaration, { travel: false })) || 0)].slice(-8) };
               // 来招占的时间：接了按威胁占（BattlePreview pressTime）；硬吃（不防、不闪、不出手接，或硬吃还手）按 PRESS_TAKE_SHARE 占——
               // 重击硬挨下来也会被打乱节奏（11-24：硬吃完全不占时，硬吃还手占应对 27%，原著攻击还手约 10%）。
               if (root.__LWCS_TUNE__?.PRESS_THREAT_OFF !== true && reactionDeclaration) {
