@@ -40073,6 +40073,10 @@
   // the routine skill for every strike back — 43% of enemy cells, a strike back of 16% HP against 2.5% (basic) and 5.7%
   // (skill) landed — so every attack looked to invite a heavy blow back and a unit stood guard instead.
   const R20_ROUTINE_COUNTER_SHARE = 0.2;
+  // 还手按招式混合（STRUCK_MIX，默认关）：504 场 1v1 只看接招后还手（COUNTER）、过了对方接招之后比，旧（最好技能满额）推演 ÷ 实际 0.95，
+  // 混合 0.92；实际还手里魂技占 40～46%，比平时出手的魂技份额高——还手是挑着用技能的。之前「多算 1.2～1.7 倍」是把对轰/换血（REACTION）混进来、又没乘接招。
+  // 只认加载前的 LWCS_TUNE {"STRUCK_MIX":true}。
+  const R20_STRUCK_MIX = root.__LWCS_TUNE__?.STRUCK_MIX === true;
   const r20StrikesBack = skill => Math.max(0, Number(skill?.前摇 ?? skill?.cast_time ?? 0)) <= (Number(preview.CONTINUOUS_ACTION_BUDGET) || 40) &&
     ['HOSTILE_SINGLE', 'ANY_SINGLE'].includes(targetProfile(skill)) && preview.collectEffects(skill).some(effect => effect?.原型 === '伤害结算');
   // 融合技进格子（S80 D2，11-17；行为检查目录第 51、52 题）: a fusion skill counts in its host's cells while it can be cast
@@ -40177,7 +40181,7 @@
       const shownValue = friendly || root.__LWCS_TUNE__?.MOVE_MIX === false ? value : basic + (value - basic) * r20SkillShare(unit, R20_UNSEEN_SKILL_SHARE);
       if (shownValue > best) cellFrom = 'shown';
       best = Math.max(best, shownValue);
-      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, value);
+      if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, R20_STRUCK_MIX ? shownValue : value);
     }
     for (const { skill, startupCosts, fusionMetadata } of own) {
       if (!skillHasBaseActionValue(skill)) continue;
@@ -40216,7 +40220,8 @@
       // A strike back is one release, at what it lands now (the skill is affordable now): not the per-round average the
       // cell keeps for its output. 11-14 (推演—实际对账, 72 battles): a strike back was read at 2.7% a time against 5.0%
       // landed, on a 强攻系 6.1% against 21.5%. A fusion is no answer (BattleRuntime offers none as a reaction or counter).
-      if (!friendly && !fusionMetadata && r20StrikesBack(skill)) struck = Math.max(struck, value);
+      // STRUCK_MIX：和格子同一个技能份额摊开（见 R20_STRUCK_MIX）。
+      if (!friendly && !fusionMetadata && r20StrikesBack(skill)) struck = Math.max(struck, R20_STRUCK_MIX ? kept : value);
     }
     // A unit whose skills the decision cannot see (an enemy as believed: no skill list) hits by its routine attack — the
     // typical skill of its level and type over its basic attack (routine_attack_ratio, routineAttackEffect). Without it
@@ -41255,7 +41260,7 @@
     const openStand = raw ? { ...(raw.move && root.__LWCS_TUNE__?.RAW_MOVE_OFF !== true ? r20Stand(units[row], units[other], raw.move) : stand), theirs: raw.damage } : stand;
     const opening = r20Meet(openStand, r20Weight(cells.out[other][row])), struck = r20Meet(stand, r20Weight(cells.back[other][row]));
     // Development hook (absent in play): which answer a pair's opening hit meets, with the stand it was weighed on.
-    root.__LWCS_DECISION_DEBUG__?.onFillPair?.({ units, row, other, stand: openStand, opening, weight: r20Weight(cells.out[other][row]), out: cells.out[other][row] });
+    root.__LWCS_DECISION_DEBUG__?.onFillPair?.({ units, row, other, stand: openStand, opening, weight: r20Weight(cells.out[other][row]), out: cells.out[other][row], struck });
     cells.keep[row][other] = opening.keep; cells.answerOpen[row][other] = opening.answer;
     // 应对这一下本身打回去的（对轰赢的差值、平手的震伤、换血放出的），来招者生命上限的份额（r20Race OPEN_BACK）。
     if (cells.openBack) cells.openBack[row][other] = Number(opening.back) || 0;
@@ -41797,6 +41802,8 @@
     // Stamina beside HP (own units; Infinity where it is not known or there is none): it loses what the unit takes and is
     // not mended.
     const stam = facts.stamina ? facts.stamina.map(value => typeof value === 'number' ? value : Infinity) : null;
+    // 对账用（只在理由记录重算时）：推演里因体力耗尽倒下的人。
+    const stamOut = plan?.falls ? new Array(count).fill(false) : null;
     // 护盾不扣体力（T24 11-18）: what a shield holds takes no stamina (BattleRuntime: injury stamina by the HP lost; r20Shadow's answer
     // reads it so), so the race drains stamina only by what gets past it, and the shield stands beside the stamina at the end. Before, a
     // stamina-bound unit's shield was worth nothing: an answer that kept a hit off it lost to letting the hit through (镜像 35 防御:
@@ -41819,7 +41826,10 @@
       if (!landCache.has(key)) {
         // 挨一下就倒的人按最不容易被打中的应对（闪避）接，而不是按平时最省的那个（防御必中）：A1 连闪 B0 两下。
         const weight = r20Weight(Number((plan?.base || facts).out?.[attacker]?.[target]) || 0), stand = r20Stand(landUnits[target], landUnits[attacker]);
-        landCache.set(key, clamp(Math.min(Number(r20Meet(stand, weight).lands), Number(r20Meet(stand, weight, 'EVADE').lands)), 0, 1));
+        // 再乘出手者这一下的命中判定（11-24 对账：同一接法比，推演落下全都高 10～15 个百分点，防御推演 100% 实际 91%——接法之外来招本身有一成左右落空）。
+        const roll = root.__LWCS_TUNE__?.LAST_HIT_ROLL_OFF === true ? 1
+          : clamp(Number(preview.estimateHitProbability(landUnits[attacker], landUnits[target], preview.basicAttackEffect?.() || {})) || 1, 0, 1);
+        landCache.set(key, clamp(Math.min(Number(r20Meet(stand, weight).lands), Number(r20Meet(stand, weight, 'EVADE').lands)) * roll, 0, 1));
         root.__LWCS_DECISION_DEBUG__?.onLastHit?.({ attacker, target, lands: landCache.get(key), stand });
       }
       return landCache.get(key) * (1 - heldHard[target]) + heldHard[target];
@@ -41832,9 +41842,11 @@
     const pressAgility = pressUnits ? (landTable.agility || pressUnits.map(unit => Number(preview.naturalActionOrderProfile(unit).effectiveAgility) || 1)) : null;
     const pressBudget = Number(preview.CONTINUOUS_ACTION_BUDGET) || 40, pressShare = Number(preview.PRESS_SHARE) || 0.5, besiegeKeep = Number(preview.BESIEGE_KEEP) || 0.7;
     const pressEff = new Array(count).fill(1), besiegedBy = new Array(count).fill(0), lastAimed = new Array(count).fill(-1);
-    const reactPress = root.__LWCS_TUNE__?.REACT_PRESS_OFF !== true;
-    const pressThreatOn = root.__LWCS_TUNE__?.PRESS_THREAT_OFF !== true, pressThreatBase = Number(preview.PRESS_THREAT_BASE) || 0.1;
-    const pressOutOn = root.__LWCS_TUNE__?.PRESS_OUT_ON === true, pressTransferOn = root.__LWCS_TUNE__?.PRESS_TRANSFER_OFF !== true;
+    const reactPress = root.__LWCS_TUNE__?.REACT_PRESS_OFF !== true && root.__LWCS_TUNE__?.RACE_REACT_PRESS_OFF !== true;
+    const pressThreatOn = root.__LWCS_TUNE__?.PRESS_THREAT_OFF !== true && root.__LWCS_TUNE__?.RACE_THREAT_OFF !== true, pressThreatBase = Number(preview.PRESS_THREAT_BASE) || 0.1;
+    const pressOutOn = root.__LWCS_TUNE__?.PRESS_OUT_ON === true, pressTransferOn = root.__LWCS_TUNE__?.PRESS_TRANSFER_OFF !== true && root.__LWCS_TUNE__?.RACE_TRANSFER !== "off";
+    // 对账开关（只作用于推演，11-24）：RACE_TRANSFER "lost" 只在被压者这一步整次丢掉行动（pressEff 0）时转给压制者，同运行时；RACE_*_OFF 关推演里的对应项。
+    const transferLostOnly = root.__LWCS_TUNE__?.RACE_TRANSFER === "lost";
     const pressOut = new Array(count).fill(0);
     // 代价对称（11-23 用户定）：收尾的人整次付它这次交锋挨的反击——takenBy[u] 是 u 这一步每回合挨的，aimStart[u] 是它开始打眼下这个目标的时刻；
     // 目标倒下时它打这个目标不满一回合，就补足到一整次。此前流量让离线一丝的人在 0.04 回合内倒下，收尾的队友只付 0.04 份反击，行动者自己去收
@@ -41855,12 +41867,12 @@
       if (pressOutOn && budget <= 1e-9) pressOut[row] = 1;
       // 节奏转移：这一接多压掉的那份归来袭者。
       const by = plan.selfPress.by;
-      if (pressTransferOn && Number.isInteger(by) && by >= 0 && by < count && sides[by] !== sides[row] && before > pressEff[row]) pressEff[by] += before - pressEff[row];
+      if (pressTransferOn && Number.isInteger(by) && by >= 0 && by < count && sides[by] !== sides[row] && before > pressEff[row] && (!transferLostOnly || pressEff[row] <= 1e-9)) pressEff[by] += before - pressEff[row];
     }
     // 第一步的节奏转移按单位身上真的压制记录（pressure.from：每个压制者占掉的时间）。
     if (pressUnits && pressTransferOn) for (let row = 0; row < Math.min(count, pressRows); row += 1) {
       const from = pressUnits[row]?.__battleRuntime?.pressure?.from;
-      if (!(pressEff[row] < 1) || !from || typeof from !== 'object') continue;
+      if (!(transferLostOnly ? pressEff[row] <= 1e-9 : pressEff[row] < 1) || !from || typeof from !== 'object') continue;
       const [topId] = Object.entries(from).sort((a, b) => Number(b[1]) - Number(a[1]))[0] || [];
       const top = topId !== undefined ? landTable.index?.get(String(topId)) : undefined;
       if (top !== undefined && top < count && sides[top] !== sides[row]) pressEff[top] += 1 - pressEff[row];
@@ -41966,7 +41978,7 @@
         // 节奏转移（BattleRuntime 同规则）：被压掉的那份行动归占它时间最多的压制者。
         if (pressTransferOn) for (let row = 0; row < Math.min(count, pressRows); row += 1) {
           const top = topBy[row];
-          if (top >= 0 && pressEff[row] < 1 && left[top] > 1e-9) pressEff[top] += 1 - pressEff[row];
+          if (top >= 0 && (transferLostOnly ? pressEff[row] <= 1e-9 : pressEff[row] < 1) && left[top] > 1e-9) pressEff[top] += 1 - pressEff[row];
         }
       }
       // Which cells a pair reads now: a unit the candidate brought, the candidate's; a unit it changed, the candidate's
@@ -42494,6 +42506,10 @@
       }
       if (!(stepTime > 0) || !Number.isFinite(stepTime)) break;
       const standingBefore = symmetricCost ? left.map(value => value > 1e-9) : null;
+      // 对账用（只在理由记录重算时）：这一步开始时谁还在场——一步截到下一个人倒下为止，倒下的那一步整步它都还在出手（11-24：按步末读，
+      // 倒下那一整步记成了「已倒」，两回合窗口的已倒时长多算约 1.5 倍、出手时间少算）。
+      const traceUp = plan?.falls ? left.map(value => value > 1e-9) : null;
+      const strikingStep = unit => traceUp[unit] && !(denied && time < denied[unit]) && !(busy && time < busy[unit]) && !(idle && time < idle[unit]);
       for (let unit = 0; unit < count; unit += 1) {
         const net = dealt[unit] - mended[unit];
         if (!(left[unit] > 1e-9)) continue;
@@ -42507,7 +42523,7 @@
           let past = stepTime * dealt[unit];
           if (sh && sh[unit] > 0) { const held = Math.min(sh[unit], past); sh[unit] -= held; past -= held; }
           stam[unit] = Math.max(0, stam[unit] - r20Injury * past);
-          if (!(stam[unit] > 1e-9)) left[unit] = 0;
+          if (!(stam[unit] > 1e-9)) { if (stamOut && left[unit] > 1e-9) stamOut[unit] = true; left[unit] = 0; }
         }
       }
       if (symmetricCost) for (let unit = 0; unit < count; unit += 1) {
@@ -42532,15 +42548,19 @@
       if (plan?.falls && time + stepTime > 1 + 1e-9 && time < 3 - 1e-9) {
         const part = (Math.min(time + stepTime, 3) - Math.max(time, 1)) * (plan.traceWeight ?? 1), acc = plan.window13 ||= { to: Array.from({ length: count }, () => ({})), acts: new Array(count).fill(0), rate: attackRate.slice(), count: countOf.slice(), hold: new Array(count).fill(0), help: new Array(count).fill(0), free: new Array(count).fill(0), aim: new Array(count).fill(0) };
         for (let unit = 0; unit < count; unit += 1) {
-          if (striking(unit)) acc.acts[unit] += part;
-          // 不在出手的原因（对账）：0 推演已倒、1 被控（denied）、2 占用（busy：蓄力等）、3 行动者这一手（idle）。
-          else (acc.off ||= Array.from({ length: count }, () => [0, 0, 0, 0]))[unit][!(left[unit] > 1e-9) ? 0 : denied && time < denied[unit] ? 1 : busy && time < busy[unit] ? 2 : 3] += part;
+          if (strikingStep(unit)) acc.acts[unit] += part;
+          // 不在出手的原因（对账）：0 推演已倒、1 被控（denied）、2 占用（busy：蓄力等）、3 行动者这一手（idle）；4 已倒里因体力耗尽的。
+          else {
+            const off = (acc.off ||= Array.from({ length: count }, () => [0, 0, 0, 0, 0]))[unit];
+            off[!traceUp[unit] ? 0 : denied && time < denied[unit] ? 1 : busy && time < busy[unit] ? 2 : 3] += part;
+            if (!traceUp[unit] && stamOut?.[unit]) off[4] += part;
+          }
           // 在出手却没打敌人（交换不划算转去帮忙或按兵不动）的时间。
-          if (striking(unit) && !(aimed[unit] >= 0 && landed[unit] > 0 && sides[aimed[unit]] !== sides[unit])) acc.hold[unit] += part;
-          if (striking(unit) && landed[unit] < 0) acc.help[unit] += part;
-          if (striking(unit)) acc.free[unit] += part * free(unit);
-          if (striking(unit) && aimed[unit] >= 0 && sides[aimed[unit]] !== sides[unit]) acc.aim[unit] += part;
-          else if (striking(unit) && idleWhy) (acc.why ||= Array.from({ length: count }, () => new Array(11).fill(0)))[unit][idleWhy[unit]] += part;
+          if (strikingStep(unit) && !(aimed[unit] >= 0 && landed[unit] > 0 && sides[aimed[unit]] !== sides[unit])) acc.hold[unit] += part;
+          if (strikingStep(unit) && landed[unit] < 0) acc.help[unit] += part;
+          if (strikingStep(unit)) acc.free[unit] += part * free(unit);
+          if (strikingStep(unit) && aimed[unit] >= 0 && sides[aimed[unit]] !== sides[unit]) acc.aim[unit] += part;
+          else if (strikingStep(unit) && idleWhy) (acc.why ||= Array.from({ length: count }, () => new Array(11).fill(0)))[unit][idleWhy[unit]] += part;
           if (aimed[unit] >= 0 && landed[unit] > 0 && sides[aimed[unit]] !== sides[unit]) acc.to[unit][aimed[unit]] = (acc.to[unit][aimed[unit]] || 0) + landed[unit] * part;
         }
       }
@@ -42555,7 +42575,7 @@
         const part = (Math.min(time + stepTime, 5) - Math.max(time, 3)) * (plan.traceWeight ?? 1), acc = plan.window35 ||= new Array(count).fill(0);
         for (let unit = 0; unit < count; unit += 1) {
           if (aimed[unit] >= 0 && landed[unit] > 0 && sides[aimed[unit]] !== sides[unit]) acc[unit] += landed[unit] * part;
-          else if (striking(unit) && idleWhy) (plan.why35 ||= Array.from({ length: count }, () => new Array(11).fill(0)))[unit][idleWhy[unit]] += part;
+          else if (strikingStep(unit) && idleWhy) (plan.why35 ||= Array.from({ length: count }, () => new Array(11).fill(0)))[unit][idleWhy[unit]] += part;
         }
       }
       // 推演—实际对账（只在理由记录重算时）：第一整回合里每人承受、回复、被按住、发挥、打向各人的量，与回合末的体力、护盾、生命。
@@ -42564,7 +42584,7 @@
           eff: new Array(count).fill(0), acts: new Array(count).fill(0), to: Array.from({ length: count }, () => ({})) };
         for (let unit = 0; unit < count; unit += 1) {
           acc.dealt[unit] += dealt[unit] * part; acc.mended[unit] += mended[unit] * part; acc.held[unit] += heldShare[unit] * part; acc.eff[unit] += pressEff[unit] * part;
-          if (striking(unit)) acc.acts[unit] += part;
+          if (strikingStep(unit)) acc.acts[unit] += part;
           if (aimed[unit] >= 0 && landed[unit] > 0) acc.to[unit][aimed[unit]] = (acc.to[unit][aimed[unit]] || 0) + landed[unit] * part;
         }
         if (time + stepTime >= 1 - 1e-9 && (!acc.left || (plan.traceWeight ?? 1) >= 0.5)) { acc.left = left.slice(); acc.stam = stam ? stam.slice() : null; acc.shield = sh ? sh.slice() : null; acc.charges = charges.slice(); }
@@ -44001,6 +44021,15 @@
         const offset = (rank - actorRank) / order.length;
         if (table.pending[row]) strikeAt[row] = Math.max(0, offset); else idle[row] = strikeAt[row] = 1 + offset;
       });
+      // 出手按离散时点（RACE_PHASE_SHIFT，11-24 推演对账：对齐窗口后，本回合已出过手的人下一下整块落在行动者下一次出手之前，推演从它轮到的
+      // 时点起按速率累计只算进一半，之后一直少半下——窗口 0 推演 0.8～2.9% / 实际 7.9～8.5%）：一个人在 t、t+1、t+2… 各出手一次，到 T 为止
+      // 平均打出 T − t + 0.5 下，等于流量从 t − 0.5 起算。流量起点提前 RACE_PHASE_SHIFT（0.5），最后一击仍要等它真轮到（strikeAt 不变；行动者 1）。
+      // 还没出手的人第一下在本回合（offset），起点提前后多半落在 0 之前，不动。推演专用，默认 0。
+      const phase = clamp(Number(root.__LWCS_TUNE__?.RACE_PHASE_SHIFT ?? 0), 0, 1);
+      if (phase > 0) {
+        strikeAt[actorRow] = Math.max(strikeAt[actorRow], idle[actorRow]);
+        for (let row = 0; row < idle.length; row += 1) if (idle[row] > 0) idle[row] = Math.max(0, idle[row] - phase);
+      }
     }
     // 牵制配对（r20Race）：主动出手用单体攻击打一个敌人，行动者就缠上它（plan.commit）。
     const declaredNow = candidate?.declaration || {}, commitRow = Array.isArray(declaredNow.targetIds) && declaredNow.targetIds.length === 1 ? table.index.get(String(declaredNow.targetIds[0])) : undefined;

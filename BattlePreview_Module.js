@@ -6725,9 +6725,12 @@
   // a clash of two mental moves deals the loser its share × MENTAL_CLASH_LOSS_MULT.
   // 同日「打平也受到50%」: an even mental clash deals each side MENTAL_CLASH_SHOCK of the other's move (CLASH_SHOCK otherwise).
   const MENTAL_DODGE_MULT = 0.5, MENTAL_COUNTER_MULT = 0.4, MENTAL_CLASH_LOSS_MULT = 2, MENTAL_CLASH_SHOCK = 0.5;
-  // 近身、范围攻击更难躲（用户 2026-11-24「可以加强一点精神力锁定的作用和近身攻击，范围攻击的命中」）：近身来招 命中判定的落空与闪避应对都 ×MELEE_DODGE_MULT；
-  // 范围来招 命中判定 +AREA_HIT_BONUS（闪避应对 DODGE_AREA_PENALTY 0.1 → 0.2）。提议值 0.85 / 0.05 / 0.2，待讨论，默认保持原值（1 / 0 / 0.1）。
-  const MELEE_DODGE_MULT = Number(root.__LWCS_TUNE__?.MELEE_DODGE_MULT ?? 1), AREA_HIT_BONUS = Number(root.__LWCS_TUNE__?.AREA_HIT_BONUS ?? 0);
+  // 近身、范围攻击更难躲（用户 2026-11-24「可以加强一点精神力锁定的作用和近身攻击，范围攻击的命中」）：近身来招 命中判定的落空 ×MELEE_DODGE_MULT（闪避应对另见 MELEE_REACT_DODGE_MULT）；
+  // 范围来招 命中判定 +AREA_HIT_BONUS（闪避应对 DODGE_AREA_PENALTY 0.1 → 0.2）。11-24 实测后定：近身 0.85；范围两项在 1v1 测不出、3v3 样本太小，保持 0 / 0.1。
+  // 11-24 定：近身 0.85（只改命中判定；对照 tune-001/002、pr-001，用户「直接测」）。
+  const MELEE_DODGE_MULT = Number(root.__LWCS_TUNE__?.MELEE_DODGE_MULT ?? 0.85), AREA_HIT_BONUS = Number(root.__LWCS_TUNE__?.AREA_HIT_BONUS ?? 0);
+  // 近身来招的闪避应对另乘 MELEE_REACT_DODGE_MULT（上面「闪避应对也乘」原先没接上，单独成项对照用，默认 1）。
+  const MELEE_REACT_DODGE_MULT = Number(root.__LWCS_TUNE__?.MELEE_REACT_DODGE_MULT ?? 1);
   // The class of a move's strike: its first 伤害结算's (a basic attack carries its own, melee by default); null: no strike.
   function declarationDamageClass(declaration = {}) {
     // 投出武器：投掷与召回时顺势一击按远程（伤害照普攻）。
@@ -6787,6 +6790,10 @@
   // 同级 L=1 原样；魂骨、系别带来的面板差不压缩，防御越高受伤越少（曾锚在防守方防御上，防御 +91% 的魂骨反而多挨 43%）。
   // 魂力驱动保留、上限 1.85 → 1.5（95 级后魂力每级翻倍，两级就顶格）。
   const DAMAGE_GAP_EXPONENT = 0.3, RESOURCE_DRIVE_CAP = 1.5;
+  // 11-24 定：攻 ≥ 防用立方、攻 < 防不变（KA；trio-001 三对 96 局：敏攻挨打约强攻 2.9 倍，防御对强攻 41%）。
+  const DAMAGE_CURVE_EXP = Number(root.__LWCS_TUNE__?.DAMAGE_CURVE_EXP ?? 3), MENTAL_DAMAGE_CURVE_EXP = Number(root.__LWCS_TUNE__?.MENTAL_DAMAGE_CURVE_EXP ?? 1);
+  // 攻低于防（g < 1）那一侧另用 DAMAGE_CURVE_EXP_LOW（用户 11-24「防御系太强了……对强攻系胜率应该在4成左右」：对称立方让高防御一侧也受益）。默认同 DAMAGE_CURVE_EXP。
+  const DAMAGE_CURVE_EXP_LOW = Number(root.__LWCS_TUNE__?.DAMAGE_CURVE_EXP_LOW ?? 1);
   function levelScaleRatio(actor = {}, target = {}, damageClass = '') {
     if (typeof root.__LWCS_GET_BASE_STATS__ !== 'function') return 1;
     const levelOf = unit => Number(unit?.属性?.等级 ?? unit?.等级 ?? unit?.level ?? 0);
@@ -7090,7 +7097,10 @@
     } else {
       const effectiveAttack = attack * Math.pow(levelScaleRatio(attacker, target, damageClass), DAMAGE_GAP_EXPONENT - 1);
       const gap = effectiveAttack / Math.max(1, defense);
-      const mitigation = gap / (gap + 1);
+      // 减伤曲线（DAMAGE_CURVE_EXP，用户 2026-11-24「敏攻受到的伤害还是太低了……3 倍左右更合理」）：g/(g+1) 防御再低也只到同攻防的 2 倍，
+      // 改为 (g/(g+1))^k × 2^(k−1)——同攻防不变，防御的差别（含防御增益）放大。只作用于物理（防御）；精神伤害（精神力对精神力）另见 MENTAL_DAMAGE_CURVE_EXP。
+      const curve = damageClass === 'MENTAL' ? MENTAL_DAMAGE_CURVE_EXP : gap < 1 ? DAMAGE_CURVE_EXP_LOW : DAMAGE_CURVE_EXP;
+      const mitigation = curve === 1 ? gap / (gap + 1) : Math.pow(gap / (gap + 1), curve) * Math.pow(2, curve - 1);
       total = effectiveAttack * powerRatio * mitigation * 0.4 * resourceDrive;
     }
     const actorMultiplier = actorProfile
@@ -7964,7 +7974,9 @@
     const classed = strikeClass === 'RANGED' ? clamp(1 - (1 - probability) * RANGED_DODGE_MULT, 0.05, 0.99)
       : strikeClass === 'MENTAL' ? clamp(1 - (1 - probability) * MENTAL_DODGE_MULT, 0.05, 0.99)
       : strikeClass === 'MELEE' ? clamp(1 - (1 - probability) * MELEE_DODGE_MULT, 0.05, 0.99) : probability;
-    const rangedProbability = /群体|全场/.test(String(effect?.目标 || '')) ? clamp(classed + AREA_HIT_BONUS, 0.05, 0.99) : classed;
+    const areaProbability = /群体|全场/.test(String(effect?.目标 || '')) ? clamp(classed + AREA_HIT_BONUS, 0.05, 0.99) : classed;
+    const lockHit = mentalLockHitShift(actor, target);
+    const rangedProbability = lockHit ? clamp(areaProbability + lockHit, 0.05, 0.99) : areaProbability;
     const opened = hitAgainstAttackOpening(rangedProbability, targetProfile ? Number(targetProfile.incomingAttackOpening || 0) : attackOpeningOf(target));
     // 夹击（T30）：这回合已被对方另一人近身打过，近身来招的命中再 +PINCER_DODGE_CUT（它的闪避 −，同状态里的闪避减益）。
     const bonus = areaSingleTargetHitBonus(effect, targetCount) + (options?.initiative === true ? INITIATIVE_HIT_BONUS : 0) +
@@ -25694,7 +25706,23 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     });
   }
 
-  const MENTAL_LOCK_EXP = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_EXP ?? 0.35), MENTAL_LOCK_FLOOR = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_FLOOR ?? 0.35), MENTAL_LOCK_CAP = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_CAP ?? 1.65);
+  // 11-24 定：质 × 量联合锁定（MENTAL_LOCK_JOINT，有效精神力 = 上限^0.5 × 当前^0.5），比值 0.6 次方，夹 0.25～1.65；锁定进命中 0.15（MENTAL_LOCK_HIT）。
+  const MENTAL_LOCK_EXP = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_EXP ?? 0.6), MENTAL_LOCK_FLOOR = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_FLOOR ?? 0.25), MENTAL_LOCK_CAP = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_CAP ?? 1.65);
+  const MENTAL_LOCK_JOINT = root.__LWCS_TUNE__?.MENTAL_LOCK_JOINT !== false, MENTAL_LOCK_QTY = clamp(Number(root.__LWCS_TUNE__?.MENTAL_LOCK_QTY ?? 0.5), 0, 1);
+  // 锁定进命中判定（MENTAL_LOCK_HIT，用户 2026-11-24：锁定只进闪避应对时整场几乎不动——命中判定只看敏捷）：命中 += MENTAL_LOCK_HIT ×
+  // ln(出手者有效精神力 ÷ 目标有效精神力)，夹 ±MENTAL_LOCK_HIT_CAP；有效精神力 = 上限^(1 − MENTAL_LOCK_QTY) × 当前^MENTAL_LOCK_QTY（质 × 量）。
+  // 任一方没有精神力上限（召唤物、造物）不算。11-24 定 0.15（tune-002）。
+  const MENTAL_LOCK_HIT = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_HIT ?? 0.15), MENTAL_LOCK_HIT_CAP = Number(root.__LWCS_TUNE__?.MENTAL_LOCK_HIT_CAP ?? 0.15);
+  function mentalLockSpirit(unit) {
+    const maximum = readResourceMax(unit, '精神力');
+    if (!(maximum > 0)) return 0;
+    return Math.pow(maximum, 1 - MENTAL_LOCK_QTY) * Math.pow(Math.max(1, Math.min(readResource(unit, '精神力'), maximum)), MENTAL_LOCK_QTY);
+  }
+  function mentalLockHitShift(actor, target) {
+    if (!(MENTAL_LOCK_HIT > 0)) return 0;
+    const own = mentalLockSpirit(actor), other = mentalLockSpirit(target);
+    return own > 0 && other > 0 ? clamp(MENTAL_LOCK_HIT * Math.log(own / other), -MENTAL_LOCK_HIT_CAP, MENTAL_LOCK_HIT_CAP) : 0;
+  }
   function calculateWithdrawalPressureDetails(unit = {}, opponent = {}, stance = 'WITHDRAW') {
     const agilityBreakdown = readCombatStatBreakdown(unit, 'agi');
     const agility = agilityBreakdown.value;
@@ -25726,9 +25754,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const base = agility * 0.72 + spirit * 0.012 + spiritMax * 0.025;
     const conditionFactor = 0.35 + spiritRatio * 0.4 + staminaRatio * 0.25;
     const opposingSpirit = readResource(opponent, '精神力');
+    // 联合锁定（MENTAL_LOCK_JOINT，用户 2026-11-24「锁定应该靠精神力强度（上限）+ 精神力当前 联合体现」「上限体现的是质，当前体现的是量」）：
+    // 每人的有效精神力 = 上限^(1 − MENTAL_LOCK_QTY) × 当前^MENTAL_LOCK_QTY（质与量按权重相乘），按双方有效精神力之比的次方。
+    // 11-24 定默认开（关回旧式：只按双方当前之比再乘自身当前份额）。
+    const effectiveSpirit = (current, maximum) => Math.pow(Math.max(1, maximum), 1 - MENTAL_LOCK_QTY) * Math.pow(Math.max(1, Math.min(current, maximum)), MENTAL_LOCK_QTY);
     const resourcePressure = clamp(
-      // 精神力锁定（用户 2026-11-24「加强一点精神力锁定的作用」）：双方精神力之比的次方 MENTAL_LOCK_EXP（提议 0.6）、夹 MENTAL_LOCK_FLOOR～CAP（提议 0.25～2），待讨论，默认保持原值 0.35、0.35～1.65。
-      Math.pow(Math.max(0.01, spirit / Math.max(1, opposingSpirit)), MENTAL_LOCK_EXP) * (0.45 + 0.55 * spiritRatio),
+      // 精神力锁定（用户 2026-11-24「加强一点精神力锁定的作用」）：双方精神力之比的次方 MENTAL_LOCK_EXP（提议 0.6）、夹 MENTAL_LOCK_FLOOR～CAP（提议 0.25～2），11-24 定 0.6、0.25～1.65（上限 2 对照 J5C 无差别）。
+      MENTAL_LOCK_JOINT
+        ? Math.pow(effectiveSpirit(spirit, spiritMax) / effectiveSpirit(opposingSpirit, readResourceMax(opponent, '精神力')), MENTAL_LOCK_EXP)
+        : Math.pow(Math.max(0.01, spirit / Math.max(1, opposingSpirit)), MENTAL_LOCK_EXP) * (0.45 + 0.55 * spiritRatio),
       MENTAL_LOCK_FLOOR,
       MENTAL_LOCK_CAP,
     );
@@ -26352,7 +26386,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const ordinary = calculateReactionContest(reactor, sourceActor, declaration).probability;
     const dodge = prepared ? clamp(ordinary + (1 - ordinary) * 0.25 * passiveStreakFactor(reactor), 0.03, 0.92) : ordinary;
     const strikeClass = declaration ? declarationDamageClass(declaration) : null;
-    const ranged = strikeClass === 'RANGED' ? clamp(dodge * RANGED_DODGE_MULT, 0, 0.95) : strikeClass === 'MENTAL' ? dodge * MENTAL_DODGE_MULT : dodge;
+    const ranged = strikeClass === 'RANGED' ? clamp(dodge * RANGED_DODGE_MULT, 0, 0.95) : strikeClass === 'MENTAL' ? dodge * MENTAL_DODGE_MULT
+      : strikeClass === 'MELEE' ? dodge * MELEE_REACT_DODGE_MULT : dodge;
     const opened = ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
     // 状态修正也进反应闪避（用户 2026-11-17「计入，直接加减」）：与命中判定（estimateHitProbability）同一套——
     // 闪避方 dodge_bonus − max(dodge_penalty, lock_level)，攻击方 − (hit_bonus − hit_penalty)。没有这些状态时不变。

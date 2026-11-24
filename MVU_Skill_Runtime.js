@@ -181,6 +181,19 @@ globalThis.__LWCS_SKILL_TYPE_REGISTRY__ = Object.freeze(Object.keys(TypeMultipli
 // 系别倍率只此一份（用户 2026-11-24「技能设计器和临时战斗单位用的不该单独保留吧」）：mvu_logic_bridge 的技能设计台标准属性、临时战斗单位都从这里读，
 // 同 __LWCS_GET_BASE_STATS__ 挂到父窗口与顶层窗口。
 globalThis.__LWCS_GET_TYPE_MULTIPLIERS__ = () => TypeMultipliers;
+// 训练加成的系别系数（用户 2026-11-24「训练部分还是得有个系别加成……保持每个属性在全系别里最高的总量和现在差不多……防御系99级的防御和训练加成后的
+// 防御系99级防御要一致，只是其他系的防御会降」）：训练加成按 本系倍率 ÷ 各系该项最高倍率 计入（最高那一系不变，上限 1）；存档里的训练加成数值不动，
+// 在算最终属性时缩放。LWCS_TUNE {"TRAINING_TYPE_SCALE":false} 关回（训练加成各系相同）。
+var TrainingTypeScaleMax = Object.freeze(Object.fromEntries(['str', 'def', 'agi', 'vit_max', 'men_max']
+  .map(key => [key, Math.max(...Object.values(TypeMultipliers).map(entry => Number(entry?.[key]) || 0))])));
+// 坡度放缓（同日「系别很难锻炼自己的弱项。可以放缓一点坡度」）：(本系 ÷ 最高)^TRAINING_TYPE_SCALE_EXP，默认 0.5（敏攻训练防御 ×0.27 → ×0.52）。
+function 读取训练加成系别系数_V1(typeMult = {}, key = 'str') {
+  if (globalThis.__LWCS_TUNE__?.TRAINING_TYPE_SCALE === false) return 1;
+  const maximum = Number(TrainingTypeScaleMax[key]) || 1;
+  const slope = Math.max(0, Number(globalThis.__LWCS_TUNE__?.TRAINING_TYPE_SCALE_EXP ?? 0.5));
+  return Math.pow(Math.min(1, Math.max(0, Number(typeMult?.[key] ?? maximum) / maximum)), slope);
+}
+globalThis.__LWCS_TRAINING_TYPE_SCALE__ = 读取训练加成系别系数_V1;
 try { if (globalThis.parent && globalThis.parent !== globalThis) globalThis.parent.__LWCS_GET_TYPE_MULTIPLIERS__ = globalThis.__LWCS_GET_TYPE_MULTIPLIERS__; } catch (错误) {}
 try { if (globalThis.top && globalThis.top !== globalThis) globalThis.top.__LWCS_GET_TYPE_MULTIPLIERS__ = globalThis.__LWCS_GET_TYPE_MULTIPLIERS__; } catch (错误) {}
 

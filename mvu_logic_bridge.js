@@ -18178,19 +18178,24 @@
     const 系数 = 系数表[String(系别 || '').trim()] || 系数表.强攻系;
     const 天赋训练系数 = 读取技能设计台天赋训练系数(选项?.天赋梯队 || '正常');
     const 精神训练系数 = 读取技能设计台精神训练系数(选项?.天赋梯队 || '正常');
-    const 常规训练倍率 = 等级值 > 10 ? 1 + 0.005 * (等级值 - 10) * 天赋训练系数 : 1;
-    const 精神训练倍率 = 等级值 > 10 ? 1 + 0.005 * (等级值 - 10) * 精神训练系数 : 1;
+    const 常规训练增量 = 等级值 > 10 ? 0.005 * (等级值 - 10) * 天赋训练系数 : 0;
+    const 精神训练增量 = 等级值 > 10 ? 0.005 * (等级值 - 10) * 精神训练系数 : 0;
+    // 与主流程同口径（MVU_Schema_Runtime 最终属性）：基础 × 系别倍率 + 训练加成（基础 × 训练增量）× 训练系别系数（本系倍率 ÷ 各系最高，见
+    // MVU_Skill_Runtime 读取训练加成系别系数_V1）。此前这里训练也乘满系别倍率，主流程则不乘，两边不一致。
+    const 训练系数函数 = 读取窗口函数('__LWCS_TRAINING_TYPE_SCALE__');
+    const 训练系数 = key => typeof 训练系数函数 === 'function' ? Number(训练系数函数(系数, key)) || 0 : 1;
+    const 标准值 = (key, 增量) => Math.max(1, Math.round(Number(基础[key] || 1) * (Number(系数[key]) + 增量 * 训练系数(key))));
     const 属性 = {
       name: `标准${Math.round(等级值)}级`,
       type: 系别 || '强攻系',
       lv: 等级值,
       等级: 等级值,
-      str: Math.max(1, Math.round(Number(基础.str || 1) * 系数.str * 常规训练倍率)),
-      def: Math.max(1, Math.round(Number(基础.def || 1) * 系数.def * 常规训练倍率)),
-      agi: Math.max(1, Math.round(Number(基础.agi || 1) * 系数.agi * 常规训练倍率)),
-      men_max: Math.max(1, Math.round(Number(基础.men_max || 1) * 系数.men_max * 精神训练倍率)),
+      str: 标准值('str', 常规训练增量),
+      def: 标准值('def', 常规训练增量),
+      agi: 标准值('agi', 常规训练增量),
+      men_max: 标准值('men_max', 精神训练增量),
       sp_max: Math.max(1, Math.round(Number(基础.sp_max || 1) * 系数.sp_max)),
-      vit_max: Math.max(1, Math.round(Number(基础.vit_max || 1) * 系数.vit_max * 常规训练倍率)),
+      vit_max: 标准值('vit_max', 常规训练增量),
       属性: { 天赋梯队: String(选项?.天赋梯队 || '正常').trim() || '正常' },
     };
     属性.sp = 属性.sp_max;

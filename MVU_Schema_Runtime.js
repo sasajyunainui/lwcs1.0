@@ -5508,7 +5508,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 底子波动 = Math.max(0.1, Number(属性.底子波动 || 1));
       let 体力上限 =
         Math.floor(Number(基础属性.vit_max || 0) * Math.max(0.1, 系别倍率 || 1) * 底子波动) +
-        Math.max(0, Math.floor(Number(属性.训练加成?.体力上限 || 0)));
+        Math.max(0, Math.floor(Number(属性.训练加成?.体力上限 || 0) * 读取训练加成系别系数_V1({ vit_max: 系别倍率 || 1 }, 'vit_max')));
       const 血脉名 = String(角色数据?.血脉之力?.血脉 || '').trim();
       体力上限 = 应用龙王血脉力量体力加成_V1(体力上限, 角色数据);
       if (角色数据.社交?.势力?.['本体宗']) 体力上限 += Math.min(体力上限 * 2, 40000);
@@ -5933,7 +5933,7 @@ function 规范化Schema根转换_V1(data = {}, 选项 = {}) {
       const 底子波动 = Math.max(0.1, Number(属性.底子波动 || 1));
       let 精神力上限 = Math.floor(
         (Math.floor(Number(基础属性.men_max || 0) * Math.max(0.1, 系别倍率 || 1) * 底子波动) +
-          Math.max(0, Math.floor(Number(属性.训练加成?.精神力上限 || 0)))) *
+          Math.max(0, Math.floor(Number(属性.训练加成?.精神力上限 || 0) * 读取训练加成系别系数_V1({ men_max: 系别倍率 || 1 }, 'men_max')))) *
           读取高天赋精神倍率_V1(属性),
       );
       精神力上限 = 应用龙王血脉精神力加成_V1(精神力上限, 角色数据);
@@ -8905,11 +8905,13 @@ function 规范化角色Schema_V1(char) {
       + Number(char.装备.斗铠?.装备状态 === '已装备' ? char.装备.斗铠?._属性加成?.魂力上限 || 0 : 0)
       + Number(char.装备.机甲?.装备状态 === '已装备' ? char.装备.机甲?._属性加成?.魂力上限 || 0 : 0)
     ));
-    let final_str = Math.floor(base.str * typeMult.str * hiddenVar) + char.属性.训练加成.力量;
-    let final_def = Math.floor(base.def * typeMult.def * hiddenVar) + char.属性.训练加成.防御;
-    let final_agi = Math.floor(base.agi * typeMult.agi * hiddenVar) + char.属性.训练加成.敏捷;
-    let final_vit_max = Math.floor(base.vit_max * typeMult.vit_max * hiddenVar) + char.属性.训练加成.体力上限;
-    let final_men_max = Math.floor((Math.floor(base.men_max * typeMult.men_max * hiddenVar) + char.属性.训练加成.精神力上限) * 读取高天赋精神倍率_V1(char.属性));
+    // 训练加成按系别系数计入（读取训练加成系别系数_V1，MVU_Skill_Runtime）。
+    const 训练计入 = (key, value) => Math.floor(Number(value || 0) * 读取训练加成系别系数_V1(typeMult, key));
+    let final_str = Math.floor(base.str * typeMult.str * hiddenVar) + 训练计入('str', char.属性.训练加成.力量);
+    let final_def = Math.floor(base.def * typeMult.def * hiddenVar) + 训练计入('def', char.属性.训练加成.防御);
+    let final_agi = Math.floor(base.agi * typeMult.agi * hiddenVar) + 训练计入('agi', char.属性.训练加成.敏捷);
+    let final_vit_max = Math.floor(base.vit_max * typeMult.vit_max * hiddenVar) + 训练计入('vit_max', char.属性.训练加成.体力上限);
+    let final_men_max = Math.floor((Math.floor(base.men_max * typeMult.men_max * hiddenVar) + 训练计入('men_max', char.属性.训练加成.精神力上限)) * 读取高天赋精神倍率_V1(char.属性));
     let final_sp_max = Math.max(自然魂力上限, 既有魂力上限);
     let bName = char.血脉之力?.血脉 || '无';
 
