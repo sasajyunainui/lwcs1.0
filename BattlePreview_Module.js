@@ -7028,11 +7028,19 @@
     );
     const attackKey = damageClass === 'MENTAL' ? 'men' : 'str';
     const defenseKey = damageClass === 'MENTAL' ? 'men' : 'def';
-    const panelAttack = Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
-      ? Number(actorProfile.stats[attackKey])
-      : readCombatStat(actor, attackKey);
+    // 物品自身等级（对应等级，用户 2026-11-24「不看使用者自己的力量，而是魂导器本身就有这样的威力」）：带对应等级的伤害（魂导器等物品）
+    // 按该等级的标准属性出手——攻击、远程魂力、魂力驱动、等级差都换成这一级的标准值；命中闪避等仍是使用者自己的（不在这里）。
+    const itemLevel = Number(effect?.对应等级) > 0 && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? Number(effect.对应等级) : 0;
+    const itemBase = itemLevel > 0 ? root.__LWCS_GET_BASE_STATS__(itemLevel) : null;
+    const attacker = itemBase ? { 属性: { 等级: itemLevel } } : actor;
+    const panelAttack = itemBase
+      ? Number(itemBase[damageClass === 'MENTAL' ? 'men_max' : 'str']) || 0
+      : Number.isFinite(Number(actorProfile?.stats?.[attackKey]))
+        ? Number(actorProfile.stats[attackKey])
+        : readCombatStat(actor, attackKey);
     const attack = damageClass === 'RANGED'
-      ? rangedAttackStat(actor, panelAttack, Number.isFinite(Number(actorProfile?.resourceMax?.魂力)) ? Number(actorProfile.resourceMax.魂力) : readResourceMax(actor, '魂力'))
+      ? rangedAttackStat(attacker, panelAttack, itemBase ? Number(itemBase.sp_max) || 0
+        : Number.isFinite(Number(actorProfile?.resourceMax?.魂力)) ? Number(actorProfile.resourceMax.魂力) : readResourceMax(actor, '魂力'))
       : panelAttack;
     const rawDefense = Math.max(
       1,
@@ -7057,9 +7065,11 @@
     const segments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)));
     const powerRatio = power <= 100 ? power / 100 : Math.pow(power / 100, 0.25);
     const resourceName = damageClass === 'MENTAL' ? '精神力' : '魂力';
-    const actorResourceMax = Number.isFinite(Number(actorProfile?.resourceMax?.[resourceName]))
-      ? Number(actorProfile.resourceMax[resourceName])
-      : readResourceMax(actor, resourceName);
+    const actorResourceMax = itemBase
+      ? Number(itemBase[damageClass === 'MENTAL' ? 'men_max' : 'sp_max']) || 1
+      : Number.isFinite(Number(actorProfile?.resourceMax?.[resourceName]))
+        ? Number(actorProfile.resourceMax[resourceName])
+        : readResourceMax(actor, resourceName);
     const targetResourceMax = Number.isFinite(Number(targetProfile?.resourceMax?.[resourceName]))
       ? Number(targetProfile.resourceMax[resourceName])
       : readResourceMax(target, resourceName);
@@ -7078,7 +7088,7 @@
     } else if (damageClass === 'TRUE') {
       total = attack * powerRatio * 0.4;
     } else {
-      const effectiveAttack = attack * Math.pow(levelScaleRatio(actor, target, damageClass), DAMAGE_GAP_EXPONENT - 1);
+      const effectiveAttack = attack * Math.pow(levelScaleRatio(attacker, target, damageClass), DAMAGE_GAP_EXPONENT - 1);
       const gap = effectiveAttack / Math.max(1, defense);
       const mitigation = gap / (gap + 1);
       total = effectiveAttack * powerRatio * mitigation * 0.4 * resourceDrive;

@@ -534,15 +534,20 @@ function 读取物品被动技能条目_V1(物品 = {}, 选项 = {}) {
       // 该魂导等级的标准魂力消耗补上（与主动魂导器 BattleDecision soulToolSkillView 同一做法）。付费见 BattlePreview passiveSkillTriggerCosts。
       const 魂导等级 = Math.max(0, Math.min(9, Math.floor(Number(物品.魂导等级) || 0)));
       const 技能副本 = cloneJsonValue(技能, {});
+      // 威力是魂导器自己的（11-24）：没写对应等级的伤害按魂导等级补上（同 BattleDecision soulToolEquivalentLevel），伤害按这一级的标准属性出手。
+      const 原始魂导等级 = Math.floor(Number(物品.魂导等级) || 0);
+      const 补对应等级 = 列表 => 原始魂导等级 > 0 ? 列表.map(效果 => 效果?.原型 === '伤害结算' && !(Number(效果.对应等级) > 0)
+        ? { ...效果, 对应等级: 原始魂导等级 >= 10 ? 原始魂导等级 * 10 : 原始魂导等级 * 10 + 9 } : 效果) : 列表;
       if (魂导等级 > 0) {
         技能副本.__魂导等级 = 魂导等级;
         if (!技能副本.消耗 || String(技能副本.消耗).trim() === '无') 技能副本.消耗 = 构建魂技消耗文本_V1('纯耗魂力', 50, 魂导等级);
+        if (Array.isArray(技能副本._效果数组)) 技能副本._效果数组 = 补对应等级(技能副本._效果数组);
       }
       条目.push({
         字段: 字段名,
         技能名: String(技能名 || 技能.魂技名 || '被动技能').trim() || '被动技能',
         技能: 技能副本,
-        效果数组: 超神器比例 !== null && 超神器比例 < 1 ? 缩放技能效果数组_V1(效果数组, 超神器比例) : cloneJsonValue(效果数组, []),
+        效果数组: 补对应等级(超神器比例 !== null && 超神器比例 < 1 ? 缩放技能效果数组_V1(效果数组, 超神器比例) : cloneJsonValue(效果数组, [])),
         来源物品: String(选项.来源物品 || 物品.名称 || 物品.name || 物品.物品名 || '').trim(),
         来源槽位: String(选项.来源槽位 || '').trim(),
       });

@@ -4854,6 +4854,11 @@
   const soulToolAmmoField = item => item && typeof item === 'object' ? (item.弹药 !== undefined ? '弹药' : item.剩余使用次数 !== undefined ? '剩余使用次数' : '') : '';
   const soulToolAmmoKey = equipment => Object.entries(equipment?.魂导器?.装配 || {})
     .map(([slot, item]) => (soulToolAmmoField(item) ? `${slot}:${Number(item[soulToolAmmoField(item)])}` : '') + (/损毁/.test(String(item?.装备状态 || '')) ? `${slot}:损毁` : '')).filter(Boolean).join('|');
+  // 魂导等级 N 对标第 N 环：1～9 级按 N×10+9（与物品库、工坊产物同口径），10 级以上按 N×10。
+  const soulToolEquivalentLevel = tier => {
+    const value = Math.max(1, Math.floor(Number(tier) || 1));
+    return value >= 10 ? value * 10 : value * 10 + 9;
+  };
   function soulToolSkillView(equipment = null) {
     const fitted = equipment?.魂导器?.装配;
     if (!fitted || typeof fitted !== 'object') return equipment;
@@ -4870,7 +4875,11 @@
       const skills = Object.fromEntries(Object.entries(item.装备技能).map(([name, skill]) => {
         if (!skill || typeof skill !== 'object') return [name, skill];
         const unpaid = !skill.消耗 || String(skill.消耗).trim() === '无';
-        return [name, { ...skill, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
+        // 威力是魂导器自己的（11-24）：没写对应等级的伤害按魂导等级补上，伤害公式按这一级的标准属性出手（BattlePreview calculateDamageFormula）。
+        const effects = Array.isArray(skill._效果数组) && skill._效果数组.some(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0))
+          ? { _效果数组: skill._效果数组.map(effect => effect?.原型 === '伤害结算' && !(Number(effect.对应等级) > 0) ? { ...effect, 对应等级: soulToolEquivalentLevel(item.魂导等级) } : effect) }
+          : {};
+        return [name, { ...skill, ...effects, 来源类别: skill.来源类别 || '魂导器', ...(soulToolAmmoField(item) ? { __魂导器槽位: slot } : {}),
           ...(unpaid && typeof costText === 'function' ? { 消耗: costText('纯耗魂力', 50, tier) } : {}) }];
       }));
       return [slot, { ...item, 装备技能: skills }];
