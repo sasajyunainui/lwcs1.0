@@ -41130,9 +41130,12 @@
     if (held) { const chosen = options.find(option => option.kind === held) || options[0]; return { ...chosen, defends: chosen.kind === 'DEFEND' }; }
     // stand.theirs：来招整招伤害（r20RawHit），对轰按它比；没有时按格子份额 × 生命上限。
     const theirs = Number(stand.theirs) > 0 ? Number(stand.theirs) : Number(weight) > 0 ? Number(weight) * stand.hpMax : 0;
-    const win = Number(preview.ENGAGEMENT_RULES?.CLASH_WIN) || 1.2, shock = Number(preview.ENGAGEMENT_RULES?.CLASH_SHOCK) || 0;
+    const win = Number(preview.ENGAGEMENT_RULES?.CLASH_WIN) || 1.2, meleeShock = Number(preview.ENGAGEMENT_RULES?.CLASH_SHOCK) || 0;
+    const rangedShock = Number(preview.ENGAGEMENT_RULES?.RANGED_CLASH_SHOCK ?? meleeShock);
     if (theirs > 0) for (const { strike, price, confidence = 1, move } of stand.strikes || []) {
       const ratio = strike / theirs;
+      // 远程对轰（BattlePreview clashOutcome rangedClash）：来招或这一招有一方是远程，平手溅射按远程。推演不跟踪缠斗，按没贴身近似。
+      const shock = stand.incomingRanged === true || preview.declarationDamageClass?.(move || {}) === 'RANGED' ? rangedShock : meleeShock;
       const met = ratio >= win ? { keep: 0, share: 0, lands: 0, answer: stand.catch, back: (strike - theirs) / stand.attackerHpMax }
         : ratio > 1 / win ? { keep: stand.soak * shock, share: shock, lands: 0, answer: stand.catch, back: shock * strike / stand.attackerHpMax }
           : { keep: stand.soak * (1 - ratio), share: 1 - ratio, lands: 1, answer: 0, back: 0 };
@@ -41322,7 +41325,8 @@
   function r20FillPair(cells, units, acts, row, other) {
     if (!acts[row]) { cells.keep[row][other] = 1; cells.keepBack[row][other] = 1; cells.answer[row][other] = 0; cells.answerOpen[row][other] = 0; if (cells.openBack) cells.openBack[row][other] = 0; return; }
     const stand = r20Stand(units[row], units[other]), raw = r20RawHit(units[other], units[row]);
-    const openStand = raw ? { ...(raw.move && root.__LWCS_TUNE__?.RAW_MOVE_OFF !== true ? r20Stand(units[row], units[other], raw.move) : stand), theirs: raw.damage } : stand;
+    const openStand = raw ? { ...(raw.move && root.__LWCS_TUNE__?.RAW_MOVE_OFF !== true ? r20Stand(units[row], units[other], raw.move) : stand), theirs: raw.damage,
+      incomingRanged: !!raw.move && preview.declarationDamageClass?.(raw.move) === 'RANGED' } : stand;
     const opening = r20Meet(openStand, r20Weight(cells.out[other][row])), struck = r20Meet(stand, r20Weight(cells.back[other][row]));
     // Development hook (absent in play): which answer a pair's opening hit meets, with the stand it was weighed on.
     root.__LWCS_DECISION_DEBUG__?.onFillPair?.({ units, row, other, stand: openStand, opening, weight: r20Weight(cells.out[other][row]), out: cells.out[other][row], struck });

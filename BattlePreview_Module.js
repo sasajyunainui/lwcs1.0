@@ -10964,6 +10964,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const swapEitherSide = effectPrototype === '位移执行' && /换位/.test(String(effect?.位移类型 || '')) && !explicitFriendly && !explicitHostile;
       const requiresFriendly = !swapEitherSide && (explicitFriendly || (!explicitHostile && targetsAllies));
       const requiresHostile = !swapEitherSide && (explicitHostile || (!explicitFriendly && !targetsAllies));
+      // 混乱偏转（BattleRuntime 目标干扰 targetRedirected，用户 11-26 方案 A）：偏转后的单体效果打在换到的那个人身上，不分敌我。
+      if (declaration?.targetRedirected === true && declaredTargets.length && !(excludesActorEndpoint && unitId(declaredTargets[0]) === unitId(actor))) {
+        return declaredTargets.slice(0, 1);
+      }
       const sideMatched = declaredTargets.filter(target => {
         if (excludesActorEndpoint && unitId(target) === unitId(actor)) return false;
         const targetSide = mechanicalProjectionProfile(
@@ -26660,6 +26664,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // between even moves is not nothing — each side takes CLASH_SHOCK of the other's move, its damage only (no state, no
   // roll to hit, no guard), through the ordinary damage settlement.
   const CLASH_SHOCK = 0.25;
+  // 远程对轰（用户 11-26「远程对轰和近身对轰的溅射需要不同」，按方案定稿 D）：有一方是远程招、两人又没有贴身缠斗（unitsLocked）时，两股力量
+  // 在半空相撞，平手时各自吃到的只有 RANGED_CLASH_SHOCK；两边都是近身、或已经贴身，照 CLASH_SHOCK。精神对轰另算。起始值，实测再定。
+  const RANGED_CLASH_SHOCK = Number(root.__LWCS_TUNE__?.RANGED_CLASH_SHOCK ?? 0.12);
   // A clash: `reactor` meets `attacker`'s move `incomingDeclaration` (landing on the reactor) with `reactorDeclaration`
   // (aimed at the attacker), on `worldSnapshot` as it stands when the answer is settled. null: one of the two is not a
   // damaging move. outScale: the share of the answer's damage that lands on the attacker (won: the difference; even:
@@ -26675,9 +26682,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const ratio = theirs > 0 ? mine / theirs : mine > 0 ? Infinity : 1;
     const result = ratio >= CLASH_WIN - 1e-12 ? 'WIN' : ratio <= 1 / CLASH_WIN + 1e-12 ? 'LOSE' : 'EVEN';
     const mentalClash = declarationDamageClass(reactorDeclaration || {}) === 'MENTAL' && declarationDamageClass(incomingDeclaration || {}) === 'MENTAL';
-    const loss = mentalClash ? MENTAL_CLASH_LOSS_MULT : 1, shock = mentalClash ? MENTAL_CLASH_SHOCK : CLASH_SHOCK;
+    const rangedClash = !mentalClash && [reactorDeclaration, incomingDeclaration].some(item => declarationDamageClass(item || {}) === 'RANGED') &&
+      !(worldSnapshot && unitsLocked(worldSnapshot, reactor, attacker));
+    const loss = mentalClash ? MENTAL_CLASH_LOSS_MULT : 1, shock = mentalClash ? MENTAL_CLASH_SHOCK : rangedClash ? RANGED_CLASH_SHOCK : CLASH_SHOCK;
     return Object.freeze({
-      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash, late,
+      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash, rangedClash, late,
       outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine * loss : result === 'EVEN' ? shock : 0,
       inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs * loss : result === 'EVEN' ? shock : 0,
       answered: result !== 'LOSE',
@@ -27085,7 +27094,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ENGAGEMENT_RULES: Object.freeze({ DODGE_BASE, DODGE_SHARE_SLOPE, DODGE_BASE_FLOOR, DODGE_BASE_CAP, DODGE_WINDUP_SWING, DODGE_AREA_PENALTY,
       DODGE_FLOOR, DODGE_CAP, WINDUP_PIVOT, WINDUP_SPAN, GUARD_LIGHT, GUARD_HEAVY, GUARD_TYPICAL, GUARD_LIGHT_SHARE, GUARD_EVEN_SHARE,
       GUARD_HEAVY_SHARE, GUARD_CAP, COUNTER_GUARD_HELD, COUNTER_BASE, COUNTER_WINDUP_SWING, COUNTER_FLOOR, COUNTER_CAP,
-      COUNTER_STAMINA_FACTOR, COUNTER_STAMINA_STEP, COUNTER_FADE, COUNTER_STANCE_BONUS, CLASH_WIN, CLASH_SHOCK, PREEMPT_SURE_MARGIN, CLASH_READ_MARGIN,
+      COUNTER_STAMINA_FACTOR, COUNTER_STAMINA_STEP, COUNTER_FADE, COUNTER_STANCE_BONUS, CLASH_WIN, CLASH_SHOCK, RANGED_CLASH_SHOCK, PREEMPT_SURE_MARGIN, CLASH_READ_MARGIN,
       // 接战链 阶段三: the referee (INTERCEPT_WINDUP is also its step per fighter saved in a round).
       REFEREE_SAFE, INTERCEPT_WINDUP }),
     compileMechanicalBasis,

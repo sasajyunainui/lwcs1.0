@@ -11084,9 +11084,13 @@
         opportunityId: input?.opportunityId,
       });
     if (targetInterference) {
+      // 混乱偏转（用户 11-26 定方案 A：偏转可以落到任何人，含自己和队友）：换了目标的声明带 targetRedirected，目标解析（BattlePreview
+      // resolveTargets）对单体效果就按换到的那个人结算，不再按阵营拉回敌人；治疗、增益偏到敌人身上同样生效。
+      const redirected = String(targetInterference.resolvedTargetId || '') !== String(targetInterference.declaredTargetId || (declaration.targetIds || [])[0] || '');
       declaration = {
         ...declaration,
         targetIds: [targetInterference.resolvedTargetId],
+        ...(redirected ? { targetRedirected: true } : {}),
       };
     }
     const resolvedPrimaryTargets = resolveStructuredTargets(
