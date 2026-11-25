@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:ec4ff10731b8b437e5fac5bc749054922660694dbebb690b450b90185ace8161|MVU_Schema_Runtime.js:4a9cc935c5d3a1bc33763b7bf923656ff1be1699bccda0490e49e7364f9e7a76|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:24667fd618c0242b5e6c01ae281d2d03e0b61277e3929aadd5b8f33777b2bd40|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc */
+/* sources-sha256: MVU_Skill_Runtime.js:ec4ff10731b8b437e5fac5bc749054922660694dbebb690b450b90185ace8161|MVU_Schema_Runtime.js:4a9cc935c5d3a1bc33763b7bf923656ff1be1699bccda0490e49e7364f9e7a76|BattlePreview_Module.js:9497c6a1a25dadf0f5a44b66c70d962a89f436e87770d0dbab8560741875c745|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:ec244315833ee6b9703d24613b53d5d3edf4f55ed3f81fe90bde7b077d4919d1|BattleRuntime_Module.js:cc7911299a0517a6ce4f3f13092fca9c329f6e1cedc55b5b1a6564d4bcf31a58 */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -44703,6 +44703,28 @@ try {
     if (strike) return classifyDamageType(strike?.伤害类型);
     return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' ? 'MELEE' : null;
   }
+  // 控制、减益的类别（用户 11-25「控制减益啥的技能还是和伤害技能一样处理吧」「精神力判定的……和物理的不能一样处理吧」→ 按驱动属性分、精神类
+  // 不给应对；同日「软控也直接按照精神驱动那套设定」→ 软控、减益命中与应对都按精神类）：对敌方、不带伤害的效果，物理驱动的硬控（带不能行动、
+  // 跳过回合的状态）按物理远程，其余（精神力驱动的硬控、所有软控与减益）按精神类。CONTROL_CLASS_OFF 回旧（不分类别、不给应对）。
+  // 带伤害的、对己方的返回 null。
+  function hardControlEffect(effect = {}) {
+    if (String(effect?.原型 || '').trim() !== '状态施加') return false;
+    const stops = deriveStateCombatEffect(effect) || {};
+    return stops.cannot_act === true || stops.skip_turn === true;
+  }
+  function controlMoveClass(effect = {}) {
+    if (root.__LWCS_TUNE__?.CONTROL_CLASS_OFF === true || !effect || String(effect?.原型 || '').trim() === '伤害结算' || effectTargetsAllies(effect)) return null;
+    return hardControlEffect(effect) && String(effect?.驱动属性 || '').trim() !== '精神力上限' ? 'RANGED' : 'MENTAL';
+  }
+  // 这一手给不给对方应对机会、按哪条效果给（BattleRuntime 开应对机会与推演压制起点共用）：普攻与带伤害的按伤害效果；不带伤害的，对敌主效果
+  // （第一条）是物理硬控的也给（controlMoveClass RANGED）；精神类（含软控、减益）不给。不给就没有接招，也不占对方时间（BattleRuntime 占用只在应对时记）。
+  function answeredMoveEffects(declaration = {}) {
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK') return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }];
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const damage = effects.filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
+    if (damage.length) return damage;
+    return controlMoveClass(effects[0]) === 'RANGED' ? [effects[0]] : [];
+  }
   function declarationIsRanged(declaration = null) {
     return !!declaration && declarationDamageClass(declaration) === 'RANGED';
   }
@@ -45933,7 +45955,7 @@ try {
       environmentContext,
     );
     if (String(explicitValue ?? '').trim() !== '') return probability;
-    const strikeClass = String(effect?.原型 || '').trim() === '伤害结算' ? classifyDamageType(effect?.伤害类型) : '';
+    const strikeClass = String(effect?.原型 || '').trim() === '伤害结算' ? classifyDamageType(effect?.伤害类型) : controlMoveClass(effect) || '';
     const classed = strikeClass === 'RANGED' ? clamp(1 - (1 - probability) * RANGED_DODGE_MULT, 0.05, 0.99)
       : strikeClass === 'MENTAL' ? clamp(1 - (1 - probability) * MENTAL_DODGE_MULT, 0.05, 0.99)
       : strikeClass === 'MELEE' ? clamp(1 - (1 - probability) * MELEE_DODGE_MULT, 0.05, 0.99) : probability;
@@ -64849,6 +64871,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     normalizeEffectProbability,
     estimateHitProbabilityAttribution,
     effectTargetsAllies,
+    hardControlEffect,
+    controlMoveClass,
+    answeredMoveEffects,
     resolveTargets,
     collectEffects,
     effectArrayHash,
@@ -117604,12 +117629,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ? Math.max(0, Number(preview.pressTime?.(table.units[pressSourceRow], request.actionOpportunity.incomingAction, table.units[actorRow], table.world)) || 0) * (answeredNow ? 1 : Number(preview.PRESS_TAKE_SHARE ?? 0.5)) : 0;
     const selfPress = ownPress + incomingPress;
     // 压制起点（PRESS_SEED，11-25 最差 3 局）：这一手打单体敌方，它占目标多少时间是已知的（与运行时同一个 pressTime，打完就走为 0）。
-    // 只有带伤害的一手才占（11-25 压制起点对账 seed-cmp2：放不带伤害的对敌魂技后，推演起点 28～34、判丢 39～79%，对手那次实际只被占 0.9～5.3、
-    // 丢 2～13%）：BattleRuntime 只给带伤害效果的招开应对机会（破防的目标也不给），占用只在应对时记——控制、减益不占时间。PRESS_SEED_ANY 回旧。
+    // 只有给对方应对的一手才占（11-25 压制起点对账 seed-cmp2：放不给应对的对敌魂技后，推演起点 28～34、判丢 39～79%，对手那次实际只被占 0.9～5.3、
+    // 丢 2～13%）：BattleRuntime 占用只在应对时记，给不给应对与它同一个 BattlePreview answeredMoveEffects（带伤害的、物理类控制减益给，精神类
+    // 控制减益不给），破防的目标也不给。PRESS_SEED_ANY 回旧。
     const seedKind = String(declaredNow.actionKind || '').toUpperCase();
     const seedAnswered = root.__LWCS_TUNE__?.PRESS_SEED_ANY === true || commitRow === undefined ||
-      (seedKind === 'BASIC_ATTACK' || preview.collectEffects(declaredNow.skill || {}).some(effect => String(effect?.原型 || '').trim() === '伤害结算')) &&
-      !preview.guardBrokenOf?.(table.units[commitRow], Number(table.world?.回合 || 0));
+      preview.answeredMoveEffects(declaredNow).length > 0 && !preview.guardBrokenOf?.(table.units[commitRow], Number(table.world?.回合 || 0));
     const pressSeed = idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] && root.__LWCS_TUNE__?.PRESS_SEED !== false &&
       ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(seedKind) && seedAnswered
       ? { row: commitRow, actor: actorRow, time: Math.max(0, Number(preview.pressTime?.(table.units[actorRow], declaredNow, table.units[commitRow], table.world)) || 0) } : null;
@@ -141220,10 +141245,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             registerPredictedEvidence(actionContext.actionEvent, decisionResult);
             const resolvedDeclaration = actionContext.declaration;
             const shared = { declaration: resolvedDeclaration, actionContext, reactionByTarget: {}, decisionResult };
+            // 给应对的效果（BattlePreview answeredMoveEffects，与推演压制起点共用）：带伤害的按伤害效果；物理类控制、减益（不带伤害、对敌主效果）
+            // 也给（用户 11-25「控制减益啥的技能还是和伤害技能一样处理吧」）；精神类不给。
+            const answeredEffects = previewRuntime.answeredMoveEffects(resolvedDeclaration);
             const hostileTargets = (node.nodeKind === 'COUNTER' && Number(node?.state?.engagementDepth || 0) >= ENGAGEMENT_CHAIN_LIMIT) ||
-              structuredDamageEffects(resolvedDeclaration).length === 0
+              answeredEffects.length === 0
               ? []
-              : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
+              : resolveStructuredTargets(combatData, actor, resolvedDeclaration, answeredEffects[0])
                   .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
             hostileTargets.forEach(target => {
               // 破防: no answer for the rest of the round (BattlePreview guardBreaks).
@@ -141244,7 +141272,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               // evasion or response skill, the target does not answer, and its action of the round is spent.
               let struck = target, interceptor = null, swapCover = null;
               if (!guardSummon && node.nodeKind === 'ACTIVE' && hostileTargets.length === 1 &&
-                  !/群体|全场/.test(String(structuredDamageEffects(resolvedDeclaration)[0]?.目标 || '')) &&
+                  !/群体|全场/.test(String(answeredEffects[0]?.目标 || '')) &&
                   Array.isArray(resolvedDeclaration.targetIds) && resolvedDeclaration.targetIds.some(id => isUnitIdentityMatch(target, id))) {
                 swapCover = chooseSwapCover(combatData, actor, target);
                 if (!swapCover) interceptor = chooseStructuredInterceptor(combatData, actor, resolvedDeclaration, target);
