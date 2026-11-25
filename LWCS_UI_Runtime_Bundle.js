@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:9497c6a1a25dadf0f5a44b66c70d962a89f436e87770d0dbab8560741875c745|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:ec244315833ee6b9703d24613b53d5d3edf4f55ed3f81fe90bde7b077d4919d1|BattleRuntime_Module.js:cc7911299a0517a6ce4f3f13092fca9c329f6e1cedc55b5b1a6564d4bcf31a58|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:9c544ec216fb419bd93fe85066385390c2a27cbff4473e139d8fc5e2997cf369|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4a8c1460c25c81b5842b6286c2e4d99e6b9ccfb88cca9bf237ee27ec5e55ea99|BattleRuntime_Module.js:bd0a86914effa3961a3b56a1de798a3bd1fb3c40e614458c4e948f9245788be5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -62204,6 +62204,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     威力倍率: 50,
     伤害类型: '近身攻击',
     生效方式: '独立生效',
+    基础动作: '普攻',
   });
   const outcomeComponents = Object.freeze({
     HP_DELTA: 'IMMEDIATE_STATE',
@@ -63460,11 +63461,39 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   const ACTION_STAMINA_BASE_RATES = Object.freeze({ ATTACK: 0.0175, DEFEND: 0.0105, EVADE: 0.014, SKILL_DEFEND: 0.0105, SKILL_EVADE: 0.014, OTHER: 0.0105 });
   // 近身与远程（用户 2026-11-15，起始值）: ATTACK is a melee strike (×1.5), ATTACK_RANGED a ranged one (×0.5; its 精神力 is paid
   // apart, rangedActionMentalCost). The other melee/ranged rules sit by classifyDamageType.
+  // 普攻与闪避的体力（用户 11-25「闪避的体力消耗是普攻防御的两倍」，选「普攻和防御拉平、闪避两倍」「远程普攻再减半」）：普攻（BASIC）按防御的费率，
+  // 远程普攻（BASIC_RANGED）减半，闪避（EVADE，前压、后撤、突进赶路与它同价）防御的两倍。伤害魂技照旧按 ATTACK / ATTACK_RANGED。STAMINA_BASIC_OFF 回旧。
+  const STAMINA_BASIC_ON = root.__LWCS_TUNE__?.STAMINA_BASIC_OFF !== true;
   const ACTION_STAMINA_RATES = Object.freeze(Object.fromEntries([
     ...Object.entries(ACTION_STAMINA_BASE_RATES).map(([nature, rate]) => [nature, rate * ACTION_STAMINA_SCALE * (nature === 'ATTACK' ? 1.5 : 1)]),
     ['ATTACK_RANGED', ACTION_STAMINA_BASE_RATES.ATTACK * ACTION_STAMINA_SCALE * 0.5],
+    ['BASIC', ACTION_STAMINA_BASE_RATES.DEFEND * ACTION_STAMINA_SCALE],
+    ['BASIC_RANGED', ACTION_STAMINA_BASE_RATES.DEFEND * ACTION_STAMINA_SCALE * 0.5],
+    ...(STAMINA_BASIC_ON ? [['EVADE', ACTION_STAMINA_BASE_RATES.DEFEND * ACTION_STAMINA_SCALE * 2]] : []),
   ]));
   const ACTION_STAMINA_RATIO_CAP = 4;
+  // 基础动作带魂力（用户 11-25「都要加一个基础魂力消耗……有魂力时用的普攻，防御，会比没魂力时强很多」「普攻和闪避加强吧，普攻就按之前说的，
+  // 第一魂技的一半。防御就和现在一样，没魂力时降低」「闪避消耗的魂力定为普攻和防御的一半」；魂力够就自动带，省不省着用由推演层决定）：
+  // 普攻、防御每次扣 BASIC_SOUL_COST_SHARE × 第一魂技标准消耗（11 级基础魂力上限的 50%）＋ BASIC_SOUL_MAX_SHARE × 魂力上限，闪避减半；
+  // 魂力够就扣、用带魂力的版本，不够用普通版。
+  //   普攻（11-25 改「普攻的伤害先调整为第一魂技的50%左右」，不带魂力的和防御一样削弱）：带魂力威力 ×BASIC_SOUL_POWER ÷ 50（生成器第一魂环伤害
+  //     魂技威力中位 124 的伤害系数 1.055 的一半 ≈ 威力 53），普通版威力 ×BASIC_PLAIN_SHARE；
+  //   闪避：带魂力闪避 +EVADE_SOUL_BONUS，普通版照旧；
+  //   防御：带魂力照旧，普通版挡下的份额 ×GUARD_PLAIN_SHARE。
+  // 起始值，实测校准。BASIC_SOUL_OFF 回旧（不扣、不分版本）。
+  const BASIC_SOUL_POWER = Number(root.__LWCS_TUNE__?.BASIC_SOUL_POWER ?? 53), EVADE_SOUL_BONUS = Number(root.__LWCS_TUNE__?.EVADE_SOUL_BONUS ?? 0.1),
+    GUARD_PLAIN_SHARE = Number(root.__LWCS_TUNE__?.GUARD_PLAIN_SHARE ?? 0.6),
+    BASIC_PLAIN_SHARE = Number(root.__LWCS_TUNE__?.BASIC_PLAIN_SHARE ?? 0.6), BASIC_SOUL_COST_SHARE = 0.5, BASIC_SOUL_MAX_SHARE = 0.005;
+  function basicSoulCost(unit = {}, kind = 'BASIC_ATTACK') {
+    const ringOne = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? Number(root.__LWCS_GET_BASE_STATS__(11)?.sp_max) * 0.5 || 0 : 0;
+    const cost = BASIC_SOUL_COST_SHARE * ringOne + BASIC_SOUL_MAX_SHARE * Math.max(0, Number(readResourceMax(unit, '魂力')) || 0);
+    return String(kind).toUpperCase() === 'EVADE' ? cost / 2 : cost;
+  }
+  // 这一下带不带魂力：规则关着返回 null（照旧），否则当前魂力够不够付。
+  function basicSoulReady(unit = {}, kind = 'BASIC_ATTACK') {
+    if (root.__LWCS_TUNE__?.BASIC_SOUL_OFF === true || !unit || typeof unit !== 'object') return null;
+    return (Number(readResource(unit, '魂力')) || 0) >= basicSoulCost(unit, kind) - 1e-9;
+  }
   // On unless a world opts out with 战斗规则.行动体力消耗 === false, or the host's default battle rules do
   // (root.__LWCS_DEFAULT_BATTLE_RULES__, set by isolation fixtures that measure other resources).
   function actionStaminaEnabled(world = {}) {
@@ -63478,13 +63507,13 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
 
   function actionStaminaNature(declaration = {}) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
-    if (kind === 'BASIC_ATTACK') return declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
+    if (kind === 'BASIC_ATTACK') return STAMINA_BASIC_ON ? (declarationIsRanged(declaration) ? 'BASIC_RANGED' : 'BASIC') : declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
     if (kind === 'EVADE') return 'EVADE';
     if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
     // 两档距离（T25，用户 11-18「后撤前进都要耗体力才对」）：前压 / 后撤按闪避同价付体力。
     if (kind === 'EQUIP' && /^(前压|后撤)$/.test(String(declaration?.releaseSlot || ''))) return 'EVADE';
     // 砸控制物（T29）：按普攻付体力。
-    if (kind === 'EQUIP' && /^砸(?:装备)?·/.test(String(declaration?.releaseSlot || ''))) return 'ATTACK';
+    if (kind === 'EQUIP' && /^砸(?:装备)?·/.test(String(declaration?.releaseSlot || ''))) return STAMINA_BASIC_ON ? 'BASIC' : 'ATTACK';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
@@ -64407,7 +64436,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
     const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration) + advanceStaminaCost(actor, declaration);
     // 近身与远程（11-15）：远程另付精神力（BattleRuntime payActionStamina 同价），推演与估值一并扣。
-    const mental = nature === 'ATTACK_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
+    const mental = nature === 'ATTACK_RANGED' || nature === 'BASIC_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
     return amount > 0 || mental > 0 ? { nature, amount, mental } : null;
   }
 
@@ -68292,7 +68321,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // 这一手给不给对方应对机会、按哪条效果给（BattleRuntime 开应对机会与推演压制起点共用）：普攻与带伤害的按伤害效果；不带伤害的，对敌主效果
   // （第一条）是物理硬控的也给（controlMoveClass RANGED）；精神类（含软控、减益）不给。不给就没有接招，也不占对方时间（BattleRuntime 占用只在应对时记）。
   function answeredMoveEffects(declaration = {}) {
-    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK') return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }];
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK') return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1, 基础动作: '普攻' }];
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const damage = effects.filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
     if (damage.length) return damage;
@@ -68582,7 +68611,12 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     modifierAttributionEnabled = false,
   ) {
     const damageClass = classifyDamageType(effect?.伤害类型);
-    const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0));
+    // 带魂力的普攻（basicSoulReady）：威力 ×BASIC_SOUL_POWER ÷ 50，魂力不够的普通版 ×BASIC_PLAIN_SHARE（BASIC_SOUL_OFF 时 null，照旧）。
+    // 运行时在出手前判好记在效果上（魂力强化），预演按当下魂力判。
+    const basicSouled = effect?.基础动作 !== '普攻' ? null
+      : typeof effect?.魂力强化 === 'boolean' ? effect.魂力强化 : basicSoulReady(actor, 'BASIC_ATTACK');
+    const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0)) *
+      (basicSouled === true ? BASIC_SOUL_POWER / 50 : basicSouled === false ? BASIC_PLAIN_SHARE : 1);
     const actorProfile = mechanicalProjectionProfile(
       projectionContext,
       actor,
@@ -87882,7 +87916,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const multiplier = prepared ? ordinary - (ordinary - Math.max(0.35, ordinary * 0.8)) * passiveStreakFactor(reactor) : ordinary;
     const opening = attackOpeningOf(reactor), slow = slowGuardCut(reactor);
     const opened = opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
-    const guarded = slow > 0 ? 1 - (1 - opened) * (1 - slow) : opened;
+    const guardedFull = slow > 0 ? 1 - (1 - opened) * (1 - slow) : opened;
+    // 没魂力的防御（basicSoulReady false）：挡下的份额 ×GUARD_PLAIN_SHARE。
+    const guarded = basicSoulReady(reactor, 'DEFEND') === false ? 1 - (1 - guardedFull) * GUARD_PLAIN_SHARE : guardedFull;
     // 围攻：挡下的那份 ×besiegeFactor。
     const besieged = besiegeFactor(reactor, sourceActor);
     return besieged < 1 ? 1 - (1 - guarded) * besieged : guarded;
@@ -87990,7 +88026,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const strikeClass = declaration ? declarationDamageClass(declaration) : null;
     const ranged = strikeClass === 'RANGED' ? clamp(dodge * RANGED_DODGE_MULT, 0, 0.95) : strikeClass === 'MENTAL' ? dodge * MENTAL_DODGE_MULT
       : strikeClass === 'MELEE' ? dodge * MELEE_REACT_DODGE_MULT : dodge;
-    const opened = ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+    // 带魂力的闪避（basicSoulReady）：+EVADE_SOUL_BONUS。
+    const opened = clamp(ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor)) + (basicSoulReady(reactor, 'EVADE') === true ? EVADE_SOUL_BONUS : 0), 0, 0.95);
     // 状态修正也进反应闪避（用户 2026-11-17「计入，直接加减」）：与命中判定（estimateHitProbability）同一套——
     // 闪避方 dodge_bonus − max(dodge_penalty, lock_level)，攻击方 − (hit_bonus − hit_penalty)。没有这些状态时不变。
     // 夹击（T30）：同一回合里挨过对方另一人的近身攻击，这一击闪避 −PINCER_DODGE_CUT（近身来招才算）。
@@ -88445,6 +88482,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     estimateHitProbabilityAttribution,
     effectTargetsAllies,
     hardControlEffect,
+    basicSoulCost,
+    basicSoulReady,
     controlMoveClass,
     answeredMoveEffects,
     resolveTargets,
@@ -100397,7 +100436,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       承载方式: '直接生效',
       消耗: '无',
       前摇: preview.basicAttackWindup(unit),
-      _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }],
+      _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1, 基础动作: '普攻' }],
     });
     basicAttackSkillCache.set(unit, skill);
     decisionMetrics.basicAttackSkillBuilds += 1;
@@ -103139,6 +103178,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         原型: '伤害结算',
         目标: '单体',
         威力倍率: 50 * strengthMultiplier,
+        基础动作: '普攻',
         伤害类型: '近身攻击',
         攻击段数: 1,
         生效方式: '独立生效',
@@ -104458,6 +104498,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // when it can be released at all (a release with no legal target fizzles as before, not held).
     if (forcedSkill && input.actionOpportunity?.chargeHoldAllowed === true && (!opportunityRole || opportunityRole.toUpperCase() === 'ACTIVE') &&
       candidates.some(candidate => candidate?.declaration?.actionKind === 'RELEASE_SKILL')) candidates.push({
+      candidateId: `${actorId}:PASS_OPPORTUNITY`,
+      declaration: defensiveDeclaration(actorId, 'PASS_OPPORTUNITY'),
+      voluntaryOpportunityPass: true,
+    });
+    // 追击与仓促蓄力可以不接（11-25 3v3 回归 ec3|0|6：蓄力被打断转仓促放出时只给蓄着的那一招一个候选，它被判无效果〔NO_EFFECT_ACTION〕时
+    // 没有合法候选、整局报错）：结算后追击（follow_up:）与仓促蓄力（hasty_charge:）另给一个让过。
+    if (forcedSkill && /^(?:follow_up|hasty_charge):/.test(String(input.actionOpportunity?.grantId || input.actionOpportunity?.opportunityId || '')) &&
+      !candidates.some(candidate => candidate?.voluntaryOpportunityPass === true)) candidates.push({
       candidateId: `${actorId}:PASS_OPPORTUNITY`,
       declaration: defensiveDeclaration(actorId, 'PASS_OPPORTUNITY'),
       voluntaryOpportunityPass: true,
@@ -112526,7 +112574,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const skill = action?.skill || action?.raw_skill || action;
     const actionKind = Array.isArray(skill?._效果数组) && skill._效果数组.length ? 'RELEASE_SKILL' : 'BASIC_ATTACK';
     const effects = actionKind === 'BASIC_ATTACK'
-      ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }]
+      ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 基础动作: '普攻' }]
       : preview.collectEffects(skill);
     const targetCount = Math.max(1, Number(
       action?.targetCount ??
@@ -148622,7 +148670,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
     const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无',
       前摇: actionKind === 'BASIC_ATTACK' ? previewRuntime.basicAttackWindup(actor) : 10 };
-    if (actionKind === 'BASIC_ATTACK') skill._效果数组 = [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0, 生效方式: '独立生效' }];
+    if (actionKind === 'BASIC_ATTACK') skill._效果数组 = [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 基础动作: '普攻', 伤害类型: '近身攻击', 防御穿透: 0, 生效方式: '独立生效' }];
     return {
       id: declaration.actionId,
       type: 'tactical',
@@ -153112,7 +153160,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const side = inferUnitSide(combatData, unit);
       const enemies = units.filter(other => inferUnitSide(combatData, other) !== side);
       if (!enemies.length) return [];
-      const cheapest = Math.min(...enemies.map(enemy => previewRuntime.actionStaminaCost(unit, 'ATTACK', enemy)));
+      const cheapest = Math.min(...enemies.map(enemy => previewRuntime.actionStaminaCost(unit, previewRuntime.actionStaminaNature({ actionKind: 'BASIC_ATTACK' }) || 'ATTACK', enemy)));
       const stamina = persistentResourceValue(unit, 'vit');
       return cheapest > 0 && stamina - cheapest <= 1e-9 ? [{ unit, stamina, cheapest }] : [];
     });
@@ -153135,12 +153183,20 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // stamina weakens the unit through staminaScaleForUnit but never forbids an action. Written as a PAY resource fact plus
   // an action_cost event with source ACTION_STAMINA, so the ledger and analytics see it like any other cost.
   // `factor`: a strike back's price factor (BattlePreview counterStaminaFactor, 接战链 阶段一); 1 for anything else.
+  // 基础动作带魂力（BattlePreview basicSoulCost / basicSoulReady）：普攻、防御、闪避魂力够就扣，记 PAY 资源事实（source BASIC_SOUL_COST）。
+  function payBasicSoul({ combatData, actor, kind, action, actionEvent, actionRole }) {
+    const requested = Number(previewRuntime.basicSoulCost?.(actor, kind)) || 0;
+    if (!(requested > 0)) return [];
+    const before = persistentResourceValue(actor, 'sp'), after = writeCombatResource(actor, 'sp', before - requested), applied = Math.max(0, before - after);
+    return applied > 0 ? [writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'sp', -applied, actionRole, 'PAY',
+      { before, after, meta: { requestedAmount: requested, source: 'BASIC_SOUL_COST', basicKind: String(kind || '') } })] : [];
+  }
   function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI', factor = 1 }) {
     if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
     const requested = previewRuntime.actionStaminaCost(actor, nature, opponent) * Math.max(0, Number(factor) || 1);
     // 近身与远程: a ranged strike also pays 精神力 (BattlePreview rangedActionMentalCost), as far as the unit has it.
     const mentalFacts = [];
-    if (nature === 'ATTACK_RANGED' && typeof previewRuntime.rangedActionMentalCost === 'function') {
+    if ((nature === 'ATTACK_RANGED' || nature === 'BASIC_RANGED') && typeof previewRuntime.rangedActionMentalCost === 'function') {
       const mentalRequested = previewRuntime.rangedActionMentalCost(actor) * Math.max(0, Number(factor) || 1);
       const mentalBefore = persistentResourceValue(actor, 'men');
       const mentalAfter = mentalRequested > 0 ? writeCombatResource(actor, 'men', mentalBefore - mentalRequested) : mentalBefore;
@@ -155120,7 +155176,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object')
       : [];
     const primaryEffect = actionKind === 'BASIC_ATTACK'
-      ? { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }
+      ? { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1, 基础动作: '普攻' }
       : explicitEffects[0] || { 目标: declaration?.targetKind || '' };
     const actionId = String(input?.actionId || nextRuntimeId('battle-action')).trim();
     const chainNodeId = String(input?.chainNodeId || actionId).trim();
@@ -155562,6 +155618,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       allowPreparedDefense,
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
+    // 这一下带不带魂力（普攻、主动摆的防御 / 闪避）：出手前判一次，扣费与伤害结算都用它（扣完再判会把刚够的算成不够）。
+    if (context.__basicSoul === undefined) context.__basicSoul = ['BASIC_ATTACK', 'DEFEND', 'EVADE'].includes(String(actionKind || '').toUpperCase())
+      ? previewRuntime.basicSoulReady?.(actor, String(actionKind).toUpperCase()) ?? null : null;
     // 出界判负：出招前每个人的站位与身上的击退状态（finishStructuredDeclaration 比对：本来在后排、这一下又被击退的出界）。
     if (!context.__ringOutBefore) context.__ringOutBefore = new Map(listCombatUnits(combatData).map(unit => [String(previewRuntime.unitId(unit)),
       { position: previewRuntime.unitPosition(unit), pushed: unit?.__battleRuntime?.pushedBack === true, knock: knockbackSignature(unit), mecha: mechaDurability(unit) }]));
@@ -155728,6 +155787,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const staminaFactor = actionRole === 'COUNTER' && ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(actionKind || '').trim().toUpperCase())
         ? previewRuntime.declarationStaminaFactor(declaration) : 1;
       if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl, factor: staminaFactor }));
+      if (context.__basicSoul === true) facts.push(...payBasicSoul({ combatData, actor, kind: String(actionKind).toUpperCase(), action, actionEvent, actionRole }));
       // 两档距离（T25）：突进那一段路另付体力（BattlePreview advanceStaminaCost，闪避同价）；绕后（T30）的绕路再付一份。
       const moveShares = staminaNature ? previewRuntime.advanceStaminaShares(declaration) : 0;
       for (let share = 0; share < moveShares; share += 1) facts.push(...payActionStamina({ combatData, actor, nature: 'EVADE', opponent: null, action, actionEvent, actionRole, actorControl, factor: 1 }));
@@ -156052,10 +156112,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : declaration?.skill?.属性加成 && typeof declaration.skill.属性加成 === 'object'
         ? declaration.skill.属性加成
         : {};
+    const souled = effect => effect?.原型 === '伤害结算' ? { ...effect, 基础动作: '普攻', ...(typeof context.__basicSoul === 'boolean' ? { 魂力强化: context.__basicSoul } : {}) } : effect;
     const baseEffects = actionKind === 'BASIC_ATTACK'
-      ? appendEquipmentPassiveActionEffects(actor, explicitEffects.length ? explicitEffects : [
+      ? appendEquipmentPassiveActionEffects(actor, (explicitEffects.length ? explicitEffects : [
           { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 },
-        ])
+        ]).map(souled))
       : actionKind === 'EQUIP' && !explicitEffects.length
         ? Object.entries(equipmentModifiers).map(([attribute, value]) => ({
             原型: '属性修正',
@@ -158873,7 +158934,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function structuredDamageEffects(declaration = {}) {
     if (String(declaration?.actionKind || '').trim() === 'BASIC_ATTACK') {
-      return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }];
+      return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1, 基础动作: '普攻' }];
     }
     return (Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [])
       .filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
@@ -160023,6 +160084,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const retreat = declaration?.retreat === true && !preparedDefense;
       // A prepared stance was paid for when it was taken; a reaction pays for itself (R07).
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: retreat ? '后撤闪避' : '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION', factor: retreat ? 2 : 1 });
+      if (!preparedDefense && previewRuntime.basicSoulReady?.(reactor, 'EVADE') === true) payBasicSoul({ combatData, actor: reactor, kind: 'EVADE', action: { actionName: retreat ? '后撤闪避' : '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       if (retreat && evaded) {
         // 在前排：退到后排；在后排：闪开后不被突进的一击带到前排（下面突进结算跳过带 retreatEvaded 的目标）。
         previewRuntime.setUnitPosition(reactor, previewRuntime.POSITION_BACK);
@@ -160084,6 +160146,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance, ...(deflect.art ? { deflectArt: '控鹤擒龙' } : {}) } : {}) },
       });
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
+      if (!preparedDefense && previewRuntime.basicSoulReady?.(reactor, 'DEFEND') === true) payBasicSoul({ combatData, actor: reactor, kind: 'DEFEND', action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
@@ -160238,7 +160301,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const contest = structuredReactionContest(reactor, sourceActor, incomingDeclaration);
     const contestProbability = previewRuntime.counterOpeningProbability(reactor, sourceActor, incomingDeclaration, { prepared, prior: priorCounters });
     const staminaFactor = previewRuntime.counterStaminaFactor(priorCounters);
-    const strikeStamina = previewRuntime.actionStaminaEnabled(combatData) ? previewRuntime.actionStaminaCost(reactor, 'ATTACK', sourceActor) * staminaFactor : 0;
+    const strikeStamina = previewRuntime.actionStaminaEnabled(combatData) ? previewRuntime.actionStaminaCost(reactor, previewRuntime.actionStaminaNature({ actionKind: 'BASIC_ATTACK' }) || 'ATTACK', sourceActor) * staminaFactor : 0;
     // The defender will not strike back with stamina it cannot spare: a counter that would leave it at 0 is not taken.
     const staminaExhausted = strikeStamina > 0 && persistentResourceValue(reactor, 'vit') - strikeStamina <= 1e-9;
     const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;
