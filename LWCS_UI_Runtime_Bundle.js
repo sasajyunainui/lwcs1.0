@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:9c544ec216fb419bd93fe85066385390c2a27cbff4473e139d8fc5e2997cf369|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:4a8c1460c25c81b5842b6286c2e4d99e6b9ccfb88cca9bf237ee27ec5e55ea99|BattleRuntime_Module.js:bd0a86914effa3961a3b56a1de798a3bd1fb3c40e614458c4e948f9245788be5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:83990b58dc8a88ef7816b0a1528fa533516990c35c26cc832aa1f99c748902ea|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:ebed957446cd92cb9e6adf38bbf1e6060e502efcd87eaa212e9ba3cd6321e952|BattleRuntime_Module.js:bd0a86914effa3961a3b56a1de798a3bd1fb3c40e614458c4e948f9245788be5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -73263,6 +73263,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const own = counterElementTokens(unitSpirits(actor).flatMap(spirit => Array.isArray(spirit.可调用元素) ? spirit.可调用元素 : []));
     return Object.keys(WUXING_GENERATES).find(source => WUXING_GENERATES[source] === elements[0] && own.includes(source)) || '';
   }
+  // 预演算伤害时效果带上所属技能（技能的附带属性进 attackElementsOf），与运行时结算（BattleRuntime 伤害结算 buildDamageBasis）一致；
+  // 11-25 差分测试：附带「冰」的魂技预演少算相克 ×1.58。
+  function skillBoundEffect(effect = {}, skill = null) {
+    return skill && typeof skill === 'object' && !effect?.技能 ? { ...effect, 技能: skill } : effect;
+  }
   // 这一击的元素倍率与来由（战报读它）；没有参与相克的元素的招 null。
   function elementDamageProfile(effect = {}, actor = {}, target = {}) {
     const elements = attackElementsOf(effect);
@@ -74839,6 +74844,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function conditionMatchesFilter(key = '', condition = {}, effect = {}) {
     if (String(key).startsWith('__auto__:')) return false;
+    // 装备、魂骨被动属于物品（同状态转移，transferProjectedStates）：被动同步每回合加回，移除它什么也没移走，反倒让生命上限类
+    // 被动先掉再回、当场截掉生命（11-25 差分测试：3v3 驱散辅助系的黄金玳瑁躯干骨·黄金玄武壳，白掉 3070 生命）。
+    if (condition?.__equipmentPassiveState === true) return false;
     const selector = String(effect.状态 ?? effect.selector ?? '').trim();
     if (selector === '任意负面' && statePolarity(condition) >= 0 || selector === '任意增益' && statePolarity(condition) <= 0) return false;
     if (selector && !['任意状态', '任意负面', '任意增益'].includes(selector) && key !== selector && stateName(condition) !== selector) return false;
@@ -76622,7 +76630,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const threatEnvironment = clamp(Number(damageContext.environmentDamageMultiplierByTarget?.get?.(unitId(target)) ??
               damageContext.environmentDamageMultiplierByTarget?.[unitId(target)] ?? 1), 0, 1) * shareFactor;
             const threatSegments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
-            const threatBasis = buildDamageBasis(effect, threatActor, threatTarget, threatProjection, {
+            const threatBasis = buildDamageBasis(skillBoundEffect(effect, damageContext.declaration?.skill), threatActor, threatTarget, threatProjection, {
               basisView: damageContext.basisView || 'DECISION_VISIBLE', effectInstanceId: damageContext.effectInstanceId,
               sourceEffectId: damageContext.effectInstanceId, sourceActionId: damageContext.rootActionId,
               snapshotRevision: damageContext.snapshotRevision, actionDamageMultiplier: damageContext.actionDamageMultiplier, targetCount,
@@ -76717,7 +76725,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             1
           ), 0, 1) * shareFactor;
           const damageBasis = buildDamageBasis(
-            effect,
+            skillBoundEffect(effect, context?.declaration?.skill),
             actor,
             currentTarget,
             context?.projectionContext || null,
@@ -76807,7 +76815,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const branchReactionMultiplier = clamp(Number(branchResolvedMultiplier ??
                 responseOverrideValue(context?.damageMultiplierByTarget, unitId(target)) ?? 1), 0, 1);
               const branchCoverage = primaryTargetCounts?.find(row => Object.entries(row.assignments || {}).every(([key, value]) => branch.assignments[key] === value));
-              const branchBasis = buildDamageBasis(effect, branchActor, branchTarget, null, {
+              const branchBasis = buildDamageBasis(skillBoundEffect(effect, context?.declaration?.skill), branchActor, branchTarget, null, {
                 basisView: context?.basisView || 'DECISION_VISIBLE',
                 effectInstanceId: context.effectInstanceId, sourceEffectId: context.effectInstanceId,
                 sourceActionId: context.rootActionId, snapshotRevision: context.snapshotRevision,
@@ -76842,7 +76850,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const damageByCount = new Map([[targetCount, perSegmentDamage]]);
             hpDamageLimits = active.map(branch => {
               if (!damageByCount.has(branch.targetCount)) {
-                const basis = buildDamageBasis(effect, actor, currentTarget, context.projectionContext || null, {
+                const basis = buildDamageBasis(skillBoundEffect(effect, context?.declaration?.skill), actor, currentTarget, context.projectionContext || null, {
                   basisView: context.basisView || 'DECISION_VISIBLE',
                   effectInstanceId: context.effectInstanceId, sourceEffectId: context.effectInstanceId,
                   sourceActionId: context.rootActionId, snapshotRevision: context.snapshotRevision,
@@ -80021,7 +80029,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           `round:${Number(worldSnapshot?.回合 || 0)}:effect:${effectIndex}`;
         if (prototype === '伤害结算') {
           const damageBasis = buildDamageBasis(
-            effect,
+            skillBoundEffect(effect, basis.declaration?.skill),
             actor,
             target,
             projectionContext,
@@ -81161,7 +81169,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : Number.POSITIVE_INFINITY;
     return effects.filter(effect => effectConditionEnabled(effect, declaration?.worldSnapshot || {}, actor, target, { declaration })).reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() === '伤害结算' && target) {
-        const expectedDamage = calculateBaseDamage(effect, actor, target, projectionContext, {
+        const expectedDamage = calculateBaseDamage(skillBoundEffect(effect, declaration?.skill), actor, target, projectionContext, {
           targetCount: declaration?.targetCount ?? declaration?.targetIds?.length,
           resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
         }) * estimateHitProbability(
@@ -82083,7 +82091,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (ruleBlockCount(target) > 0 || ruleBlockCount(baselineTarget) > 0) { hardInvalid = true; statefulFallback = 'RULE_BLOCK_STATE'; break; }
             if (hasDamageRevival(target, true) || hasDamageRevival(baselineTarget, true)) { hardInvalid = true; statefulFallback = 'REVIVAL_STATE'; break; }
             if (counterDamageRatio(target) > 0 || counterDamageRatio(baselineTarget) > 0) { hardInvalid = true; statefulFallback = 'REFLECTION_STATE'; break; }
-            const damageBasis = buildDamageBasis(effect, branchActor, target, branchContext, {
+            const damageBasis = buildDamageBasis(skillBoundEffect(effect, basis.declaration?.skill), branchActor, target, branchContext, {
               basisView: input?.basisView || 'DECISION_VISIBLE',
               effectInstanceId,
               sourceEffectId: effectInstanceId,
@@ -84102,14 +84110,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         settleInventoryItemUse(inventoryItem, worldSnapshot, unit);
       });
     }
-    let baseEffects = declaration?.actionKind === 'BASIC_ATTACK'
+    // 运行时逐效果提交（releaseEffectsResolved，BattleRuntime commitStructuredPreviewPrototype）给的就是要结算的那一条：普攻的追加效果
+    // （力量打飞的击退）不再按普攻重新展开出一次普攻伤害，打飞也已由运行时追加过（11-25 差分测试：力量打飞的普攻实际打了两下）。
+    let baseEffects = declaration?.actionKind === 'BASIC_ATTACK' && input.releaseEffectsResolved !== true
       ? [basicAttackEffect()]
       : Array.isArray(useEffects)
         ? useEffects.filter(effect => effect && typeof effect === 'object')
         : [];
-    if (input.releaseEffectsResolved !== true) baseEffects = releaseSkillEffects(actor, declaration, baseEffects,
-      input?.actionRole || input?.actionOpportunity?.role || declaration?.actionRole);
-    baseEffects = withStrengthKnockback(actor, declaration, baseEffects, worldSnapshot);
+    if (input.releaseEffectsResolved !== true) {
+      baseEffects = releaseSkillEffects(actor, declaration, baseEffects,
+        input?.actionRole || input?.actionOpportunity?.role || declaration?.actionRole);
+      baseEffects = withStrengthKnockback(actor, declaration, baseEffects, worldSnapshot);
+    }
     const grants = declaration?.__includeGrantedEffects === false || String(input?.actionRole || declaration?.actionRole || '').trim().toUpperCase() === 'STATE_TICK'
       ? [] : pendingGrantedEffects(actor, declaration?.actionKind);
     const effects = [
@@ -98464,6 +98476,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           // What it does to the panel shows too (a 力量 buff glows on its holder): without it the unit was pictured at its bare panel.
           ...(state?.面板修改比例 && Object.keys(state.面板修改比例).length ? { panelRatios: cloneValue(state.面板修改比例) } : {}),
           ...(state?.面板固定修正 && Object.keys(state.面板固定修正).length ? { panelFixed: cloneValue(state.面板固定修正) } : {}),
+          // 装备、魂骨被动属于物品，驱散不掉也转不走（BattlePreview conditionMatchesFilter / transferProjectedStates），一眼可见。
+          ...(state?.__equipmentPassiveState === true ? { equipmentPassive: true } : {}),
           applicationProbability: clamp(
             Number(
               state?.__previewApplicationProbability ?? 1,
@@ -99246,6 +99260,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         ...(state?.source ? { 来源角色: state.source } : {}),
         ...(state?.panelRatios ? { 面板修改比例: cloneValue(state.panelRatios) } : {}),
         ...(state?.panelFixed ? { 面板固定修正: cloneValue(state.panelFixed) } : {}),
+        ...(state?.equipmentPassive === true ? { __equipmentPassiveState: true } : {}),
         __previewApplicationProbability: clamp(Number(state?.applicationProbability ?? 1), 0, 1),
         ...(Number(state?.shieldRatio || 0) > 1e-12
           ? {
@@ -112584,7 +112599,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ));
     const uncappedDamageThreat = effects.reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() !== '伤害结算') return sum;
-      const expectedDamage = preview.calculateBaseDamage(effect, source, target, null, {
+      // 效果带上所属技能（附带属性的相克倍率读它），与运行时结算一致（BattlePreview skillBoundEffect）。
+      const expectedDamage = preview.calculateBaseDamage(actionKind === 'RELEASE_SKILL' && !effect?.技能 ? { ...effect, 技能: skill } : effect, source, target, null, {
         targetCount,
         resourceDriveEnabled: actionKind !== 'BASIC_ATTACK',
       }) *
@@ -135571,7 +135587,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const friendly = sideOf(worldSnapshot, target) === actorSide;
         for (const { effect: resolved } of preview.resolveConditionalEffectPlan(effect, world, actor, view.readUnit(id) || target, { declaration })) {
           const recipient = view.readUnit(id) || target;
-          const amounts = r9v2LinearFormulaEffectAmounts(worldSnapshot, resolved, actor, recipient, targetIds.length, !basic);
+          const amounts = r9v2LinearFormulaEffectAmounts(worldSnapshot, !basic && declaration?.skill && typeof declaration.skill === 'object' && !resolved?.技能
+            ? { ...resolved, 技能: declaration.skill } : resolved, actor, recipient, targetIds.length, !basic);
           const value = ((friendly ? -1 : 1) * amounts.damage + (friendly ? 1 : -1) * (amounts.hp + amounts.shield)) /
             Math.max(1, preview.readHpMax(recipient)) * 100;
           overall += gate * (value + amounts.actorShield / Math.max(1, preview.readHpMax(unit)) * 100);
