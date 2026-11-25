@@ -11774,6 +11774,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const own = counterElementTokens(unitSpirits(actor).flatMap(spirit => Array.isArray(spirit.可调用元素) ? spirit.可调用元素 : []));
     return Object.keys(WUXING_GENERATES).find(source => WUXING_GENERATES[source] === elements[0] && own.includes(source)) || '';
   }
+  // 预演算伤害时效果带上所属技能（技能的附带属性进 attackElementsOf），与运行时结算（BattleRuntime 伤害结算 buildDamageBasis）一致；
+  // 11-25 差分测试：附带「冰」的魂技预演少算相克 ×1.58。
+  function skillBoundEffect(effect = {}, skill = null) {
+    return skill && typeof skill === 'object' && !effect?.技能 ? { ...effect, 技能: skill } : effect;
+  }
   // 这一击的元素倍率与来由（战报读它）；没有参与相克的元素的招 null。
   function elementDamageProfile(effect = {}, actor = {}, target = {}) {
     const elements = attackElementsOf(effect);
@@ -13350,6 +13355,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
 
   function conditionMatchesFilter(key = '', condition = {}, effect = {}) {
     if (String(key).startsWith('__auto__:')) return false;
+    // 装备、魂骨被动属于物品（同状态转移，transferProjectedStates）：被动同步每回合加回，移除它什么也没移走，反倒让生命上限类
+    // 被动先掉再回、当场截掉生命（11-25 差分测试：3v3 驱散辅助系的黄金玳瑁躯干骨·黄金玄武壳，白掉 3070 生命）。
+    if (condition?.__equipmentPassiveState === true) return false;
     const selector = String(effect.状态 ?? effect.selector ?? '').trim();
     if (selector === '任意负面' && statePolarity(condition) >= 0 || selector === '任意增益' && statePolarity(condition) <= 0) return false;
     if (selector && !['任意状态', '任意负面', '任意增益'].includes(selector) && key !== selector && stateName(condition) !== selector) return false;
@@ -15133,7 +15141,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const threatEnvironment = clamp(Number(damageContext.environmentDamageMultiplierByTarget?.get?.(unitId(target)) ??
               damageContext.environmentDamageMultiplierByTarget?.[unitId(target)] ?? 1), 0, 1) * shareFactor;
             const threatSegments = Math.max(1, Math.floor(Number(effect?.攻击段数 ?? effect?.段数 ?? 1)) || 1);
-            const threatBasis = buildDamageBasis(effect, threatActor, threatTarget, threatProjection, {
+            const threatBasis = buildDamageBasis(skillBoundEffect(effect, damageContext.declaration?.skill), threatActor, threatTarget, threatProjection, {
               basisView: damageContext.basisView || 'DECISION_VISIBLE', effectInstanceId: damageContext.effectInstanceId,
               sourceEffectId: damageContext.effectInstanceId, sourceActionId: damageContext.rootActionId,
               snapshotRevision: damageContext.snapshotRevision, actionDamageMultiplier: damageContext.actionDamageMultiplier, targetCount,
@@ -15228,7 +15236,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             1
           ), 0, 1) * shareFactor;
           const damageBasis = buildDamageBasis(
-            effect,
+            skillBoundEffect(effect, context?.declaration?.skill),
             actor,
             currentTarget,
             context?.projectionContext || null,
@@ -15318,7 +15326,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               const branchReactionMultiplier = clamp(Number(branchResolvedMultiplier ??
                 responseOverrideValue(context?.damageMultiplierByTarget, unitId(target)) ?? 1), 0, 1);
               const branchCoverage = primaryTargetCounts?.find(row => Object.entries(row.assignments || {}).every(([key, value]) => branch.assignments[key] === value));
-              const branchBasis = buildDamageBasis(effect, branchActor, branchTarget, null, {
+              const branchBasis = buildDamageBasis(skillBoundEffect(effect, context?.declaration?.skill), branchActor, branchTarget, null, {
                 basisView: context?.basisView || 'DECISION_VISIBLE',
                 effectInstanceId: context.effectInstanceId, sourceEffectId: context.effectInstanceId,
                 sourceActionId: context.rootActionId, snapshotRevision: context.snapshotRevision,
@@ -15353,7 +15361,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const damageByCount = new Map([[targetCount, perSegmentDamage]]);
             hpDamageLimits = active.map(branch => {
               if (!damageByCount.has(branch.targetCount)) {
-                const basis = buildDamageBasis(effect, actor, currentTarget, context.projectionContext || null, {
+                const basis = buildDamageBasis(skillBoundEffect(effect, context?.declaration?.skill), actor, currentTarget, context.projectionContext || null, {
                   basisView: context.basisView || 'DECISION_VISIBLE',
                   effectInstanceId: context.effectInstanceId, sourceEffectId: context.effectInstanceId,
                   sourceActionId: context.rootActionId, snapshotRevision: context.snapshotRevision,
@@ -18532,7 +18540,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           `round:${Number(worldSnapshot?.回合 || 0)}:effect:${effectIndex}`;
         if (prototype === '伤害结算') {
           const damageBasis = buildDamageBasis(
-            effect,
+            skillBoundEffect(effect, basis.declaration?.skill),
             actor,
             target,
             projectionContext,
@@ -19672,7 +19680,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       : Number.POSITIVE_INFINITY;
     return effects.filter(effect => effectConditionEnabled(effect, declaration?.worldSnapshot || {}, actor, target, { declaration })).reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() === '伤害结算' && target) {
-        const expectedDamage = calculateBaseDamage(effect, actor, target, projectionContext, {
+        const expectedDamage = calculateBaseDamage(skillBoundEffect(effect, declaration?.skill), actor, target, projectionContext, {
           targetCount: declaration?.targetCount ?? declaration?.targetIds?.length,
           resourceDriveEnabled: String(declaration?.actionKind || '').trim().toUpperCase() !== 'BASIC_ATTACK',
         }) * estimateHitProbability(
@@ -20594,7 +20602,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (ruleBlockCount(target) > 0 || ruleBlockCount(baselineTarget) > 0) { hardInvalid = true; statefulFallback = 'RULE_BLOCK_STATE'; break; }
             if (hasDamageRevival(target, true) || hasDamageRevival(baselineTarget, true)) { hardInvalid = true; statefulFallback = 'REVIVAL_STATE'; break; }
             if (counterDamageRatio(target) > 0 || counterDamageRatio(baselineTarget) > 0) { hardInvalid = true; statefulFallback = 'REFLECTION_STATE'; break; }
-            const damageBasis = buildDamageBasis(effect, branchActor, target, branchContext, {
+            const damageBasis = buildDamageBasis(skillBoundEffect(effect, basis.declaration?.skill), branchActor, target, branchContext, {
               basisView: input?.basisView || 'DECISION_VISIBLE',
               effectInstanceId,
               sourceEffectId: effectInstanceId,
@@ -22613,14 +22621,18 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         settleInventoryItemUse(inventoryItem, worldSnapshot, unit);
       });
     }
-    let baseEffects = declaration?.actionKind === 'BASIC_ATTACK'
+    // 运行时逐效果提交（releaseEffectsResolved，BattleRuntime commitStructuredPreviewPrototype）给的就是要结算的那一条：普攻的追加效果
+    // （力量打飞的击退）不再按普攻重新展开出一次普攻伤害，打飞也已由运行时追加过（11-25 差分测试：力量打飞的普攻实际打了两下）。
+    let baseEffects = declaration?.actionKind === 'BASIC_ATTACK' && input.releaseEffectsResolved !== true
       ? [basicAttackEffect()]
       : Array.isArray(useEffects)
         ? useEffects.filter(effect => effect && typeof effect === 'object')
         : [];
-    if (input.releaseEffectsResolved !== true) baseEffects = releaseSkillEffects(actor, declaration, baseEffects,
-      input?.actionRole || input?.actionOpportunity?.role || declaration?.actionRole);
-    baseEffects = withStrengthKnockback(actor, declaration, baseEffects, worldSnapshot);
+    if (input.releaseEffectsResolved !== true) {
+      baseEffects = releaseSkillEffects(actor, declaration, baseEffects,
+        input?.actionRole || input?.actionOpportunity?.role || declaration?.actionRole);
+      baseEffects = withStrengthKnockback(actor, declaration, baseEffects, worldSnapshot);
+    }
     const grants = declaration?.__includeGrantedEffects === false || String(input?.actionRole || declaration?.actionRole || '').trim().toUpperCase() === 'STATE_TICK'
       ? [] : pendingGrantedEffects(actor, declaration?.actionKind);
     const effects = [

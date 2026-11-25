@@ -1707,6 +1707,8 @@
           // What it does to the panel shows too (a 力量 buff glows on its holder): without it the unit was pictured at its bare panel.
           ...(state?.面板修改比例 && Object.keys(state.面板修改比例).length ? { panelRatios: cloneValue(state.面板修改比例) } : {}),
           ...(state?.面板固定修正 && Object.keys(state.面板固定修正).length ? { panelFixed: cloneValue(state.面板固定修正) } : {}),
+          // 装备、魂骨被动属于物品，驱散不掉也转不走（BattlePreview conditionMatchesFilter / transferProjectedStates），一眼可见。
+          ...(state?.__equipmentPassiveState === true ? { equipmentPassive: true } : {}),
           applicationProbability: clamp(
             Number(
               state?.__previewApplicationProbability ?? 1,
@@ -2489,6 +2491,7 @@
         ...(state?.source ? { 来源角色: state.source } : {}),
         ...(state?.panelRatios ? { 面板修改比例: cloneValue(state.panelRatios) } : {}),
         ...(state?.panelFixed ? { 面板固定修正: cloneValue(state.panelFixed) } : {}),
+        ...(state?.equipmentPassive === true ? { __equipmentPassiveState: true } : {}),
         __previewApplicationProbability: clamp(Number(state?.applicationProbability ?? 1), 0, 1),
         ...(Number(state?.shieldRatio || 0) > 1e-12
           ? {
@@ -15827,7 +15830,8 @@
     ));
     const uncappedDamageThreat = effects.reduce((sum, effect) => {
       if (String(effect?.原型 || '').trim() !== '伤害结算') return sum;
-      const expectedDamage = preview.calculateBaseDamage(effect, source, target, null, {
+      // 效果带上所属技能（附带属性的相克倍率读它），与运行时结算一致（BattlePreview skillBoundEffect）。
+      const expectedDamage = preview.calculateBaseDamage(actionKind === 'RELEASE_SKILL' && !effect?.技能 ? { ...effect, 技能: skill } : effect, source, target, null, {
         targetCount,
         resourceDriveEnabled: actionKind !== 'BASIC_ATTACK',
       }) *
@@ -38814,7 +38818,8 @@
         const friendly = sideOf(worldSnapshot, target) === actorSide;
         for (const { effect: resolved } of preview.resolveConditionalEffectPlan(effect, world, actor, view.readUnit(id) || target, { declaration })) {
           const recipient = view.readUnit(id) || target;
-          const amounts = r9v2LinearFormulaEffectAmounts(worldSnapshot, resolved, actor, recipient, targetIds.length, !basic);
+          const amounts = r9v2LinearFormulaEffectAmounts(worldSnapshot, !basic && declaration?.skill && typeof declaration.skill === 'object' && !resolved?.技能
+            ? { ...resolved, 技能: declaration.skill } : resolved, actor, recipient, targetIds.length, !basic);
           const value = ((friendly ? -1 : 1) * amounts.damage + (friendly ? 1 : -1) * (amounts.hp + amounts.shield)) /
             Math.max(1, preview.readHpMax(recipient)) * 100;
           overall += gate * (value + amounts.actorShield / Math.max(1, preview.readHpMax(unit)) * 100);
