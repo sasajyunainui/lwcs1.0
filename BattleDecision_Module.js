@@ -44484,12 +44484,12 @@
       ? Math.max(0, Number(preview.pressTime?.(table.units[pressSourceRow], request.actionOpportunity.incomingAction, table.units[actorRow], table.world)) || 0) * (answeredNow ? 1 : Number(preview.PRESS_TAKE_SHARE ?? 0.5)) : 0;
     const selfPress = ownPress + incomingPress;
     // 压制起点（PRESS_SEED，11-25 最差 3 局）：这一手打单体敌方，它占目标多少时间是已知的（与运行时同一个 pressTime，打完就走为 0）。
-    // 只有带伤害的一手才占（11-25 压制起点对账 seed-cmp2：放不带伤害的对敌魂技后，推演起点 28～34、判丢 39～79%，对手那次实际只被占 0.9～5.3、
-    // 丢 2～13%）：BattleRuntime 只给带伤害效果的招开应对机会（破防的目标也不给），占用只在应对时记——控制、减益不占时间。PRESS_SEED_ANY 回旧。
+    // 只有给对方应对的一手才占（11-25 压制起点对账 seed-cmp2：放不给应对的对敌魂技后，推演起点 28～34、判丢 39～79%，对手那次实际只被占 0.9～5.3、
+    // 丢 2～13%）：BattleRuntime 占用只在应对时记，给不给应对与它同一个 BattlePreview answeredMoveEffects（带伤害的、物理类控制减益给，精神类
+    // 控制减益不给），破防的目标也不给。PRESS_SEED_ANY 回旧。
     const seedKind = String(declaredNow.actionKind || '').toUpperCase();
     const seedAnswered = root.__LWCS_TUNE__?.PRESS_SEED_ANY === true || commitRow === undefined ||
-      (seedKind === 'BASIC_ATTACK' || preview.collectEffects(declaredNow.skill || {}).some(effect => String(effect?.原型 || '').trim() === '伤害结算')) &&
-      !preview.guardBrokenOf?.(table.units[commitRow], Number(table.world?.回合 || 0));
+      preview.answeredMoveEffects(declaredNow).length > 0 && !preview.guardBrokenOf?.(table.units[commitRow], Number(table.world?.回合 || 0));
     const pressSeed = idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] && root.__LWCS_TUNE__?.PRESS_SEED !== false &&
       ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(seedKind) && seedAnswered
       ? { row: commitRow, actor: actorRow, time: Math.max(0, Number(preview.pressTime?.(table.units[actorRow], declaredNow, table.units[commitRow], table.world)) || 0) } : null;

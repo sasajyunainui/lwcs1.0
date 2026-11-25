@@ -20751,10 +20751,13 @@
             registerPredictedEvidence(actionContext.actionEvent, decisionResult);
             const resolvedDeclaration = actionContext.declaration;
             const shared = { declaration: resolvedDeclaration, actionContext, reactionByTarget: {}, decisionResult };
+            // 给应对的效果（BattlePreview answeredMoveEffects，与推演压制起点共用）：带伤害的按伤害效果；物理类控制、减益（不带伤害、对敌主效果）
+            // 也给（用户 11-25「控制减益啥的技能还是和伤害技能一样处理吧」）；精神类不给。
+            const answeredEffects = previewRuntime.answeredMoveEffects(resolvedDeclaration);
             const hostileTargets = (node.nodeKind === 'COUNTER' && Number(node?.state?.engagementDepth || 0) >= ENGAGEMENT_CHAIN_LIMIT) ||
-              structuredDamageEffects(resolvedDeclaration).length === 0
+              answeredEffects.length === 0
               ? []
-              : resolveStructuredTargets(combatData, actor, resolvedDeclaration, structuredDamageEffects(resolvedDeclaration)[0])
+              : resolveStructuredTargets(combatData, actor, resolvedDeclaration, answeredEffects[0])
                   .filter(target => inferUnitSide(combatData, target) !== inferUnitSide(combatData, actor));
             hostileTargets.forEach(target => {
               // 破防: no answer for the rest of the round (BattlePreview guardBreaks).
@@ -20775,7 +20778,7 @@
               // evasion or response skill, the target does not answer, and its action of the round is spent.
               let struck = target, interceptor = null, swapCover = null;
               if (!guardSummon && node.nodeKind === 'ACTIVE' && hostileTargets.length === 1 &&
-                  !/群体|全场/.test(String(structuredDamageEffects(resolvedDeclaration)[0]?.目标 || '')) &&
+                  !/群体|全场/.test(String(answeredEffects[0]?.目标 || '')) &&
                   Array.isArray(resolvedDeclaration.targetIds) && resolvedDeclaration.targetIds.some(id => isUnitIdentityMatch(target, id))) {
                 swapCover = chooseSwapCover(combatData, actor, target);
                 if (!swapCover) interceptor = chooseStructuredInterceptor(combatData, actor, resolvedDeclaration, target);

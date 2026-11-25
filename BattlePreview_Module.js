@@ -6787,6 +6787,28 @@
     if (strike) return classifyDamageType(strike?.伤害类型);
     return String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK' ? 'MELEE' : null;
   }
+  // 控制、减益的类别（用户 11-25「控制减益啥的技能还是和伤害技能一样处理吧」「精神力判定的……和物理的不能一样处理吧」→ 按驱动属性分、精神类
+  // 不给应对；同日「软控也直接按照精神驱动那套设定」→ 软控、减益命中与应对都按精神类）：对敌方、不带伤害的效果，物理驱动的硬控（带不能行动、
+  // 跳过回合的状态）按物理远程，其余（精神力驱动的硬控、所有软控与减益）按精神类。CONTROL_CLASS_OFF 回旧（不分类别、不给应对）。
+  // 带伤害的、对己方的返回 null。
+  function hardControlEffect(effect = {}) {
+    if (String(effect?.原型 || '').trim() !== '状态施加') return false;
+    const stops = deriveStateCombatEffect(effect) || {};
+    return stops.cannot_act === true || stops.skip_turn === true;
+  }
+  function controlMoveClass(effect = {}) {
+    if (root.__LWCS_TUNE__?.CONTROL_CLASS_OFF === true || !effect || String(effect?.原型 || '').trim() === '伤害结算' || effectTargetsAllies(effect)) return null;
+    return hardControlEffect(effect) && String(effect?.驱动属性 || '').trim() !== '精神力上限' ? 'RANGED' : 'MENTAL';
+  }
+  // 这一手给不给对方应对机会、按哪条效果给（BattleRuntime 开应对机会与推演压制起点共用）：普攻与带伤害的按伤害效果；不带伤害的，对敌主效果
+  // （第一条）是物理硬控的也给（controlMoveClass RANGED）；精神类（含软控、减益）不给。不给就没有接招，也不占对方时间（BattleRuntime 占用只在应对时记）。
+  function answeredMoveEffects(declaration = {}) {
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK') return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }];
+    const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
+    const damage = effects.filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
+    if (damage.length) return damage;
+    return controlMoveClass(effects[0]) === 'RANGED' ? [effects[0]] : [];
+  }
   function declarationIsRanged(declaration = null) {
     return !!declaration && declarationDamageClass(declaration) === 'RANGED';
   }
@@ -8017,7 +8039,7 @@
       environmentContext,
     );
     if (String(explicitValue ?? '').trim() !== '') return probability;
-    const strikeClass = String(effect?.原型 || '').trim() === '伤害结算' ? classifyDamageType(effect?.伤害类型) : '';
+    const strikeClass = String(effect?.原型 || '').trim() === '伤害结算' ? classifyDamageType(effect?.伤害类型) : controlMoveClass(effect) || '';
     const classed = strikeClass === 'RANGED' ? clamp(1 - (1 - probability) * RANGED_DODGE_MULT, 0.05, 0.99)
       : strikeClass === 'MENTAL' ? clamp(1 - (1 - probability) * MENTAL_DODGE_MULT, 0.05, 0.99)
       : strikeClass === 'MELEE' ? clamp(1 - (1 - probability) * MELEE_DODGE_MULT, 0.05, 0.99) : probability;
@@ -26933,6 +26955,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     normalizeEffectProbability,
     estimateHitProbabilityAttribution,
     effectTargetsAllies,
+    hardControlEffect,
+    controlMoveClass,
+    answeredMoveEffects,
     resolveTargets,
     collectEffects,
     effectArrayHash,
