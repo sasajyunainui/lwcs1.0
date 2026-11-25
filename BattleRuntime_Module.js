@@ -4555,7 +4555,7 @@
     const actionName = actionKind === 'BASIC_ATTACK' ? '普通攻击' : actionType;
     const skill = { name: actionName, 目标: actionKind === 'GUARD' ? '友方单体' : actionKind === 'BASIC_ATTACK' ? '单体' : '自身', 消耗: '无',
       前摇: actionKind === 'BASIC_ATTACK' ? previewRuntime.basicAttackWindup(actor) : 10 };
-    if (actionKind === 'BASIC_ATTACK') skill._效果数组 = [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 防御穿透: 0, 生效方式: '独立生效' }];
+    if (actionKind === 'BASIC_ATTACK') skill._效果数组 = [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 基础动作: '普攻', 伤害类型: '近身攻击', 防御穿透: 0, 生效方式: '独立生效' }];
     return {
       id: declaration.actionId,
       type: 'tactical',
@@ -9045,7 +9045,7 @@
       const side = inferUnitSide(combatData, unit);
       const enemies = units.filter(other => inferUnitSide(combatData, other) !== side);
       if (!enemies.length) return [];
-      const cheapest = Math.min(...enemies.map(enemy => previewRuntime.actionStaminaCost(unit, 'ATTACK', enemy)));
+      const cheapest = Math.min(...enemies.map(enemy => previewRuntime.actionStaminaCost(unit, previewRuntime.actionStaminaNature({ actionKind: 'BASIC_ATTACK' }) || 'ATTACK', enemy)));
       const stamina = persistentResourceValue(unit, 'vit');
       return cheapest > 0 && stamina - cheapest <= 1e-9 ? [{ unit, stamina, cheapest }] : [];
     });
@@ -9068,12 +9068,20 @@
   // stamina weakens the unit through staminaScaleForUnit but never forbids an action. Written as a PAY resource fact plus
   // an action_cost event with source ACTION_STAMINA, so the ledger and analytics see it like any other cost.
   // `factor`: a strike back's price factor (BattlePreview counterStaminaFactor, 接战链 阶段一); 1 for anything else.
+  // 基础动作带魂力（BattlePreview basicSoulCost / basicSoulReady）：普攻、防御、闪避魂力够就扣，记 PAY 资源事实（source BASIC_SOUL_COST）。
+  function payBasicSoul({ combatData, actor, kind, action, actionEvent, actionRole }) {
+    const requested = Number(previewRuntime.basicSoulCost?.(actor, kind)) || 0;
+    if (!(requested > 0)) return [];
+    const before = persistentResourceValue(actor, 'sp'), after = writeCombatResource(actor, 'sp', before - requested), applied = Math.max(0, before - after);
+    return applied > 0 ? [writeStructuredResourceFact(combatData, actor, actor, action, actionEvent, 'sp', -applied, actionRole, 'PAY',
+      { before, after, meta: { requestedAmount: requested, source: 'BASIC_SOUL_COST', basicKind: String(kind || '') } })] : [];
+  }
   function payActionStamina({ combatData, actor, nature, opponent = null, action, actionEvent, actionRole, actorControl = 'AI', factor = 1 }) {
     if (!previewRuntime.actionStaminaEnabled(combatData)) return [];
     const requested = previewRuntime.actionStaminaCost(actor, nature, opponent) * Math.max(0, Number(factor) || 1);
     // 近身与远程: a ranged strike also pays 精神力 (BattlePreview rangedActionMentalCost), as far as the unit has it.
     const mentalFacts = [];
-    if (nature === 'ATTACK_RANGED' && typeof previewRuntime.rangedActionMentalCost === 'function') {
+    if ((nature === 'ATTACK_RANGED' || nature === 'BASIC_RANGED') && typeof previewRuntime.rangedActionMentalCost === 'function') {
       const mentalRequested = previewRuntime.rangedActionMentalCost(actor) * Math.max(0, Number(factor) || 1);
       const mentalBefore = persistentResourceValue(actor, 'men');
       const mentalAfter = mentalRequested > 0 ? writeCombatResource(actor, 'men', mentalBefore - mentalRequested) : mentalBefore;
@@ -11053,7 +11061,7 @@
       ? declaration.skill._效果数组.filter(effect => effect && typeof effect === 'object')
       : [];
     const primaryEffect = actionKind === 'BASIC_ATTACK'
-      ? { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }
+      ? { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1, 基础动作: '普攻' }
       : explicitEffects[0] || { 目标: declaration?.targetKind || '' };
     const actionId = String(input?.actionId || nextRuntimeId('battle-action')).trim();
     const chainNodeId = String(input?.chainNodeId || actionId).trim();
@@ -11495,6 +11503,9 @@
       allowPreparedDefense,
     } = context;
     if (!combatData || !declaration || !actor || !actionEvent) throw new TypeError('battle_structured_action_context_invalid');
+    // 这一下带不带魂力（普攻、主动摆的防御 / 闪避）：出手前判一次，扣费与伤害结算都用它（扣完再判会把刚够的算成不够）。
+    if (context.__basicSoul === undefined) context.__basicSoul = ['BASIC_ATTACK', 'DEFEND', 'EVADE'].includes(String(actionKind || '').toUpperCase())
+      ? previewRuntime.basicSoulReady?.(actor, String(actionKind).toUpperCase()) ?? null : null;
     // 出界判负：出招前每个人的站位与身上的击退状态（finishStructuredDeclaration 比对：本来在后排、这一下又被击退的出界）。
     if (!context.__ringOutBefore) context.__ringOutBefore = new Map(listCombatUnits(combatData).map(unit => [String(previewRuntime.unitId(unit)),
       { position: previewRuntime.unitPosition(unit), pushed: unit?.__battleRuntime?.pushedBack === true, knock: knockbackSignature(unit), mecha: mechaDurability(unit) }]));
@@ -11661,6 +11672,7 @@
       const staminaFactor = actionRole === 'COUNTER' && ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(actionKind || '').trim().toUpperCase())
         ? previewRuntime.declarationStaminaFactor(declaration) : 1;
       if (staminaNature) facts.push(...payActionStamina({ combatData, actor, nature: staminaNature, opponent, action, actionEvent, actionRole, actorControl, factor: staminaFactor }));
+      if (context.__basicSoul === true) facts.push(...payBasicSoul({ combatData, actor, kind: String(actionKind).toUpperCase(), action, actionEvent, actionRole }));
       // 两档距离（T25）：突进那一段路另付体力（BattlePreview advanceStaminaCost，闪避同价）；绕后（T30）的绕路再付一份。
       const moveShares = staminaNature ? previewRuntime.advanceStaminaShares(declaration) : 0;
       for (let share = 0; share < moveShares; share += 1) facts.push(...payActionStamina({ combatData, actor, nature: 'EVADE', opponent: null, action, actionEvent, actionRole, actorControl, factor: 1 }));
@@ -11985,10 +11997,11 @@
       : declaration?.skill?.属性加成 && typeof declaration.skill.属性加成 === 'object'
         ? declaration.skill.属性加成
         : {};
+    const souled = effect => effect?.原型 === '伤害结算' ? { ...effect, 基础动作: '普攻', ...(typeof context.__basicSoul === 'boolean' ? { 魂力强化: context.__basicSoul } : {}) } : effect;
     const baseEffects = actionKind === 'BASIC_ATTACK'
-      ? appendEquipmentPassiveActionEffects(actor, explicitEffects.length ? explicitEffects : [
+      ? appendEquipmentPassiveActionEffects(actor, (explicitEffects.length ? explicitEffects : [
           { 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 },
-        ])
+        ]).map(souled))
       : actionKind === 'EQUIP' && !explicitEffects.length
         ? Object.entries(equipmentModifiers).map(([attribute, value]) => ({
             原型: '属性修正',
@@ -14806,7 +14819,7 @@
 
   function structuredDamageEffects(declaration = {}) {
     if (String(declaration?.actionKind || '').trim() === 'BASIC_ATTACK') {
-      return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }];
+      return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1, 基础动作: '普攻' }];
     }
     return (Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [])
       .filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
@@ -15956,6 +15969,7 @@
       const retreat = declaration?.retreat === true && !preparedDefense;
       // A prepared stance was paid for when it was taken; a reaction pays for itself (R07).
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'EVADE', opponent: sourceActor, action: { actionName: retreat ? '后撤闪避' : '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION', factor: retreat ? 2 : 1 });
+      if (!preparedDefense && previewRuntime.basicSoulReady?.(reactor, 'EVADE') === true) payBasicSoul({ combatData, actor: reactor, kind: 'EVADE', action: { actionName: retreat ? '后撤闪避' : '闪避', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       if (retreat && evaded) {
         // 在前排：退到后排；在后排：闪开后不被突进的一击带到前排（下面突进结算跳过带 retreatEvaded 的目标）。
         previewRuntime.setUnitPosition(reactor, previewRuntime.POSITION_BACK);
@@ -16017,6 +16031,7 @@
           ...(deflect ? { deflect: true, deflected: deflect.deflected, strengthRatio: deflect.ratio, deflectFailed: deflect.failed, unbalance: deflect.unbalance, ...(deflect.art ? { deflectArt: '控鹤擒龙' } : {}) } : {}) },
       });
       if (!preparedDefense) payActionStamina({ combatData, actor: reactor, nature: 'DEFEND', opponent: sourceActor, action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
+      if (!preparedDefense && previewRuntime.basicSoulReady?.(reactor, 'DEFEND') === true) payBasicSoul({ combatData, actor: reactor, kind: 'DEFEND', action: { actionName: deflect ? '卸力' : actionKind === 'GUARD' ? '护卫' : '防御', actionKind }, actionEvent: event, actionRole: 'REACTION' });
       return {
         actionKind,
         event,
@@ -16171,7 +16186,7 @@
     const contest = structuredReactionContest(reactor, sourceActor, incomingDeclaration);
     const contestProbability = previewRuntime.counterOpeningProbability(reactor, sourceActor, incomingDeclaration, { prepared, prior: priorCounters });
     const staminaFactor = previewRuntime.counterStaminaFactor(priorCounters);
-    const strikeStamina = previewRuntime.actionStaminaEnabled(combatData) ? previewRuntime.actionStaminaCost(reactor, 'ATTACK', sourceActor) * staminaFactor : 0;
+    const strikeStamina = previewRuntime.actionStaminaEnabled(combatData) ? previewRuntime.actionStaminaCost(reactor, previewRuntime.actionStaminaNature({ actionKind: 'BASIC_ATTACK' }) || 'ATTACK', sourceActor) * staminaFactor : 0;
     // The defender will not strike back with stamina it cannot spare: a counter that would leave it at 0 is not taken.
     const staminaExhausted = strikeStamina > 0 && persistentResourceValue(reactor, 'vit') - strikeStamina <= 1e-9;
     const chainLimited = engagementDepth >= ENGAGEMENT_CHAIN_LIMIT;

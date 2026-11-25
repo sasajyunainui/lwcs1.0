@@ -715,6 +715,7 @@
     威力倍率: 50,
     伤害类型: '近身攻击',
     生效方式: '独立生效',
+    基础动作: '普攻',
   });
   const outcomeComponents = Object.freeze({
     HP_DELTA: 'IMMEDIATE_STATE',
@@ -1971,11 +1972,39 @@
   const ACTION_STAMINA_BASE_RATES = Object.freeze({ ATTACK: 0.0175, DEFEND: 0.0105, EVADE: 0.014, SKILL_DEFEND: 0.0105, SKILL_EVADE: 0.014, OTHER: 0.0105 });
   // 近身与远程（用户 2026-11-15，起始值）: ATTACK is a melee strike (×1.5), ATTACK_RANGED a ranged one (×0.5; its 精神力 is paid
   // apart, rangedActionMentalCost). The other melee/ranged rules sit by classifyDamageType.
+  // 普攻与闪避的体力（用户 11-25「闪避的体力消耗是普攻防御的两倍」，选「普攻和防御拉平、闪避两倍」「远程普攻再减半」）：普攻（BASIC）按防御的费率，
+  // 远程普攻（BASIC_RANGED）减半，闪避（EVADE，前压、后撤、突进赶路与它同价）防御的两倍。伤害魂技照旧按 ATTACK / ATTACK_RANGED。STAMINA_BASIC_OFF 回旧。
+  const STAMINA_BASIC_ON = root.__LWCS_TUNE__?.STAMINA_BASIC_OFF !== true;
   const ACTION_STAMINA_RATES = Object.freeze(Object.fromEntries([
     ...Object.entries(ACTION_STAMINA_BASE_RATES).map(([nature, rate]) => [nature, rate * ACTION_STAMINA_SCALE * (nature === 'ATTACK' ? 1.5 : 1)]),
     ['ATTACK_RANGED', ACTION_STAMINA_BASE_RATES.ATTACK * ACTION_STAMINA_SCALE * 0.5],
+    ['BASIC', ACTION_STAMINA_BASE_RATES.DEFEND * ACTION_STAMINA_SCALE],
+    ['BASIC_RANGED', ACTION_STAMINA_BASE_RATES.DEFEND * ACTION_STAMINA_SCALE * 0.5],
+    ...(STAMINA_BASIC_ON ? [['EVADE', ACTION_STAMINA_BASE_RATES.DEFEND * ACTION_STAMINA_SCALE * 2]] : []),
   ]));
   const ACTION_STAMINA_RATIO_CAP = 4;
+  // 基础动作带魂力（用户 11-25「都要加一个基础魂力消耗……有魂力时用的普攻，防御，会比没魂力时强很多」「普攻和闪避加强吧，普攻就按之前说的，
+  // 第一魂技的一半。防御就和现在一样，没魂力时降低」「闪避消耗的魂力定为普攻和防御的一半」；魂力够就自动带，省不省着用由推演层决定）：
+  // 普攻、防御每次扣 BASIC_SOUL_COST_SHARE × 第一魂技标准消耗（11 级基础魂力上限的 50%）＋ BASIC_SOUL_MAX_SHARE × 魂力上限，闪避减半；
+  // 魂力够就扣、用带魂力的版本，不够用普通版。
+  //   普攻（11-25 改「普攻的伤害先调整为第一魂技的50%左右」，不带魂力的和防御一样削弱）：带魂力威力 ×BASIC_SOUL_POWER ÷ 50（生成器第一魂环伤害
+  //     魂技威力中位 124 的伤害系数 1.055 的一半 ≈ 威力 53），普通版威力 ×BASIC_PLAIN_SHARE；
+  //   闪避：带魂力闪避 +EVADE_SOUL_BONUS，普通版照旧；
+  //   防御：带魂力照旧，普通版挡下的份额 ×GUARD_PLAIN_SHARE。
+  // 起始值，实测校准。BASIC_SOUL_OFF 回旧（不扣、不分版本）。
+  const BASIC_SOUL_POWER = Number(root.__LWCS_TUNE__?.BASIC_SOUL_POWER ?? 53), EVADE_SOUL_BONUS = Number(root.__LWCS_TUNE__?.EVADE_SOUL_BONUS ?? 0.1),
+    GUARD_PLAIN_SHARE = Number(root.__LWCS_TUNE__?.GUARD_PLAIN_SHARE ?? 0.6),
+    BASIC_PLAIN_SHARE = Number(root.__LWCS_TUNE__?.BASIC_PLAIN_SHARE ?? 0.6), BASIC_SOUL_COST_SHARE = 0.5, BASIC_SOUL_MAX_SHARE = 0.005;
+  function basicSoulCost(unit = {}, kind = 'BASIC_ATTACK') {
+    const ringOne = typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? Number(root.__LWCS_GET_BASE_STATS__(11)?.sp_max) * 0.5 || 0 : 0;
+    const cost = BASIC_SOUL_COST_SHARE * ringOne + BASIC_SOUL_MAX_SHARE * Math.max(0, Number(readResourceMax(unit, '魂力')) || 0);
+    return String(kind).toUpperCase() === 'EVADE' ? cost / 2 : cost;
+  }
+  // 这一下带不带魂力：规则关着返回 null（照旧），否则当前魂力够不够付。
+  function basicSoulReady(unit = {}, kind = 'BASIC_ATTACK') {
+    if (root.__LWCS_TUNE__?.BASIC_SOUL_OFF === true || !unit || typeof unit !== 'object') return null;
+    return (Number(readResource(unit, '魂力')) || 0) >= basicSoulCost(unit, kind) - 1e-9;
+  }
   // On unless a world opts out with 战斗规则.行动体力消耗 === false, or the host's default battle rules do
   // (root.__LWCS_DEFAULT_BATTLE_RULES__, set by isolation fixtures that measure other resources).
   function actionStaminaEnabled(world = {}) {
@@ -1989,13 +2018,13 @@
 
   function actionStaminaNature(declaration = {}) {
     const kind = String(declaration?.actionKind || '').trim().toUpperCase();
-    if (kind === 'BASIC_ATTACK') return declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
+    if (kind === 'BASIC_ATTACK') return STAMINA_BASIC_ON ? (declarationIsRanged(declaration) ? 'BASIC_RANGED' : 'BASIC') : declarationIsRanged(declaration) ? 'ATTACK_RANGED' : 'ATTACK';
     if (kind === 'EVADE') return 'EVADE';
     if (kind === 'DEFEND' || kind === 'GUARD') return 'DEFEND';
     // 两档距离（T25，用户 11-18「后撤前进都要耗体力才对」）：前压 / 后撤按闪避同价付体力。
     if (kind === 'EQUIP' && /^(前压|后撤)$/.test(String(declaration?.releaseSlot || ''))) return 'EVADE';
     // 砸控制物（T29）：按普攻付体力。
-    if (kind === 'EQUIP' && /^砸(?:装备)?·/.test(String(declaration?.releaseSlot || ''))) return 'ATTACK';
+    if (kind === 'EQUIP' && /^砸(?:装备)?·/.test(String(declaration?.releaseSlot || ''))) return STAMINA_BASIC_ON ? 'BASIC' : 'ATTACK';
     if (kind !== 'RELEASE_SKILL' && kind !== 'USE_ITEM') return '';
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const prototypes = new Set(effects.map(effect => String(effect?.原型 || '').trim()));
@@ -2918,7 +2947,7 @@
       .find(unit => unit && sideOf(worldSnapshot, unit) && sideOf(worldSnapshot, unit) !== actorSide) || null;
     const amount = actionStaminaCost(actor, nature, opponent) * declarationStaminaFactor(declaration) + advanceStaminaCost(actor, declaration);
     // 近身与远程（11-15）：远程另付精神力（BattleRuntime payActionStamina 同价），推演与估值一并扣。
-    const mental = nature === 'ATTACK_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
+    const mental = nature === 'ATTACK_RANGED' || nature === 'BASIC_RANGED' ? rangedActionMentalCost(actor) * declarationStaminaFactor(declaration) : 0;
     return amount > 0 || mental > 0 ? { nature, amount, mental } : null;
   }
 
@@ -6803,7 +6832,7 @@
   // 这一手给不给对方应对机会、按哪条效果给（BattleRuntime 开应对机会与推演压制起点共用）：普攻与带伤害的按伤害效果；不带伤害的，对敌主效果
   // （第一条）是物理硬控的也给（controlMoveClass RANGED）；精神类（含软控、减益）不给。不给就没有接招，也不占对方时间（BattleRuntime 占用只在应对时记）。
   function answeredMoveEffects(declaration = {}) {
-    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK') return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }];
+    if (String(declaration?.actionKind || '').trim().toUpperCase() === 'BASIC_ATTACK') return [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1, 基础动作: '普攻' }];
     const effects = Array.isArray(declaration?.skill?._效果数组) ? declaration.skill._效果数组 : [];
     const damage = effects.filter(effect => String(effect?.原型 || '').trim() === '伤害结算');
     if (damage.length) return damage;
@@ -7093,7 +7122,12 @@
     modifierAttributionEnabled = false,
   ) {
     const damageClass = classifyDamageType(effect?.伤害类型);
-    const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0));
+    // 带魂力的普攻（basicSoulReady）：威力 ×BASIC_SOUL_POWER ÷ 50，魂力不够的普通版 ×BASIC_PLAIN_SHARE（BASIC_SOUL_OFF 时 null，照旧）。
+    // 运行时在出手前判好记在效果上（魂力强化），预演按当下魂力判。
+    const basicSouled = effect?.基础动作 !== '普攻' ? null
+      : typeof effect?.魂力强化 === 'boolean' ? effect.魂力强化 : basicSoulReady(actor, 'BASIC_ATTACK');
+    const power = Math.max(0, Number(effect?.威力倍率 ?? effect?.数值 ?? 0)) *
+      (basicSouled === true ? BASIC_SOUL_POWER / 50 : basicSouled === false ? BASIC_PLAIN_SHARE : 1);
     const actorProfile = mechanicalProjectionProfile(
       projectionContext,
       actor,
@@ -26393,7 +26427,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const multiplier = prepared ? ordinary - (ordinary - Math.max(0.35, ordinary * 0.8)) * passiveStreakFactor(reactor) : ordinary;
     const opening = attackOpeningOf(reactor), slow = slowGuardCut(reactor);
     const opened = opening > 0 ? 1 - (1 - multiplier) * (1 - ATTACK_OPENING_DEFENSE_CUT * opening) : multiplier;
-    const guarded = slow > 0 ? 1 - (1 - opened) * (1 - slow) : opened;
+    const guardedFull = slow > 0 ? 1 - (1 - opened) * (1 - slow) : opened;
+    // 没魂力的防御（basicSoulReady false）：挡下的份额 ×GUARD_PLAIN_SHARE。
+    const guarded = basicSoulReady(reactor, 'DEFEND') === false ? 1 - (1 - guardedFull) * GUARD_PLAIN_SHARE : guardedFull;
     // 围攻：挡下的那份 ×besiegeFactor。
     const besieged = besiegeFactor(reactor, sourceActor);
     return besieged < 1 ? 1 - (1 - guarded) * besieged : guarded;
@@ -26501,7 +26537,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const strikeClass = declaration ? declarationDamageClass(declaration) : null;
     const ranged = strikeClass === 'RANGED' ? clamp(dodge * RANGED_DODGE_MULT, 0, 0.95) : strikeClass === 'MENTAL' ? dodge * MENTAL_DODGE_MULT
       : strikeClass === 'MELEE' ? dodge * MELEE_REACT_DODGE_MULT : dodge;
-    const opened = ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor));
+    // 带魂力的闪避（basicSoulReady）：+EVADE_SOUL_BONUS。
+    const opened = clamp(ranged * (1 - ATTACK_OPENING_DODGE_CUT * attackOpeningOf(reactor)) + (basicSoulReady(reactor, 'EVADE') === true ? EVADE_SOUL_BONUS : 0), 0, 0.95);
     // 状态修正也进反应闪避（用户 2026-11-17「计入，直接加减」）：与命中判定（estimateHitProbability）同一套——
     // 闪避方 dodge_bonus − max(dodge_penalty, lock_level)，攻击方 − (hit_bonus − hit_penalty)。没有这些状态时不变。
     // 夹击（T30）：同一回合里挨过对方另一人的近身攻击，这一击闪避 −PINCER_DODGE_CUT（近身来招才算）。
@@ -26956,6 +26993,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     estimateHitProbabilityAttribution,
     effectTargetsAllies,
     hardControlEffect,
+    basicSoulCost,
+    basicSoulReady,
     controlMoveClass,
     answeredMoveEffects,
     resolveTargets,

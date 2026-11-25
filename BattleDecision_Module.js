@@ -3679,7 +3679,7 @@
       承载方式: '直接生效',
       消耗: '无',
       前摇: preview.basicAttackWindup(unit),
-      _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1 }],
+      _效果数组: [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 攻击段数: 1, 基础动作: '普攻' }],
     });
     basicAttackSkillCache.set(unit, skill);
     decisionMetrics.basicAttackSkillBuilds += 1;
@@ -6421,6 +6421,7 @@
         原型: '伤害结算',
         目标: '单体',
         威力倍率: 50 * strengthMultiplier,
+        基础动作: '普攻',
         伤害类型: '近身攻击',
         攻击段数: 1,
         生效方式: '独立生效',
@@ -7740,6 +7741,14 @@
     // when it can be released at all (a release with no legal target fizzles as before, not held).
     if (forcedSkill && input.actionOpportunity?.chargeHoldAllowed === true && (!opportunityRole || opportunityRole.toUpperCase() === 'ACTIVE') &&
       candidates.some(candidate => candidate?.declaration?.actionKind === 'RELEASE_SKILL')) candidates.push({
+      candidateId: `${actorId}:PASS_OPPORTUNITY`,
+      declaration: defensiveDeclaration(actorId, 'PASS_OPPORTUNITY'),
+      voluntaryOpportunityPass: true,
+    });
+    // 追击与仓促蓄力可以不接（11-25 3v3 回归 ec3|0|6：蓄力被打断转仓促放出时只给蓄着的那一招一个候选，它被判无效果〔NO_EFFECT_ACTION〕时
+    // 没有合法候选、整局报错）：结算后追击（follow_up:）与仓促蓄力（hasty_charge:）另给一个让过。
+    if (forcedSkill && /^(?:follow_up|hasty_charge):/.test(String(input.actionOpportunity?.grantId || input.actionOpportunity?.opportunityId || '')) &&
+      !candidates.some(candidate => candidate?.voluntaryOpportunityPass === true)) candidates.push({
       candidateId: `${actorId}:PASS_OPPORTUNITY`,
       declaration: defensiveDeclaration(actorId, 'PASS_OPPORTUNITY'),
       voluntaryOpportunityPass: true,
@@ -15808,7 +15817,7 @@
     const skill = action?.skill || action?.raw_skill || action;
     const actionKind = Array.isArray(skill?._效果数组) && skill._效果数组.length ? 'RELEASE_SKILL' : 'BASIC_ATTACK';
     const effects = actionKind === 'BASIC_ATTACK'
-      ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击' }]
+      ? [{ 原型: '伤害结算', 目标: '单体', 威力倍率: 50, 伤害类型: '近身攻击', 基础动作: '普攻' }]
       : preview.collectEffects(skill);
     const targetCount = Math.max(1, Number(
       action?.targetCount ??
