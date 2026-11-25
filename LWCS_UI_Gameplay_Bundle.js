@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:786888f84bae8702c898855790abfa4aaf1e73c23667dfd907bf9da56d2f09b2|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:0b6ce52fba8fa1478843303bafb5f4d65f6162d2ba443150d3c912ccd4af08c3|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -84656,7 +84656,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         if (idleWhy && !exchange && idleWhy[unit] === 0) idleWhy[unit] = 3;
         if (!exchange) { if (help > 0) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; } }
         else {
-          const more = exchange.more * offMul[unit] * defMul[target], taken = exchange.taken * offMul[target] * defMul[unit] * surv[target];
+          // 交锋按次（TAKEN_SHARE，11-25 对账：一例对手进攻挨行动者反击推演 0.055/回合、实际约 0.006——exchange 是「每打一下」引出的收支，
+          // 这一行的 strike 已乘出手份额 share × 伤害份额 × 每回合次数，more / taken 却按每回合整下算，被压、拖尾、少出手的人照样挨满反击）：
+          // 开时 more / taken 也乘同样的「每回合真正打几下」。11-25 对账（504 局 1v1，不回放）与 OPEN_BACK 一起开倒下 Brier 对手 0.147→0.132、
+          // 自己 0.097→0.091（只开它反而变差）→ 默认开，TAKEN_SHARE false 关回。
+          const perStrike = root.__LWCS_TUNE__?.TAKEN_SHARE !== false ? share * hitRate[unit] * countOf[unit] : 1;
+          const more = exchange.more * offMul[unit] * defMul[target] * perStrike, taken = exchange.taken * offMul[target] * defMul[unit] * surv[target] * perStrike;
           const ward = partialWard[target];
           // 这一下的方差（FALL_DIST）：每回合 n 次、每次以 p 打中，打中时每下 X ÷ (n·p)、离散度 cv²：X² (1 + cv² − p) ÷ (n·p)。
           const spreadHit = distOn && strike + more > 0 ? (() => { const amount = strike + more, p = clamp(hitRate[unit] * spreadLand(unit, target), 0.02, 1), n = Math.max(1, countOf[unit]);
@@ -84678,8 +84683,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           if (drain && drain[unit] > 0) mended[unit] += landed[unit] * drain[unit] * facts.hpMax[target] / facts.hpMax[unit];
           // A share of what lands is thrown back at the attacker (反伤), in its own HP maximum.
           // OPEN_BACK（11-24 对账：推演里反击类伤害少算 2～4 倍——应对这一下本身打回去的〔对轰赢的差值、平手震伤、换血放出的〕存在 r20Meet 的
-          // back 里，却从没进格子和推演）：按出手的频率（每回合份额 × 伤害份额 × 次数）算到出手者身上。默认关，对账验收后再定。
-          const openView = root.__LWCS_TUNE__?.OPEN_BACK === true && acting(target) ? cells(unit, target) : null;
+          // back 里，却从没进格子和推演）：按出手的频率（每回合份额 × 伤害份额 × 次数）算到出手者身上。11-25 当前默认下重测（oA1/oA2）：对手挨的窗口 0 推演 3.02→4.31 / 实际 4.35，与 TAKEN_SHARE 一起开倒下预测最准 → 默认开，OPEN_BACK false 关回。
+          const openView = root.__LWCS_TUNE__?.OPEN_BACK !== false && acting(target) ? cells(unit, target) : null;
           // OPEN_BACK_SCALE（11-24 对齐窗口对账：开 OPEN_BACK 后行动者打回对面多算约 1.7 倍，每次应对的值本身却少算——推演里应对次数偏多，查明前先按折算校准）。行内读，默认 1。
           const openTaken = openView?.openBack ? (Number(openView.openBack[target]?.[unit]) || 0) * (1 - heldHard[target]) * share * hitRate[unit] * countOf[unit] * offMul[target] * defMul[unit] * surv[target] * Number(root.__LWCS_TUNE__?.OPEN_BACK_SCALE ?? 1) : 0;
           dealt[unit] += taken + openTaken + (facts.reflect?.[target] > 0 ? (strike + more) * facts.reflect[target] * facts.hpMax[target] / facts.hpMax[unit] : 0);
