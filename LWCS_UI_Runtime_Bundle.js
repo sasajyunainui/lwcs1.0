@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:83990b58dc8a88ef7816b0a1528fa533516990c35c26cc832aa1f99c748902ea|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:ebed957446cd92cb9e6adf38bbf1e6060e502efcd87eaa212e9ba3cd6321e952|BattleRuntime_Module.js:bd0a86914effa3961a3b56a1de798a3bd1fb3c40e614458c4e948f9245788be5|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:24e688129ac4b81db4fb77bdf250fc138805c61f3ed70a1bfa24720bd3db3807|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:090a751f06263f5bd941ec37249dd614175ee666e8eca6ebaf8964c7b7a65ca7|BattleRuntime_Module.js:979b283573db9934992a3d7ce2133723eafbb671f3ee52cb734e1fdac68b6ce8|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -72453,6 +72453,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const swapEitherSide = effectPrototype === '位移执行' && /换位/.test(String(effect?.位移类型 || '')) && !explicitFriendly && !explicitHostile;
       const requiresFriendly = !swapEitherSide && (explicitFriendly || (!explicitHostile && targetsAllies));
       const requiresHostile = !swapEitherSide && (explicitHostile || (!explicitFriendly && !targetsAllies));
+      // 混乱偏转（BattleRuntime 目标干扰 targetRedirected，用户 11-26 方案 A）：偏转后的单体效果打在换到的那个人身上，不分敌我。
+      if (declaration?.targetRedirected === true && declaredTargets.length && !(excludesActorEndpoint && unitId(declaredTargets[0]) === unitId(actor))) {
+        return declaredTargets.slice(0, 1);
+      }
       const sideMatched = declaredTargets.filter(target => {
         if (excludesActorEndpoint && unitId(target) === unitId(actor)) return false;
         const targetSide = mechanicalProjectionProfile(
@@ -88149,6 +88153,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // between even moves is not nothing — each side takes CLASH_SHOCK of the other's move, its damage only (no state, no
   // roll to hit, no guard), through the ordinary damage settlement.
   const CLASH_SHOCK = 0.25;
+  // 远程对轰（用户 11-26「远程对轰和近身对轰的溅射需要不同」，按方案定稿 D）：有一方是远程招、两人又没有贴身缠斗（unitsLocked）时，两股力量
+  // 在半空相撞，平手时各自吃到的只有 RANGED_CLASH_SHOCK；两边都是近身、或已经贴身，照 CLASH_SHOCK。精神对轰另算。起始值，实测再定。
+  const RANGED_CLASH_SHOCK = Number(root.__LWCS_TUNE__?.RANGED_CLASH_SHOCK ?? 0.12);
   // A clash: `reactor` meets `attacker`'s move `incomingDeclaration` (landing on the reactor) with `reactorDeclaration`
   // (aimed at the attacker), on `worldSnapshot` as it stands when the answer is settled. null: one of the two is not a
   // damaging move. outScale: the share of the answer's damage that lands on the attacker (won: the difference; even:
@@ -88164,9 +88171,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const ratio = theirs > 0 ? mine / theirs : mine > 0 ? Infinity : 1;
     const result = ratio >= CLASH_WIN - 1e-12 ? 'WIN' : ratio <= 1 / CLASH_WIN + 1e-12 ? 'LOSE' : 'EVEN';
     const mentalClash = declarationDamageClass(reactorDeclaration || {}) === 'MENTAL' && declarationDamageClass(incomingDeclaration || {}) === 'MENTAL';
-    const loss = mentalClash ? MENTAL_CLASH_LOSS_MULT : 1, shock = mentalClash ? MENTAL_CLASH_SHOCK : CLASH_SHOCK;
+    const rangedClash = !mentalClash && [reactorDeclaration, incomingDeclaration].some(item => declarationDamageClass(item || {}) === 'RANGED') &&
+      !(worldSnapshot && unitsLocked(worldSnapshot, reactor, attacker));
+    const loss = mentalClash ? MENTAL_CLASH_LOSS_MULT : 1, shock = mentalClash ? MENTAL_CLASH_SHOCK : rangedClash ? RANGED_CLASH_SHOCK : CLASH_SHOCK;
     return Object.freeze({
-      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash, late,
+      mine, theirs, ratio, result, threshold: CLASH_WIN, shock: result === 'EVEN', mentalClash, rangedClash, late,
       outScale: result === 'WIN' && mine > 0 ? (mine - theirs) / mine * loss : result === 'EVEN' ? shock : 0,
       inScale: result === 'LOSE' && theirs > 0 ? (theirs - mine) / theirs * loss : result === 'EVEN' ? shock : 0,
       answered: result !== 'LOSE',
@@ -88574,7 +88583,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     ENGAGEMENT_RULES: Object.freeze({ DODGE_BASE, DODGE_SHARE_SLOPE, DODGE_BASE_FLOOR, DODGE_BASE_CAP, DODGE_WINDUP_SWING, DODGE_AREA_PENALTY,
       DODGE_FLOOR, DODGE_CAP, WINDUP_PIVOT, WINDUP_SPAN, GUARD_LIGHT, GUARD_HEAVY, GUARD_TYPICAL, GUARD_LIGHT_SHARE, GUARD_EVEN_SHARE,
       GUARD_HEAVY_SHARE, GUARD_CAP, COUNTER_GUARD_HELD, COUNTER_BASE, COUNTER_WINDUP_SWING, COUNTER_FLOOR, COUNTER_CAP,
-      COUNTER_STAMINA_FACTOR, COUNTER_STAMINA_STEP, COUNTER_FADE, COUNTER_STANCE_BONUS, CLASH_WIN, CLASH_SHOCK, PREEMPT_SURE_MARGIN, CLASH_READ_MARGIN,
+      COUNTER_STAMINA_FACTOR, COUNTER_STAMINA_STEP, COUNTER_FADE, COUNTER_STANCE_BONUS, CLASH_WIN, CLASH_SHOCK, RANGED_CLASH_SHOCK, PREEMPT_SURE_MARGIN, CLASH_READ_MARGIN,
       // 接战链 阶段三: the referee (INTERCEPT_WINDUP is also its step per fighter saved in a round).
       REFEREE_SAFE, INTERCEPT_WINDUP }),
     compileMechanicalBasis,
@@ -137899,9 +137908,12 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     if (held) { const chosen = options.find(option => option.kind === held) || options[0]; return { ...chosen, defends: chosen.kind === 'DEFEND' }; }
     // stand.theirs：来招整招伤害（r20RawHit），对轰按它比；没有时按格子份额 × 生命上限。
     const theirs = Number(stand.theirs) > 0 ? Number(stand.theirs) : Number(weight) > 0 ? Number(weight) * stand.hpMax : 0;
-    const win = Number(preview.ENGAGEMENT_RULES?.CLASH_WIN) || 1.2, shock = Number(preview.ENGAGEMENT_RULES?.CLASH_SHOCK) || 0;
+    const win = Number(preview.ENGAGEMENT_RULES?.CLASH_WIN) || 1.2, meleeShock = Number(preview.ENGAGEMENT_RULES?.CLASH_SHOCK) || 0;
+    const rangedShock = Number(preview.ENGAGEMENT_RULES?.RANGED_CLASH_SHOCK ?? meleeShock);
     if (theirs > 0) for (const { strike, price, confidence = 1, move } of stand.strikes || []) {
       const ratio = strike / theirs;
+      // 远程对轰（BattlePreview clashOutcome rangedClash）：来招或这一招有一方是远程，平手溅射按远程。推演不跟踪缠斗，按没贴身近似。
+      const shock = stand.incomingRanged === true || preview.declarationDamageClass?.(move || {}) === 'RANGED' ? rangedShock : meleeShock;
       const met = ratio >= win ? { keep: 0, share: 0, lands: 0, answer: stand.catch, back: (strike - theirs) / stand.attackerHpMax }
         : ratio > 1 / win ? { keep: stand.soak * shock, share: shock, lands: 0, answer: stand.catch, back: shock * strike / stand.attackerHpMax }
           : { keep: stand.soak * (1 - ratio), share: 1 - ratio, lands: 1, answer: 0, back: 0 };
@@ -138091,7 +138103,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   function r20FillPair(cells, units, acts, row, other) {
     if (!acts[row]) { cells.keep[row][other] = 1; cells.keepBack[row][other] = 1; cells.answer[row][other] = 0; cells.answerOpen[row][other] = 0; if (cells.openBack) cells.openBack[row][other] = 0; return; }
     const stand = r20Stand(units[row], units[other]), raw = r20RawHit(units[other], units[row]);
-    const openStand = raw ? { ...(raw.move && root.__LWCS_TUNE__?.RAW_MOVE_OFF !== true ? r20Stand(units[row], units[other], raw.move) : stand), theirs: raw.damage } : stand;
+    const openStand = raw ? { ...(raw.move && root.__LWCS_TUNE__?.RAW_MOVE_OFF !== true ? r20Stand(units[row], units[other], raw.move) : stand), theirs: raw.damage,
+      incomingRanged: !!raw.move && preview.declarationDamageClass?.(raw.move) === 'RANGED' } : stand;
     const opening = r20Meet(openStand, r20Weight(cells.out[other][row])), struck = r20Meet(stand, r20Weight(cells.back[other][row]));
     // Development hook (absent in play): which answer a pair's opening hit meets, with the stand it was weighed on.
     root.__LWCS_DECISION_DEBUG__?.onFillPair?.({ units, row, other, stand: openStand, opening, weight: r20Weight(cells.out[other][row]), out: cells.out[other][row], struck });
@@ -155216,9 +155229,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         opportunityId: input?.opportunityId,
       });
     if (targetInterference) {
+      // 混乱偏转（用户 11-26 定方案 A：偏转可以落到任何人，含自己和队友）：换了目标的声明带 targetRedirected，目标解析（BattlePreview
+      // resolveTargets）对单体效果就按换到的那个人结算，不再按阵营拉回敌人；治疗、增益偏到敌人身上同样生效。
+      const redirected = String(targetInterference.resolvedTargetId || '') !== String(targetInterference.declaredTargetId || (declaration.targetIds || [])[0] || '');
       declaration = {
         ...declaration,
         targetIds: [targetInterference.resolvedTargetId],
+        ...(redirected ? { targetRedirected: true } : {}),
       };
     }
     const resolvedPrimaryTargets = resolveStructuredTargets(
