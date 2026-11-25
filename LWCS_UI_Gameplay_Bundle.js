@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:0b6ce52fba8fa1478843303bafb5f4d65f6162d2ba443150d3c912ccd4af08c3|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:b76642008f2d184c3b2f94dfc47cc2dac673c476fd6fff1c3778c5dac98f3f1e|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -83865,6 +83865,13 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     r20WindupCache.set(table, windups);
     return windups;
   }
+  // 当下能不能退场（认输 / 撤离）：BattlePreview battleRules 的 exit，按世界缓存。
+  const r20DoomKeeps = new WeakMap(), r20ExitCache = new WeakMap(), R20_DOOM_FROM = Number(root.__LWCS_TUNE__?.DOOM_FROM ?? 0.7), R20_DOOM_TO = Number(root.__LWCS_TUNE__?.DOOM_TO ?? 0.88);
+  function r20ExitOpen(world) {
+    if (!world || typeof world !== 'object') return false;
+    if (!r20ExitCache.has(world)) r20ExitCache.set(world, !!preview.battleRules?.(world)?.exit);
+    return r20ExitCache.get(world);
+  }
   function r20Race(facts, own, plan = null) {
     r20Work.races += 1;
     const { sides, remaining, alive } = facts, count = sides.length, cover = facts.cover || null;
@@ -83909,7 +83916,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 输不打折扣（输得晚不比输得早好——此前两边对称打折扣，五五开时推迟分出胜负净代价约为零，最差局 35 控制×精神 连 8 回合防御，推演里下回合自己
     // 照打；落后方拖着求「输得晚」）。还没分出的按分差 tanh 分成赢、输两份，同样只有赢的一份打折扣。WIN_ORDER=false 回旧（按分差 tanh 定方向）。
     const winOrder = distOn && root.__LWCS_TUNE__?.WIN_ORDER !== false;
-    let winMass = 0, loseMass = 0, ownDown = 0, foeDown = 0;
+    let winMass = 0, loseMass = 0, ownDown = 0, foeDown = 0, winMassRaw = 0;
     const tailZ = (() => { const e = clamp(tailEps, 1e-6, 0.5), t = Math.sqrt(-2 * Math.log(e)); return t - (2.515517 + 0.802853 * t + 0.010328 * t * t) / (1 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t); })();
     const denied = plan?.denied || facts.held || null, until = plan?.until || null, base = plan?.base || facts;
     // idle[u]: rounds u gives up its own action but still answers what comes at it (援护：只用掉本回合的主动机会，
@@ -84922,7 +84929,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             if (winOrder) {
               const won = Math.max(0, theirs - foeDown) * (1 - (mine + ownDown) / 2), lost = Math.max(0, mine - ownDown) * (1 - (theirs + foeDown) / 2);
               const gain = now - decided, sum = won + lost, share = sum > 1e-12 ? won / sum : 0.5;
-              winMass += gain * share * R20_RACE_DISCOUNT ** time; loseMass += gain * (1 - share);
+              winMass += gain * share * R20_RACE_DISCOUNT ** time; loseMass += gain * (1 - share); winMassRaw += gain * share;
             }
             discountMass += (now - decided) * R20_RACE_DISCOUNT ** time; decided = now;
           }
@@ -84935,7 +84942,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     }
     if (plan?.round1) plan.round1.sealed = true;
     if (distOn && plan?.falls) for (const [at, key] of [[2, 'pfall2'], [4, 'pfall4']]) if (!plan[key]) plan[key] = Array.from({ length: count }, (value, unit) => oddsAt(unit, at, 0, 0, 0, at - time).fall);
-    let score = 0, standing = new Set();
+    let score = 0, ownLeft = 0, standing = new Set();
     for (let unit = 0; unit < count; unit += 1) {
       if (left[unit] > 1e-9) standing.add(sides[unit]);
       // FALL_DIST：剩下的按期望（还站着的按累计承受的分布，已倒的按倒下时的状态外推到推演结束）。
@@ -84943,6 +84950,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       if (!(value > 1e-9)) continue;
       const whole = stam ? Math.min(value, stam[unit] + (sh?.[unit] || 0)) : value;
       score += sides[unit] === own ? whole : -whole;
+      if (sides[unit] === own) ownLeft += whole;
     }
     // plan.report（r20ExitOutlook）：推演结束时各单位还剩的与分差。
     if (plan?.report) { plan.report.left = left.map((value, unit) => (stam ? Math.min(value, stam[unit] + (sh?.[unit] || 0)) : value)); plan.report.margin = score; plan.report.time = time; }
@@ -84954,6 +84962,33 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     const rest = R20_RACE_DISCOUNT ** (standing.size === 1 ? time : horizon);
     if (winOrder && new Set(sides).size === 2) {
       const lean = Math.tanh(R20_WIN_SLOPE * score), open = 1 - decided;
+      // 对账用（只在理由记录重算时）：本方赢、输的概率（分出的按谁先全倒，未分出的按分差 tanh 两分）。
+      const pWinRaw = clamp(winMassRaw + open * (1 + lean) / 2, 0, 1), pLoseRaw = clamp(loseMass + open * (1 - lean) / 2, 0, 1);
+      if (plan?.falls) plan.outcome = { own, pWin: pWinRaw, pLose: pLoseRaw };
+      // 输赢概率按实测校准（OUTCOME_CALIB，11-25 用户「必输是怎么算的…如果这个必输本来就不准呢？」）：不回放 504 局 1v1 + 120 局 3v3，
+      // 推演给本方输 ≥98% 的实际只输 83% / 87%，≤10% 的实际输 12% / 15%——两头过度自信，必输时胜负项饱和成平线，进攻换不来分。
+      // logit(校准) = a + b·logit(推演)：1v1 a −0.019 b 0.442，多人 a −0.029 b 0.301（Brier 0.182→0.176、0.179→0.152）。赢照旧按分出那一刻
+      // 打折扣（平均折扣 = 打过折的赢 ÷ 没打折的赢），输不打折扣。11-25 分叉对照（第一次判输 ≥0.9 处分叉，之前逐手相同）：必输方胜率
+      // 1v1 25.1→26.2%、3v3 18.3→21.7%（不是判必输导致输）。校准用于判「必输」（次级目标的打折力度）；胜负项本身按校准只在 CALIB_WIN 开时——
+      // 11-25 检验题 24 种子：胜负项用校准（斜率 0.44 / 0.30）把均势时「这一手多赢几成」压到四成、三成，抓时机的题退步（舍身底牌、破防追击、
+      // 短控制窗口压上、未蓄好就打断），所以默认胜负项照旧。OUTCOME_CALIB false 整段关回。
+      if (root.__LWCS_TUNE__?.OUTCOME_CALIB !== false) {
+        const team = sides.filter(side => side === own).length > 1 || sides.filter(side => side !== own).length > 1;
+        const [a, b] = team ? [-0.029, 0.301] : [-0.019, 0.442], p = clamp(pLoseRaw, 1e-3, 1 - 1e-3);
+        const lose = 1 / (1 + Math.exp(-(a + b * Math.log(p / (1 - p)))));
+        const winDiscount = pWinRaw > 1e-9 ? (winMass + open * (1 + lean) / 2 * rest) / pWinRaw : rest;
+        // 必输时的次级目标（DOOM_SPEND，11-25 用户选「按战斗类型分次级目标」）：当下退不了场（battleRules exit 为空：生死斗、不许撤离、系统战斗）时，
+        // 自己一方剩下的按校准后的输的概率打折——DOOM_FROM 以下照旧，到 DOOM_TO 降到 0，对手掉的照计：反正要输，留着的生命不值什么，转向拼死多打
+        //（11-25 最差局：必输后所有选项差 ±0.1、不出手少掉血 → 连续防御 / 让过）。能认输、撤离时照旧满值，由退场估值去比（保留自己）。
+        // 有后续场次 / 援军时保留自己：信息还没有（擂台连场未做），之后接这里。DOOM_SPEND false 关。
+        const exitOpen = r20ExitOpen(base.world || facts.world);
+        const keep = exitOpen || root.__LWCS_TUNE__?.DOOM_SPEND === false ? 1 : clamp((R20_DOOM_TO - lose) / Math.max(1e-6, R20_DOOM_TO - R20_DOOM_FROM), 0, 1);
+        // 现局（不带 plan 的那次）记下本方的打折系数，资源消耗的代价同样按它缩小（反正要输，省下的魂力也没用；11-25 55 防御×控制：魂技推演 +0.010
+        // 却被消耗 −0.0105 压到防御后面）。
+        if (!plan) { const kept = r20DoomKeeps.get(facts) || {}; kept[own] = keep; r20DoomKeeps.set(facts, kept); }
+        const winTerm = root.__LWCS_TUNE__?.CALIB_WIN === true ? (1 - lose) * winDiscount - lose : winMass - loseMass + open * ((1 + lean) / 2 * rest - (1 - lean) / 2);
+        return score - ownLeft * (1 - keep) + R20_RACE_WIN * winTerm;
+      }
       return score + R20_RACE_WIN * (winMass - loseMass + open * ((1 + lean) / 2 * rest - (1 - lean) / 2));
     }
     return score + R20_RACE_WIN * Math.tanh(R20_WIN_SLOPE * score) * (distOn && new Set(sides).size === 2 ? discountMass + (1 - decided) * rest : rest);
@@ -86474,7 +86509,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       const floor = clamp(Number(priceWin.floor ?? 0.25), 0, 1);
       priceMult *= floor + (1 - floor) * win;
     }
-    const cost = priceMult * R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1);
+    const cost = priceMult * R20_RESOURCE_PRICE * (spent * (1 + followBase) + overBudget * followMatches) * (1 + (followCarry ? 0 : R20_PROBE_PREMIUM * unseen)) * (spar ? R20_SPAR_PRICE : 1) *
+      (r20DoomKeeps.get(table)?.[own] ?? 1);
     // 逼对手花资源（用户 11-20「加上」，原作萧萧逼出薛兵的武魂真身）：有队友接着打这个对手（接续）时，这一手让对手花掉的资源
     // 按半份生命计（同认输估值 FOLLOW_RESOURCE_SHARE）。
     const foeDrain = followCarry && R20_FOE_DRAIN_ON ? R20_FOE_DRAIN_SHARE * foeSpent : 0;
@@ -86700,7 +86736,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           to: Object.fromEntries(Object.entries(one.to[row] || {}).map(([target, value]) => [table.ids[target] ?? `+${target}`, r4(value)])),
           left: r4(one.left?.[row]), stam: one.stam ? r4(one.stam[row]) : null, shield: one.shield ? r4(one.shield[row]) : null, charges: r4(one.charges?.[row]),
           // 记录有层数上限（snapshot-depth），摊平放。
-          ...(plan.pfall2 ? { pf2: r4(plan.pfall2[row]), pf4: r4(plan.pfall4?.[row]) } : {}), ...(plan.window13 ? { w13Acts: r4(plan.window13.acts[row]), w35Out: r4(plan.window35?.[row] || 0), src01: (plan.src01?.[row] || new Array(6).fill(0)).map(r4), src12: (plan.src12?.[row] || new Array(6).fill(0)).map(r4), w13Why: (plan.window13.why?.[row] || new Array(11).fill(0)).map(r4), w13Off: (plan.window13.off?.[row] || [0, 0, 0, 0]).map(r4), w35Why: (plan.why35?.[row] || new Array(11).fill(0)).map(r4), w13Rate: r4(plan.window13.rate[row]), w13Count: r4(plan.window13.count?.[row] ?? 1), w13Hold: r4(plan.window13.hold[row]), w13Help: r4(plan.window13.help[row]), w13Free: r4(plan.window13.free[row]), w13Aim: r4(plan.window13.aim[row]),
+          ...(plan.pfall2 ? { pf2: r4(plan.pfall2[row]), pf4: r4(plan.pfall4?.[row]) } : {}), ...(plan.outcome ? { pl: r4(table.sides[row] === plan.outcome.own ? plan.outcome.pLose : plan.outcome.pWin) } : {}), ...(plan.window13 ? { w13Acts: r4(plan.window13.acts[row]), w35Out: r4(plan.window35?.[row] || 0), src01: (plan.src01?.[row] || new Array(6).fill(0)).map(r4), src12: (plan.src12?.[row] || new Array(6).fill(0)).map(r4), w13Why: (plan.window13.why?.[row] || new Array(11).fill(0)).map(r4), w13Off: (plan.window13.off?.[row] || [0, 0, 0, 0]).map(r4), w35Why: (plan.why35?.[row] || new Array(11).fill(0)).map(r4), w13Rate: r4(plan.window13.rate[row]), w13Count: r4(plan.window13.count?.[row] ?? 1), w13Hold: r4(plan.window13.hold[row]), w13Help: r4(plan.window13.help[row]), w13Free: r4(plan.window13.free[row]), w13Aim: r4(plan.window13.aim[row]),
             w13To: Object.fromEntries(Object.entries(plan.window13.to[row] || {}).map(([target, value]) => [table.ids[target] ?? `+${target}`, r4(value)])) } : {}) }));
       }
     }
