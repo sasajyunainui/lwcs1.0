@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:c655776d866892efc9f8405b3554c43c4f4e05644b611868847b0dc5ab132ce6|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:786888f84bae8702c898855790abfa4aaf1e73c23667dfd907bf9da56d2f09b2|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -83905,6 +83905,11 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     };
     // 胜负的折扣（D1/D2）：每一步末两边各自全倒的概率，分出胜负的概率每增加一份，按那一刻的折扣计。
     let decided = 0, discountMass = 0;
+    // 胜负按谁先全倒（WIN_ORDER，11-25 用户「决策唯一核心是胜率」）：分出胜负的每一份按这一步里哪边全倒的概率增加分给赢、输；赢按那一刻的折扣计，
+    // 输不打折扣（输得晚不比输得早好——此前两边对称打折扣，五五开时推迟分出胜负净代价约为零，最差局 35 控制×精神 连 8 回合防御，推演里下回合自己
+    // 照打；落后方拖着求「输得晚」）。还没分出的按分差 tanh 分成赢、输两份，同样只有赢的一份打折扣。WIN_ORDER=false 回旧（按分差 tanh 定方向）。
+    const winOrder = distOn && root.__LWCS_TUNE__?.WIN_ORDER !== false;
+    let winMass = 0, loseMass = 0, ownDown = 0, foeDown = 0;
     const tailZ = (() => { const e = clamp(tailEps, 1e-6, 0.5), t = Math.sqrt(-2 * Math.log(e)); return t - (2.515517 + 0.802853 * t + 0.010328 * t * t) / (1 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t); })();
     const denied = plan?.denied || facts.held || null, until = plan?.until || null, base = plan?.base || facts;
     // idle[u]: rounds u gives up its own action but still answers what comes at it (援护：只用掉本回合的主动机会，
@@ -83912,8 +83917,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 离散出手（RACE_BURST，11-25 C）：本回合已出过手的人下一次在 s（0～1，行动者下一次出手之前）轮到，连续流从 s 起到 t=1 只流出 1 − s 下，实际
     // 这一下整下落在行动者下一次出手之前（对账：自己挨的窗口 0 推演 5.1 / 实际 10.1）。开时它在 [s, 1) 以 1 ÷ (1 − s) 倍（封顶 10）打出整一下，之后
     // 照常；还没出手的人（从 0 起流到 1 正好一下）与行动者本人（出手就在 1、2、3…）不变。半回合加倍的第一版（cB1/cB2）让轮到晚的人溢到下一窗口、
-    // 行动者也加倍时多算，弃用。默认关，实测后再定。
-    const burstOn = root.__LWCS_TUNE__?.RACE_BURST === true && !!plan?.strikeAt && !!plan?.idle, burstActor = (plan?.base || facts).actorRow;
+    // 行动者也加倍时多算，弃用。11-25 先修拖延（WIN_ORDER）再开：此前开 C 后 1v1 ≥30 回合 0→3（推演更准地看到对方下一下整下落地，撞上
+    // 已有的拖延）；WIN_ORDER 之后开 C ≥30 回合 0、最长被动 3，7v7 每次推演步数 +5%。默认开，RACE_BURST false 关回。
+    const burstOn = root.__LWCS_TUNE__?.RACE_BURST !== false && !!plan?.strikeAt && !!plan?.idle, burstActor = (plan?.base || facts).actorRow;
     const burstFrom = burstOn ? plan.idle.map((value, row) => row !== burstActor && value > 1e-9 && value < 1 - 1e-9 ? value : -1) : null;
     const idle = plan?.idle || null, strikeAt = plan?.strikeAt || null;
     // 最后一击按命中（11-23）：打 `target` 的这一下打中的概率（它能应对时按它最好的应对 r20Meet，被控、蓄力或表外的单位必中），按对缓存。
@@ -84906,7 +84912,16 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         const pair = Object.values(down);
         if (pair.length === 2) {
           const now = pair[0] + pair[1] - pair[0] * pair[1];
-          if (now > decided) { discountMass += (now - decided) * R20_RACE_DISCOUNT ** time; decided = now; }
+          const mine = down[own] ?? 0, theirs = pair[0] + pair[1] - mine;
+          if (now > decided) {
+            if (winOrder) {
+              const won = Math.max(0, theirs - foeDown) * (1 - (mine + ownDown) / 2), lost = Math.max(0, mine - ownDown) * (1 - (theirs + foeDown) / 2);
+              const gain = now - decided, sum = won + lost, share = sum > 1e-12 ? won / sum : 0.5;
+              winMass += gain * share * R20_RACE_DISCOUNT ** time; loseMass += gain * (1 - share);
+            }
+            discountMass += (now - decided) * R20_RACE_DISCOUNT ** time; decided = now;
+          }
+          ownDown = Math.max(ownDown, mine); foeDown = Math.max(foeDown, theirs);
         }
         // 对账用（只在理由记录重算时）：推演时间 2、4（实际下回合末、第三回合末）每人已倒下的概率。
         if (plan?.falls) for (const [at, key] of [[2, 'pfall2'], [4, 'pfall4']]) if (!plan[key] && time >= at - 1e-9) plan[key] = Array.from({ length: count }, (value, unit) =>
@@ -84932,6 +84947,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     // 单列（R20_RACE_WIN / R20_RACE_DISCOUNT，默认同 R20_WIN_VALUE / R20_ROUND_DISCOUNT；撤离、罢手的尺度不动），实测校准。
     // FALL_DIST：折扣按每一步分出胜负的概率加权，余下的照旧（分出胜负按推演结束时、否则按整段）。
     const rest = R20_RACE_DISCOUNT ** (standing.size === 1 ? time : horizon);
+    if (winOrder && new Set(sides).size === 2) {
+      const lean = Math.tanh(R20_WIN_SLOPE * score), open = 1 - decided;
+      return score + R20_RACE_WIN * (winMass - loseMass + open * ((1 + lean) / 2 * rest - (1 - lean) / 2));
+    }
     return score + R20_RACE_WIN * Math.tanh(R20_WIN_SLOPE * score) * (distOn && new Set(sides).size === 2 ? discountMass + (1 - decided) * rest : rest);
   }
   // The rows the race brings down with the actor letting its action of this round go by (idle until its next round, as
