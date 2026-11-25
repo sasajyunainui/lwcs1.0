@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: MVU_Skill_Runtime.js:ec4ff10731b8b437e5fac5bc749054922660694dbebb690b450b90185ace8161|MVU_Schema_Runtime.js:4a9cc935c5d3a1bc33763b7bf923656ff1be1699bccda0490e49e7364f9e7a76|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:b76642008f2d184c3b2f94dfc47cc2dac673c476fd6fff1c3778c5dac98f3f1e|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc */
+/* sources-sha256: MVU_Skill_Runtime.js:ec4ff10731b8b437e5fac5bc749054922660694dbebb690b450b90185ace8161|MVU_Schema_Runtime.js:4a9cc935c5d3a1bc33763b7bf923656ff1be1699bccda0490e49e7364f9e7a76|BattlePreview_Module.js:3a7e6db9f8dc16840055e9e7c8c58142740aca60ba743501012532d35551422f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:24667fd618c0242b5e6c01ae281d2d03e0b61277e3929aadd5b8f33777b2bd40|BattleRuntime_Module.js:a77598716ed23a4567107d5d9648e1f48cb9b4b0148f1407471f1414354c11bc */
 ;
 /* source: MVU_Skill_Runtime.js */
 // 从 MVU.js 机械拆分：技能机制注册表、技能生成、COST、预算、技能编译、基础属性与派生结算。
@@ -117604,8 +117604,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
       ? Math.max(0, Number(preview.pressTime?.(table.units[pressSourceRow], request.actionOpportunity.incomingAction, table.units[actorRow], table.world)) || 0) * (answeredNow ? 1 : Number(preview.PRESS_TAKE_SHARE ?? 0.5)) : 0;
     const selfPress = ownPress + incomingPress;
     // 压制起点（PRESS_SEED，11-25 最差 3 局）：这一手打单体敌方，它占目标多少时间是已知的（与运行时同一个 pressTime，打完就走为 0）。
+    // 只有带伤害的一手才占（11-25 压制起点对账 seed-cmp2：放不带伤害的对敌魂技后，推演起点 28～34、判丢 39～79%，对手那次实际只被占 0.9～5.3、
+    // 丢 2～13%）：BattleRuntime 只给带伤害效果的招开应对机会（破防的目标也不给），占用只在应对时记——控制、减益不占时间。PRESS_SEED_ANY 回旧。
+    const seedKind = String(declaredNow.actionKind || '').toUpperCase();
+    const seedAnswered = root.__LWCS_TUNE__?.PRESS_SEED_ANY === true || commitRow === undefined ||
+      (seedKind === 'BASIC_ATTACK' || preview.collectEffects(declaredNow.skill || {}).some(effect => String(effect?.原型 || '').trim() === '伤害结算')) &&
+      !preview.guardBrokenOf?.(table.units[commitRow], Number(table.world?.回合 || 0));
     const pressSeed = idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] && root.__LWCS_TUNE__?.PRESS_SEED !== false &&
-      ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(String(declaredNow.actionKind || '').toUpperCase())
+      ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(seedKind) && seedAnswered
       ? { row: commitRow, actor: actorRow, time: Math.max(0, Number(preview.pressTime?.(table.units[actorRow], declaredNow, table.units[commitRow], table.world)) || 0) } : null;
     const plan = { pressSeed, denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, selfDamage, ...(selfPress > 0 ? { selfPress: { row: actorRow, time: selfPress, by: pressSourceRow } } : {}), ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
