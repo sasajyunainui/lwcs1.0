@@ -10755,7 +10755,8 @@
         : resource === 'hp' ? previewRuntime.readHpMax(actor) : resource === 'stat' ? previewRuntime.readCombatStat(actor, key) : previewRuntime.readResourceMax(actor, resource);
       const stateKey = `召唤:${displayName}`;
       // 召唤面板（11-17）: a creature's own panel when the effect carries one (BattlePreview summonFixedPanel).
-      const fixed = previewRuntime.summonFixedPanel(effect);
+      // 模板召唤按锚点等级与所选系别（BattlePreview templateSummonPanel）；召唤面板优先。
+      const fixed = previewRuntime.summonFixedPanel(effect) || previewRuntime.templateSummonPanel?.(actor, effect, declaration?.summonClass) || null;
       const hpMax = fixed ? fixed.hp : Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
       const staminaMax = fixed ? fixed.vit : Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
       const soulMax = fixed ? fixed.sp : Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
@@ -10778,7 +10779,8 @@
         id: key, name: displayName, 名称: displayName, 召唤键: key, 预演召唤键: previewSummonKey,
         类型: summonType, 召唤单位类型: summonType, 单位性质: '召唤物', 行动模式: mode,
         ...(mode === '护卫' ? { 承伤规则: String(effect?.承伤规则 || '护卫承伤').trim() || '护卫承伤' } : {}),
-        level: summonLevel, 等级: summonLevel,
+        level: fixed?.level ?? summonLevel, 等级: fixed?.level ?? summonLevel,
+        ...(fixed?.summonClass ? { 系别: fixed.summonClass } : {}),
         宿主名: previewRuntime.unitName(actor), 宿主ID: previewRuntime.unitId(actor), __宿主: actor, __来源状态: sourceState, 来源状态键: stateKey,
         阵营: inferUnitSide(combatData, actor) === 'enemy' ? '敌方' : '玩家',
         生成回合: Number(combatData?.回合 || 0), 精神负载: Math.max(0, Number(effect?.精神负载 || 0)), 已消散: false,

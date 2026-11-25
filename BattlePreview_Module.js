@@ -3540,6 +3540,61 @@
     if (!(Number(panel[SUMMON_PANEL_KEYS.hp]) > 0)) return null;
     return Object.fromEntries(Object.keys(SUMMON_PANEL_KEYS).map(key => [key, read(key)]));
   }
+  // 模板召唤（用户 11-26「模板召唤应该走魂兽生成的路子，给定锚点等级生成对应属性」「写在技能里，可以指定多系别」）：没有继承属性比例、也没有
+  // 召唤面板的召唤生成（本命召唤兽、分身是继承型，不走这里）按锚点等级的标准面板生成，等级也记成锚点。锚点由强度按 COST 同价反推：COST 把强度 1
+  // 计成继承主人 TEMPLATE_SUMMON_INHERIT_EQUIV（同 MVU_Skill_Runtime 的基准继承比例 0.35）的面板，取主人面板（力、防、敏、生命上限）几何平均 ×
+  // 强度 × 0.35，在基础表上找几何平均相等的等级（可落在两级之间，按比例插值）。属性按技能的 召唤系别 分配（典型属性表 60 级那一行的形状，按力防敏
+  // 命几何平均归一，只改分配不改总量）。写了多个系别是放招时的选项（用户 11-26「同一个魂技只召唤一只，但使用时既能选强攻也能选敏攻」）：
+  // 声明的 summonClass 选一个，没选或不在列表里取第一个，没写按均衡。此前战斗把强度直接当继承比例（截到 2），
+  // 强度 2.106 的召唤物拿到主人 200% 的面板，一下打掉同级强攻 115%。
+  const TEMPLATE_SUMMON_INHERIT_EQUIV = 0.35, TEMPLATE_SUMMON_LEVEL_CAP = 130;
+  // [力量, 防御, 敏捷, 精神力上限, 魂力上限, 生命上限, 体力上限]（BattleDecision TYPICAL_SYSTEM_STAT_BY_LEVEL 60 级）。
+  const SUMMON_CLASS_SHAPE_ROWS = Object.freeze({
+    强攻系: [1.523, 1.473, 0.739, 1.457, 1, 1.209, 1.209], 敏攻系: [1.244, 0.645, 1.139, 1.457, 1, 0.987, 0.987],
+    防御系: [1.384, 2.142, 0.536, 1.457, 1, 1.209, 1.209], 控制系: [1.384, 1.202, 0.806, 1.724, 1, 1.098, 1.098],
+    元素系: [1.244, 0.574, 0.604, 2.124, 1, 0.876, 0.876], 精神系: [1.104, 0.531, 0.604, 2.39, 1, 0.876, 0.876],
+    辅助系: [1.104, 0.385, 0.466, 1.724, 1, 0.876, 0.876], 治疗系: [1.104, 0.385, 0.466, 1.724, 1, 0.876, 0.876],
+    召唤系: [1.244, 1.202, 0.604, 1.924, 1, 0.987, 0.987], 食物系: [1.104, 0.385, 0.466, 1.724, 1, 0.876, 0.876],
+  });
+  const SUMMON_SHAPE_KEYS = Object.freeze(['str', 'def', 'agi', 'men_max', 'sp_max', 'hp_max', 'vit_max']);
+  function summonClassShape(name = '') {
+    const text = String(name || '').trim(), row = SUMMON_CLASS_SHAPE_ROWS[text] || SUMMON_CLASS_SHAPE_ROWS[`${text}系`];
+    if (!row) return null;
+    const mean = Math.pow(row[0] * row[1] * row[2] * row[5], 1 / 4);
+    return Object.fromEntries(SUMMON_SHAPE_KEYS.map((key, index) => [key, row[index] / mean]));
+  }
+  function summonClassList(effect = {}) {
+    const raw = effect?.召唤系别;
+    return (Array.isArray(raw) ? raw : String(raw ?? '').split(/[、,，\s|/]+/)).map(value => String(value || '').trim()).filter(value => value && summonClassShape(value));
+  }
+  function templateSummonPanel(actor = {}, effect = {}, chosenClass = '') {
+    if (String(effect?.原型 || '').trim() !== '召唤生成' || summonFixedPanel(effect)) return null;
+    if (['本命召唤兽', '分身'].includes(String(effect?.召唤单位类型 || effect?.召唤类型 || '').trim()) || Number(effect?.继承属性比例) > 0) return null;
+    const strength = Number(effect?.强度 ?? effect?.召唤强度);
+    if (!(strength > 0) || typeof root.__LWCS_GET_BASE_STATS__ !== 'function') return null;
+    const base = level => root.__LWCS_GET_BASE_STATS__(level) || null;
+    const power = row => Math.pow(['str', 'def', 'agi', 'vit_max'].reduce((product, key) => product * Math.max(1, Number(row?.[key]) || 1), 1), 1 / 4);
+    const host = Math.pow(Math.max(1, readCombatStat(actor, 'str')) * Math.max(1, readCombatStat(actor, 'def')) *
+      Math.max(1, readCombatStat(actor, 'agi')) * Math.max(1, readHpMax(actor)), 1 / 4);
+    const target = host * strength * TEMPLATE_SUMMON_INHERIT_EQUIV;
+    let level = 1;
+    while (level < TEMPLATE_SUMMON_LEVEL_CAP && base(level + 1) && power(base(level + 1)) <= target) level += 1;
+    const low = base(level), high = base(level + 1) || low;
+    if (!low) return null;
+    const step = power(high) > power(low) ? clamp(Math.log(target / power(low)) / Math.log(power(high) / power(low)), 0, 1) : 0;
+    const blend = Object.fromEntries(['str', 'def', 'agi', 'vit_max', 'sp_max', 'men_max'].map(key => {
+      const from = Math.max(1, Number(low[key]) || 1), to = Math.max(1, Number(high[key]) || from);
+      return [key, from * Math.pow(to / from, step)];
+    }));
+    // 表的两头（低于 1 级、高于表顶）按目标等比缩放，使几何平均正好等于目标。
+    const scale = target / power(blend);
+    const classes = summonClassList(effect), wanted = String(chosenClass || '').trim();
+    const picked = classes.find(name => name === wanted || name === `${wanted}系` || `${name}系` === wanted) || classes[0] || '';
+    const shape = picked ? summonClassShape(picked) : null;
+    const value = (key, shapeKey = key) => Math.max(1, Math.floor(blend[key] * scale * (shape ? shape[shapeKey] : 1)));
+    return Object.freeze({ hp: value('vit_max', 'hp_max'), vit: value('vit_max'), sp: value('sp_max'), men: value('men_max'),
+      str: value('str'), def: value('def'), agi: value('agi'), level: Math.max(1, Math.round(level + step)), summonClass: picked });
+  }
   function isSummonUnit(unit = {}) {
     return String(unit?.单位性质 || unit?.类型 || '').trim() === '召唤物' ||
       Boolean(unit?.召唤键 || unit?.__battleRuntime?.summonWindow);
@@ -17390,7 +17445,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
           const levelPanel = summonType === '本命召唤兽' && typeof root.__LWCS_GET_BASE_STATS__ === 'function' ? root.__LWCS_GET_BASE_STATS__(summonLevel) || null : null;
           const panelOf = (resource, key) => levelPanel ? Number(levelPanel[key]) || 0
             : resource === 'hp' ? readHpMax(actor) : resource === 'stat' ? readCombatStat(actor, key) : readResourceMax(actor, resource);
-          const fixed = summonFixedPanel(effect);
+          // 模板召唤按锚点等级与所选系别（templateSummonPanel）；召唤面板优先。
+          const fixed = summonFixedPanel(effect) || templateSummonPanel(actor, effect, context.declaration?.summonClass);
           const hpMax = fixed ? fixed.hp : Math.max(1, Math.floor(panelOf('hp', 'vit_max') * inheritRatio));
           const staminaMax = fixed ? fixed.vit : Math.max(1, Math.floor(panelOf('体力', 'vit_max') * inheritRatio));
           const soulMax = fixed ? fixed.sp : Math.max(1, Math.floor(panelOf('魂力', 'sp_max') * inheritRatio));
@@ -17403,8 +17459,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             类型: summonType,
             召唤单位类型: summonType,
             单位性质: '召唤物',
-            level: summonLevel,
-            等级: summonLevel,
+            level: fixed?.level ?? summonLevel,
+            等级: fixed?.level ?? summonLevel,
+            ...(fixed?.summonClass ? { 系别: fixed.summonClass } : {}),
             行动模式: actionMode,
             ...(actionMode === '护卫' ? { 承伤规则: String(effect?.承伤规则 || '护卫承伤').trim() || '护卫承伤' } : {}),
             精神负载: Math.max(0, Number(effect?.精神负载 || 0)),
@@ -27027,6 +27084,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     fusionChargeHost,
     hastyChargeScale,
     summonFixedPanel,
+    templateSummonPanel,
+    summonClassList,
     chargedShare,
     chargeMeetSkill,
     isCharging,

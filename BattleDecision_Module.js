@@ -6859,6 +6859,17 @@
     const worldSnapshot = input?.worldSnapshot || {};
     let candidates = withCounterStaminaFactor(withoutTargetlessCandidates(enumerateCandidatesUnchecked(input),
       typeof input?.rejectionCollector === 'function' ? input.rejectionCollector : null), input?.actionOpportunity);
+    // 召唤系别（用户 11-26「同一个魂技只召唤一只，但使用时既能选强攻也能选敏攻」）：模板召唤写了几个系别，就按每个系别各出一个候选
+    //（declaration.summonClass，BattlePreview templateSummonPanel 按它生成），选哪个交给估值。
+    if (Array.isArray(candidates) && preview.summonClassList) candidates = candidates.flatMap(candidate => {
+      const declaration = candidate?.declaration;
+      if (!declaration || declaration.summonClass || String(declaration.actionKind || '').toUpperCase() !== 'RELEASE_SKILL') return [candidate];
+      const classes = [...new Set(preview.collectEffects(declaration.skill || {}).filter(effect => String(effect?.原型 || '').trim() === '召唤生成')
+        .flatMap(effect => preview.summonClassList(effect)))];
+      if (classes.length < 2) return [candidate];
+      return classes.map(summonClass => ({ ...candidate, candidateId: `${candidate.candidateId}:class:${summonClass}`,
+        declaration: { ...declaration, summonClass, actionId: `${declaration.actionId || candidate.candidateId}:class:${summonClass}` } }));
+    });
     // 两档距离（T25）: a melee candidate at a unit the actor is not engaged with carries its run-up (BattlePreview withAdvanceWindup), as
     // the runtime stamps it at the strike — every answer window and the attack opening read it through actionWindup.
     const advanceActor = Array.isArray(candidates) && preview.withAdvanceWindup ? findUnitInWorld(worldSnapshot, input?.actorId) : null;
@@ -40687,8 +40698,14 @@
             // 召唤生成（之后再召）: what its summons bring beside it — each a share (继承属性比例) of the caster's own basic attack, as
             // many as it brings — for the rounds they stay; not while summons of its own still stand (r20Race: hosted).
             if (prototype === '召唤生成' && kind === 'self') {
-              // 强度 reads as the share too (BattleRuntime: 强度 2 = 继承 200%).
-              const ratio = clamp(Number(effect?.继承属性比例 ?? effect?.强度 ?? effect?.召唤强度) || 0, 0, 2), many = Math.max(1, Math.floor(Number(effect?.数量) || 1));
+              // 模板召唤（BattlePreview templateSummonPanel，11-26）：份额是锚点面板对主人面板的几何平均之比（按构造约为 强度 × 0.35）；继承型照旧读继承属性比例。
+              const template = preview.templateSummonPanel?.(unit, effect) || null;
+              const powerOf = (str, def, agi, hp) => Math.pow(Math.max(1, str) * Math.max(1, def) * Math.max(1, agi) * Math.max(1, hp), 1 / 4);
+              const ratio = template
+                ? clamp(powerOf(template.str, template.def, template.agi, template.hp) / powerOf(preview.readCombatStat(unit, 'str'), preview.readCombatStat(unit, 'def'),
+                  preview.readCombatStat(unit, 'agi'), preview.readHpMax(unit)), 0, 2)
+                : clamp(Number(effect?.继承属性比例 ?? effect?.强度 ?? effect?.召唤强度) || 0, 0, 2);
+              const many = Math.max(1, Math.floor(Number(effect?.数量) || 1));
               let foe = -1;
               for (let other = 0; other < count; other += 1) if (sides[other] !== sides[row] && table.remaining[other] > 0 && (foe < 0 || table.out[row][other] > table.out[row][foe])) foe = other;
               const basic = foe >= 0 ? cachedBaseActionValue(unit, units[foe], 'BASIC_ATTACK', null, context, world) / 100 : 0;
