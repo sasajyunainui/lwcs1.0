@@ -41978,6 +41978,29 @@
     if (!r20ExitCache.has(world)) r20ExitCache.set(world, !!preview.battleRules?.(world)?.exit);
     return r20ExitCache.get(world);
   }
+  // 胜率只有一个（K10，11-26 两份外部意见：「外层校准胜算与内层赛跑分量两个胜率要统一」）：分出的按谁先全倒（WIN_ORDER 的赢、输质量），
+  // 没分出的按分差 tanh 两分，再按实测校准输的概率（logit(校准) = a + b·logit(推演)，OUTCOME_CALIB）。判「必输」、各结局的概率、认输估值的
+  // 胜算都读它；此前认输估值另按推演结束时的分差套 σ(−0.02 + 1.62·分差)（R20_EXIT_ODDS，11-16），各结局把没分出的一半算赢一半算输。
+  // 校准常数是 11-25 在不许认输的切磋（1v1）与生死斗（3v3）样本上测的，K8 在按场合配比的样本上重校。
+  const R20_OUTCOME_CALIB = Object.freeze({ solo: Object.freeze([-0.019, 0.442]), team: Object.freeze([-0.029, 0.301]) });
+  function r20Chances(winMassRaw, loseMass, open, lean, team, calibrate = true) {
+    const rawWin = clamp(winMassRaw + open * (1 + lean) / 2, 0, 1), rawLose = clamp(loseMass + open * (1 - lean) / 2, 0, 1);
+    if (!calibrate || root.__LWCS_TUNE__?.OUTCOME_CALIB === false) return { win: rawWin, lose: rawLose, rawWin, rawLose };
+    const [a, b] = team ? R20_OUTCOME_CALIB.team : R20_OUTCOME_CALIB.solo, p = clamp(rawLose, 1e-3, 1 - 1e-3);
+    const lose = 1 / (1 + Math.exp(-(a + b * Math.log(p / (1 - p)))));
+    return { win: 1 - lose, lose, rawWin, rawLose };
+  }
+  // 两支推演（r20Shadow：说不准倒没倒的那个人，倒了、没倒各推一遍）的各结局按各支概率合起来：概率相加，条件下的回合与剩余按各支赢（输）的份量加权。
+  function r20MixOutcomes(a, wa, b, wb) {
+    if (!a || !b) return a || b || null;
+    const part = (key, t, list) => {
+      const ma = wa * a[key], mb = wb * b[key], m = Math.max(1e-9, ma + mb);
+      return { chance: ma + mb, t: (ma * a[t] + mb * b[t]) / m, left: a[list].map((value, u) => (ma * value + mb * (b[list][u] ?? 0)) / m) };
+    };
+    const win = part('win', 'tWin', 'winLeft'), lose = part('lose', 'tLose', 'loseLeft');
+    return { win: win.chance, lose: lose.chance, rawWin: wa * a.rawWin + wb * b.rawWin, rawLose: wa * a.rawLose + wb * b.rawLose,
+      tWin: win.t, tLose: lose.t, winLeft: win.left, loseLeft: lose.left };
+  }
   function r20Race(facts, own, plan = null) {
     r20Work.races += 1;
     const { sides, remaining, alive } = facts, count = sides.length, cover = facts.cover || null;
@@ -43072,13 +43095,18 @@
     }
     // plan.report（r20ExitOutlook）：推演结束时各单位还剩的与分差。
     if (plan?.report) { plan.report.left = left.map((value, unit) => (stam ? Math.min(value, stam[unit] + (sh?.[unit] || 0)) : value)); plan.report.margin = score; plan.report.time = time; }
+    const twoSides = new Set(sides).size === 2, lean = Math.tanh(R20_WIN_SLOPE * score), open = 1 - decided;
+    const team = sides.filter(side => side === own).length > 1 || sides.filter(side => side !== own).length > 1;
+    const chances = winOrder ? r20Chances(winMassRaw, loseMass, open, twoSides ? lean : 0, team, twoSides) : null;
     if (outcomeSums) {
-      // 推演结束时还没分出的，一半算赢、一半算输，按推演结束时的状态补。
-      const open = Math.max(0, 1 - decided) / 2, endKept = u => { const odds = oddsAt(u, time); return odds.left / Math.max(1e-6, 1 - odds.fall); };
-      const win = winMassRaw + open, lose = loseMass + open;
-      plan.report.outcomes = { win, lose, tWin: (outcomeSums.winT + open * time) / Math.max(1e-9, win), tLose: (outcomeSums.loseT + open * time) / Math.max(1e-9, lose),
-        winLeft: outcomeSums.winLeft.map((value, u) => (value + open * endKept(u)) / Math.max(1e-9, win)),
-        loseLeft: outcomeSums.loseLeft.map((value, u) => (value + open * endKept(u)) / Math.max(1e-9, lose)) };
+      // 推演结束时还没分出的，按分差分成赢、输（同 r20Chances），按推演结束时的状态补；概率取 r20Chances（校准后），条件下的回合与剩余按推演的份量。
+      const openWin = Math.max(0, open) * (1 + (twoSides ? lean : 0)) / 2, openLose = Math.max(0, open) - openWin;
+      const endKept = u => { const odds = oddsAt(u, time); return odds.left / Math.max(1e-6, 1 - odds.fall); };
+      const win = winMassRaw + openWin, lose = loseMass + openLose;
+      plan.report.outcomes = { win: chances.win, lose: chances.lose, rawWin: chances.rawWin, rawLose: chances.rawLose,
+        tWin: (outcomeSums.winT + openWin * time) / Math.max(1e-9, win), tLose: (outcomeSums.loseT + openLose * time) / Math.max(1e-9, lose),
+        winLeft: outcomeSums.winLeft.map((value, u) => (value + openWin * endKept(u)) / Math.max(1e-9, win)),
+        loseLeft: outcomeSums.loseLeft.map((value, u) => (value + openLose * endKept(u)) / Math.max(1e-9, lose)) };
     }
     // The margin, and winning itself: smooth in the margin (a level fight tips either way on a hair, and a hard ±1 made
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
@@ -43086,10 +43114,9 @@
     // 单列（R20_RACE_WIN / R20_RACE_DISCOUNT，默认同 R20_WIN_VALUE / R20_ROUND_DISCOUNT；撤离、罢手的尺度不动），实测校准。
     // FALL_DIST：折扣按每一步分出胜负的概率加权，余下的照旧（分出胜负按推演结束时、否则按整段）。
     const rest = R20_RACE_DISCOUNT ** (standing.size === 1 ? time : horizon);
-    if (winOrder && new Set(sides).size === 2) {
-      const lean = Math.tanh(R20_WIN_SLOPE * score), open = 1 - decided;
-      // 对账用（只在理由记录重算时）：本方赢、输的概率（分出的按谁先全倒，未分出的按分差 tanh 两分）。
-      const pWinRaw = clamp(winMassRaw + open * (1 + lean) / 2, 0, 1), pLoseRaw = clamp(loseMass + open * (1 - lean) / 2, 0, 1);
+    if (winOrder && twoSides) {
+      // 对账用（只在理由记录重算时）：本方赢、输的概率（分出的按谁先全倒，未分出的按分差 tanh 两分），校准前。
+      const pWinRaw = chances.rawWin, pLoseRaw = chances.rawLose;
       if (plan?.falls) plan.outcome = { own, pWin: pWinRaw, pLose: pLoseRaw };
       // 输赢概率按实测校准（OUTCOME_CALIB，11-25 用户「必输是怎么算的…如果这个必输本来就不准呢？」）：不回放 504 局 1v1 + 120 局 3v3，
       // 推演给本方输 ≥98% 的实际只输 83% / 87%，≤10% 的实际输 12% / 15%——两头过度自信，必输时胜负项饱和成平线，进攻换不来分。
@@ -43099,9 +43126,7 @@
       // 11-25 检验题 24 种子：胜负项用校准（斜率 0.44 / 0.30）把均势时「这一手多赢几成」压到四成、三成，抓时机的题退步（舍身底牌、破防追击、
       // 短控制窗口压上、未蓄好就打断），所以默认胜负项照旧。OUTCOME_CALIB false 整段关回。
       if (root.__LWCS_TUNE__?.OUTCOME_CALIB !== false) {
-        const team = sides.filter(side => side === own).length > 1 || sides.filter(side => side !== own).length > 1;
-        const [a, b] = team ? [-0.029, 0.301] : [-0.019, 0.442], p = clamp(pLoseRaw, 1e-3, 1 - 1e-3);
-        const lose = 1 / (1 + Math.exp(-(a + b * Math.log(p / (1 - p)))));
+        const lose = chances.lose;
         const winDiscount = pWinRaw > 1e-9 ? (winMass + open * (1 + lean) / 2 * rest) / pWinRaw : rest;
         // 必输时的次级目标（DOOM_SPEND，11-25 用户选「按战斗类型分次级目标」）：当下退不了场（battleRules exit 为空：生死斗、不许撤离、系统战斗）时，
         // 自己一方剩下的按校准后的输的概率打折——DOOM_FROM 以下照旧，到 DOOM_TO 降到 0，对手掉的照计：反正要输，留着的生命不值什么，转向拼死多打
@@ -43117,7 +43142,7 @@
       }
       return score + R20_RACE_WIN * (winMass - loseMass + open * ((1 + lean) / 2 * rest - (1 - lean) / 2));
     }
-    return score + R20_RACE_WIN * Math.tanh(R20_WIN_SLOPE * score) * (distOn && new Set(sides).size === 2 ? discountMass + (1 - decided) * rest : rest);
+    return score + R20_RACE_WIN * Math.tanh(R20_WIN_SLOPE * score) * (distOn && twoSides ? discountMass + (1 - decided) * rest : rest);
   }
   // The rows the race brings down with the actor letting its action of this round go by (idle until its next round, as
   // r20Shadow plays every candidate) — 留手 holds nothing against hurting them, they are hurt to the floor anyway. Once per
@@ -44557,7 +44582,10 @@
     const pressSeed = idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] && root.__LWCS_TUNE__?.PRESS_SEED !== false &&
       ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(seedKind) && seedAnswered
       ? { row: commitRow, actor: actorRow, time: Math.max(0, Number(preview.pressTime?.(table.units[actorRow], declaredNow, table.units[commitRow], table.world)) || 0) } : null;
-    const plan = { pressSeed, denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, selfDamage, ...(selfPress > 0 ? { selfPress: { row: actorRow, time: selfPress, by: pressSourceRow } } : {}), ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}) };
+    const plan = { pressSeed, denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, selfDamage, ...(selfPress > 0 ? { selfPress: { row: actorRow, time: selfPress, by: pressSourceRow } } : {}), ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}),
+      // 每个候选各自的结局（K10，11-26 外部意见「价值函数要选 A / 选 B 之后各怎样」）：CANDIDATE_OUTCOMES 开时这一手的推演也出 report.outcomes，
+      // 下面按各结局的状态（r20OutcomeStates）放进返回的 outcomes。终局价值（K2）接上之前不参与估值，默认关（多算各结局的剩余要花时间）。
+      ...(root.__LWCS_TUNE__?.CANDIDATE_OUTCOMES === true ? { report: {} } : {}) };
     // A unit that may or may not be down is valued both ways (the settlement is not run again): the race with it gone
     // and with what is left of it if it stands, by the chance of each — only the most open such unit; the others keep
     // their chance as a weight.
@@ -44579,7 +44607,10 @@
       const down = chance * r20Race(withUnit(0, 0), own, plan);
       const first = traced ? { falls: plan.falls, flow0: plan.flow0, firstAim: plan.firstAim } : null;
       if (traced) { plan.falls = []; plan.flow0 = undefined; plan.firstAim = undefined; if (plan.round1) plan.round1.sealed = false; plan.traceWeight = 1 - chance; }
+      const downReport = plan.report;
+      if (downReport) plan.report = {};
       const up = (1 - chance) * r20Race(withUnit(standingLeft, 1), own, plan);
+      if (downReport) plan.report = { ...plan.report, outcomes: r20MixOutcomes(downReport.outcomes, chance, plan.report.outcomes, 1 - chance) };
       if (traced) {
         if (chance > 0.5) Object.assign(plan, first);
         plan.traceWeight = 1;
@@ -44587,6 +44618,9 @@
       }
       raced = down + up;
     }
+    // 这一手的各结局（CANDIDATE_OUTCOMES）在主推演一结束就取走：下面交手（metRace）等还会拿同一个 plan 再推演。
+    const raceOutcomes = plan.report?.outcomes || null;
+    if (plan.report) delete plan.report;
     mark('raceMs');
     const race = raced - Number(table.score[own] || 0);
     for (let row = 0; row < count; row += 1) if (table.sides[row] === foe && table.pending[row]) tempo += table.worth[row] * (1 - alive[row]);
@@ -44872,8 +44906,10 @@
             w13To: Object.fromEntries(Object.entries(plan.window13.to[row] || {}).map(([target, value]) => [table.ids[target] ?? `+${target}`, r4(value)])) } : {}) }));
       }
     }
+    const outcomes = raceOutcomes && actorRow !== undefined
+      ? r20OutcomeStates(table, own, raceOutcomes, table.units[actorRow], findUnitInWorld(after, request.actorId) || table.units[actorRow]) : null;
     return { value: race + tempo + granted + objective + leave + stock + info + regen + feint + foeDrain - cost - fusionCost - asset - restraint - reveal - idleStance, idleStance, race, tempo, granted, objective, leave, stock, info, regen, feint, foeDrain, cost, fusionCost, asset, restraint, reveal, revealWary, revealLearn, diag, counter, rebuilt: rebuilt.length, added: added.length, outside,
-      seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0) };
+      seen: seen + added.length + Number(granted !== 0) + Number(objective !== 0) + Number(leave !== 0), ...(outcomes ? { outcomes } : {}) };
   }
 
   // R10 (exact): when two variants of a unit read alike for a best action capacity (r9v2LinearBestActionCapacity) — the
@@ -45627,6 +45663,46 @@
   // 换到 0～1，推演结束时对手还剩的（我倒下前打不掉的）与自己还剩的给后续出场的消耗与保留（BattlePreview exitValuation）。
   // 此前按场上已打出的伤害速率粗估：开局还没出手时，弱方能打掉对手多少估成 0，胜算也偏高。每张桌面每方算一次。
   const r20ExitOutlooks = new WeakMap(), R20_EXIT_SPEND_PRIOR = 0.1, R20_EXIT_VIT_PRIOR = 0.02, R20_EXIT_ODDS = Object.freeze({ solo: Object.freeze([-0.02, 1.62]), team: Object.freeze([-0.25, 0.94]) });
+  // 技能里要不要花这种资源（魂力 / 精神力，启动或维持）：不花的不按先验估消耗（强攻系只花魂力）。
+  const r20ResourceUses = new WeakMap();
+  function r20UsesResource(unit, resource) {
+    if (!unit || typeof unit !== 'object') return false;
+    let uses = r20ResourceUses.get(unit);
+    if (!uses) {
+      uses = new Set();
+      for (const skill of collectSkills(unit)) {
+        const stages = parseSkillCostStages(skill);
+        for (const phase of ['启动', '维持']) for (const key of Object.keys(stages?.[phase] || {})) uses.add(key);
+      }
+      r20ResourceUses.set(unit, uses);
+    }
+    return uses.has(resource);
+  }
+  // 各结局下的状态（K6；K10 每个候选都能给、魂力精神力分开）：赢时本方、输时对方按分出胜负那一刻活着条件下的剩余（加回出局线），
+  // 输的一方在出局线上。行动者的魂力、精神力各按这场已花的速率（技能要花它的，加每回合 R20_EXIT_SPEND_PRIOR 的先验）乘赢、输各自的期望
+  // 结束回合，从 now（候选这一手之后的行动者；默认眼下）扣；上限为 0 的记 null。此前燃料取两者份额里大的那个：魂力见底、精神力满的人
+  // 被当成燃料全满（11-26 外部意见）。多人时每人按自己活着的条件取，是近似（11-26 实测只做了 1v1）。
+  function r20OutcomeStates(table, own, outcomes, actorUnit, now = actorUnit) {
+    if (!outcomes) return null;
+    const elapsed = Math.max(0, Number(table.world?.回合 || 1) - 1) + 0.5;
+    const resources = rounds => Object.fromEntries(['魂力', '精神力'].map(resource => {
+      const max = preview.readResourceMax(actorUnit, resource);
+      if (!(max > 0)) return [resource, null];
+      const spent = 1 - clamp(preview.readResource(actorUnit, resource) / max, 0, 1);
+      const rate = (spent + (r20UsesResource(actorUnit, resource) ? 2 * R20_EXIT_SPEND_PRIOR : 0)) / (elapsed + 2);
+      const nowMax = preview.readResourceMax(now, resource) || max;
+      return [resource, Math.max(0, clamp(preview.readResource(now, resource) / nowMax, 0, 1) - rate * rounds)];
+    }));
+    const lineShare = row => r20Floor(table.units[row]) / Math.max(1, preview.readHpMax(table.units[row]));
+    const winHp = table.units.map((unit, row) => (table.sides[row] === own ? Math.min(1, outcomes.winLeft[row] + lineShare(row)) : lineShare(row)));
+    const loseHp = table.units.map((unit, row) => (table.sides[row] === own ? lineShare(row) : Math.min(1, outcomes.loseLeft[row] + lineShare(row))));
+    const actorRow = table.index.get(preview.unitId(actorUnit));
+    return {
+      ids: (table.ids || []).slice(), actorRow: actorRow ?? -1, rawWin: outcomes.rawWin, rawLose: outcomes.rawLose,
+      win: { chance: outcomes.win, rounds: outcomes.tWin, actorRes: resources(outcomes.tWin), actorHp: actorRow === undefined ? null : winHp[actorRow], hp: winHp },
+      lose: { chance: outcomes.lose, rounds: outcomes.tLose, actorRes: resources(outcomes.tLose), actorHp: actorRow === undefined ? null : loseHp[actorRow], hp: loseHp },
+    };
+  }
   function r20ExitOutlook(request = {}, actor = {}) {
     const table = r20Facts(request);
     const own = request.actorSide;
@@ -45683,7 +45759,11 @@
     const mineOut = exhaustFirst(actorUnit);
     const foeOut = table.units.reduce((most, unit, row) => table.sides[row] !== own && (Number(table.alive[row]) || 0) > 0 && !preview.isSummonUnit(unit)
       ? Math.max(most, exhaustFirst(unit)) : most, 0);
-    const raceWin = odds(raced.margin);
+    // 胜算统一到赛跑的胜率（r20Chances，K10）暂只在 EXIT_ODDS_UNIFIED 开时：11-26 对照（28 局 1v1 按场合）开局第一次自然行动时还没释放武魂，
+    // 推演按没释放的状态算、打不动对方，判必输（统一胜率 0.05，按分差约 0.26），第 1 回合多出两次认输。「留下」该按最好的留下候选算（K13），
+    // 做完再切。推演没出各结局时（关了 WIN_ORDER / FALL_DIST，或不止两方）照旧按分差。
+    const unified = raced => raced?.outcomes && root.__LWCS_TUNE__?.EXIT_ODDS_UNIFIED === true ? raced.outcomes.win : odds(raced?.margin);
+    const raceWin = unified(raced);
     const win = clamp(raceWin * (1 - mineOut) + (1 - raceWin) * foeOut * (1 - mineOut), 0, 1);
     // 走了之后队友的胜算（11-16 行为检查目录第 5 题：3v3 近均势比赛第 1 回合认输）：同一张桌面让行动者开局即离场再推演一遍
     // （plan.leaves），按同一映射给胜算。此前按场上已打出的速率粗估，开局还没打出伤害时给「胜 0 负 0」，走了算队友平局，
@@ -45697,21 +45777,14 @@
         r20Race(table, own, { leaves: table.units.map((unit, row) => (row === actorRow ? 0 : Infinity)), report: alone });
         bySide.set(key, alone);
       }
-      const withoutWin = odds(alone.margin);
+      const withoutWin = unified(alone);
       without = { win: withoutWin, lose: 1 - withoutWin, draw: 0 };
     }
     // Development hook (absent in play): the race behind an exit's odds.
     if (typeof root.__LWCS_DECISION_DEBUG__?.onExitOutlook === 'function') root.__LWCS_DECISION_DEBUG__.onExitOutlook({ request, raced, raceWin, mineOut, foeOut, win, time });
-    // 各结局下的状态（K6）：赢时本方、输时对方按分出胜负那一刻活着条件下的剩余（加回出局线），输的一方在出局线上；
-    // 燃料按赢、输各自的期望结束回合扣。多人时每人按自己活着的条件取，是近似（11-26 实测只做了 1v1）。终局价值（K2）接上之前不参与估值。
-    const outcomes = raced.outcomes || null;
-    const lineShare = row => r20Floor(table.units[row]) / Math.max(1, preview.readHpMax(table.units[row]));
-    const byOutcome = outcomes ? {
-      win: { chance: outcomes.win, rounds: outcomes.tWin, actorFuel: Math.max(0, fuel(actorUnit) - rate(actorUnit) * outcomes.tWin),
-        hp: table.units.map((unit, row) => (table.sides[row] === own ? Math.min(1, outcomes.winLeft[row] + lineShare(row)) : lineShare(row))) },
-      lose: { chance: outcomes.lose, rounds: outcomes.tLose, actorFuel: Math.max(0, fuel(actorUnit) - rate(actorUnit) * outcomes.tLose),
-        hp: table.units.map((unit, row) => (table.sides[row] === own ? lineShare(row) : Math.min(1, outcomes.loseLeft[row] + lineShare(row)))) },
-    } : null;
+    // 各结局下的状态（K6；r20OutcomeStates）。终局价值（K2）接上之前不参与估值。
+    const byOutcome = r20OutcomeStates(table, own, raced.outcomes, actorUnit);
+    // 上面认输估值用的资源（drainedRes、actorRes、actorSpend）仍取魂力、精神力份额里大的那个（fuel），终局价值接上时按 byOutcome 的分开计。
     return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time, without, byOutcome };
   }
   function r20ExitMargin(request = {}) {
