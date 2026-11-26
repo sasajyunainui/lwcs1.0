@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:ae2a1e8f490a6831e2072e8da4f06ae6b556718e7bc27d459ec6cd2354218b70|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:8bd45d0a11682ea791afce7a6b84d7ced30e710627eb0269ca97f891d59fda07|BattleRuntime_Module.js:dd2e6f424e73edc67fd2850fd53e5df47dec4a08db3a0f0e833e2536fe13de8e|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_Message_Semantics.js:e5f1994102ba6f4952bcb26b7738625c71017973f2394702fc741fcb512c074a|LWCS_Host_Compatibility.js:79f8a996a913b1ebd6f50fdbd3e11653e67142c69ddfda4e46f8ac55b7e8a608|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LWCS_Database_Adapter.js:bd356163d184e6a6190653498cdc4e7f869cc218300cda0b611dfd26ec3c572a|mvu_logic_bridge.js:791af4dfe230bfc858a7d10cd09284ed3ce9293441aafa91e0f35b0c76114847|cockpit/designer-model.js:1cf7a8456ea9524e9babfd8b24a719eca4038fd0852da03c911dd468fd318b6d|cockpit/locations.js:643eb8e5b8825c411b5467585e53e126be2f27cd4bf7ce247fe292a085a1ccf7|cockpit/cockpit.js:03f1f25f8ff727af3af3b3969c177e73bcbf2965b7656e90224282c074583b32|cockpit/pages-role.js:59ebb99cff626fa76874c94afa4541fe718b11b1788457e7c123423ee674cf08|cockpit/designer-sim.js:17f7d4c4048c846074f0ef7c06050b2addd43616466175bd38c370bc00c8dde4|cockpit/designer-ui.js:3186f2fe7ee869fba3ae8c23982d2557a0128152974a1f2763b82690b6be954b|cockpit/pages-ability.js:fa929c9ad3b50a48a4ea988b7c155166e8fa555c996aabea8563bb270bbe8647|cockpit/pages-supplies.js:4a0c021d1c0b4e4038dafb49ce66259c6d7230e0ba28cadbb23f833d01b7dfd5|cockpit/pages-map.js:a3cc0f336be9a112c227b6240933b32f12b4dd56fb316bf811fd18adca2d1ea8|cockpit/pages-world.js:14f0089a4d639c1aa625e70295bd5fba84299910f5f7cfe26747547d47adac82|cockpit/pages-terminal.js:a14424537ca86e3bee741831cc77461f69b1132cbafe7374530184e7bbfdae33|TradeUI_Module.js:c0421946e544aa53bc6035e4787ae28e391fa0281d47dd971eb0fb8a879ede74|ProfessionUI_Module.js:ba25aa1b65bb9da7020e3730ee57b7ecb92d06cdad338293cb5cb43ccb541afa|CompetitionPrivilegeUI_Module.js:8f21922d81f3b5b5de09a7e109ed8ad2978495b3910d5a2fb57274736174eca2|BattlePreview_Module.js:27fc5e178c02a2ffa87505c61c35d74f32e88592ecd6fb6133990ca45c40047f|BehaviorDecisionPipeline_Module.js:c5bf45e392869a6ab1e0f7c46d9b3277f1517f3e7f090e7fdd8f58a360cb47f7|BattleDecision_Module.js:cc0bbe35937dc42472e8a6b90278f7802f4859fa5aa881010c25d28bc5243eeb|BattleRuntime_Module.js:03a5841dd44419f3cf5b193b761481da66f2257e99156ce0f82cbcdd65f174a0|BattleReport_Module.js:5a08a395bb238dda295d07d0be44d18abc2d83a84b3a6e104a5feb03d367ea58|BattleUI_Module.js:c690579798f92fe0f3ff4d0a6e568200902c3541ebdfd8ca2e9faab5b1504ebc|Database_Module.js:8d26f2b0aa9d71f29415d5e2b75dce414eeadb9918d10e36db49d54d6829f60f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -66162,6 +66162,8 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
     const rules = battleRules(worldSnapshot, battleIntent);
     if (!rules.exit || !actor || typeof actor !== 'object') return null;
     const side = sideOf(worldSnapshot, actor), id = unitId(actor);
+    // Brought down, a fighter is left at the battle's line (lifeThreatRatio: 切磋五成、有裁判的比赛三成、其余一成).
+    const line = lifeThreatRatio(worldSnapshot, battleIntent);
     // 后面还有比赛（剩余场次，用户 11-20「输不应该是血量为 0 或者过低……不然重伤的话后面的比赛怎么打？」）：被打倒的代价再加
     // EXIT_INJURY_FATE——重伤带进后面的比赛；认输以此刻的状态离场，不吃这一份。
     const fate = exitFate(worldSnapshot, battleIntent) + (matchFollowUp(worldSnapshot, side)?.remaining > 0 ? EXIT_INJURY_FATE : 0);
@@ -66196,9 +66198,9 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         // 折算），代价是这一回合自己掉的生命与花的资源——推演里撑不到一回合就倒下，代价就是倒下前的全部（出局线以上）。
         const rounds = Math.max(1, racedNumber('time')), worthRatio = racedNumber('worthRatio') ?? 1;
         const drainRound = (Math.max(0, racedNumber('drained') ?? 0) + FOLLOW_RESOURCE_SHARE * Math.max(0, racedNumber('drainedRes') ?? 0)) / rounds * worthRatio;
-        const hpLossRound = Math.max(0, share(actor) - Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? 0))) / rounds;
+        const hpLossRound = Math.max(0, share(actor) - Math.max(line, Math.min(share(actor), racedNumber('actorKept') ?? 0))) / rounds;
         const resLossRound = Math.max(0, racedNumber('actorSpend') ?? 0) / rounds;
-        const winWorth = 1 + FOLLOW_KEEP * follow.keep * Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? share(actor)));
+        const winWorth = 1 + FOLLOW_KEEP * follow.keep * Math.max(line, Math.min(share(actor), racedNumber('actorKept') ?? share(actor)));
         // 这一回合里就结束的那部分（推演的结束时间不到一回合按必定）等不到「下回合再认输」，输了照吃被打倒的代价（11-20：之前一律不计，
         // 每回合都觉得再打一回合更好，擂台模拟 80 场里擂主 0 次认输、生命打到 2%～10% 才出局）。
         const endsNow = racedNumber('time') > 0 ? clamp(1 / racedNumber('time'), 0, 1) : 1;
@@ -66208,7 +66210,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
         stay = oneMore;
       } else {
         const drained = foeHp * reach * fuel;
-        const kept = (outlook.win + 0.5 * outlook.draw) * share(actor) + outlook.lose * LIFE_THREAT_RATIO;
+        const kept = (outlook.win + 0.5 * outlook.draw) * share(actor) + outlook.lose * line;
         followStay = FOLLOW_DRAIN * follow.carry * drained * (1 - outlook.win) + FOLLOW_KEEP * follow.keep * kept;
         stay += followStay;
       }
@@ -66251,16 +66253,27 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
   // rules below: refereeTiming and after); projections take it that the line holds, which leaves the same units in the
   // fight either way.
   const LIFE_THREAT_RATIO = 0.1;
+  // 出局线按场合（用户 2026-11-26）: a spar's line is SPAR_LINE_RATIO (五成，点到为止: the striker holds a hit that would take
+  // the other under it — BattleRuntime, as far as it can hold back, concedeHoldsBack; one it cannot hold lands, but no lower
+  // than LIFE_THREAT_RATIO); a match with a referee REFEREE_LINE_RATIO (三成: the referee steps in for a hit that would take a
+  // fighter under it, and the one it saves is out — in a match one is badly hurt only where the referee is too late or not
+  // strong enough); a match with no referee keeps LIFE_THREAT_RATIO (the 三成 line is the referee's protection, not the match's).
+  const SPAR_LINE_RATIO = 0.5, REFEREE_LINE_RATIO = 0.3;
+  function lifeThreatRatio(worldSnapshot = {}, battleIntent = {}) {
+    const rules = battleRules(worldSnapshot, battleIntent);
+    return rules.spar ? SPAR_LINE_RATIO : rules.match && rules.refereed ? REFEREE_LINE_RATIO : LIFE_THREAT_RATIO;
+  }
   function isRefereedMatch(worldSnapshot = {}, battleIntent = {}) {
     return battleRules(worldSnapshot, battleIntent).match;
   }
   function isProtectedBattle(worldSnapshot = {}, battleIntent = {}) {
     return battleRules(worldSnapshot, battleIntent).protected;
   }
-  // Whether reaching `floor` takes `target` out of the fight: the life-threat line does; a higher line set by a victory
-  // condition (HP_RATIO_AT_OR_BELOW) is settled by that condition instead.
-  function lifeThreatExit(floor = 0, target = {}) {
-    return floor > 0 && floor <= Math.max(1, Math.floor(readHpMax(target) * LIFE_THREAT_RATIO)) + 1e-9;
+  // Whether reaching `floor` takes `target` out of the fight: the life-threat line does (the battle's, lifeThreatRatio, when
+  // the world is given); a higher line set by a victory condition (HP_RATIO_AT_OR_BELOW) is settled by that condition instead.
+  function lifeThreatExit(floor = 0, target = {}, worldSnapshot = null, battleIntent = {}) {
+    const ratio = worldSnapshot ? lifeThreatRatio(worldSnapshot, battleIntent) : LIFE_THREAT_RATIO;
+    return floor > 0 && floor <= Math.max(1, Math.floor(readHpMax(target) * ratio)) + 1e-9;
   }
 
   // The line a hit is held at (0: none): in a spar or a match the life-threat line (or a higher HP_RATIO_AT_OR_BELOW
@@ -66297,7 +66310,7 @@ window.mountProfessionUI = function(containerElement, snapshot, options = {}) {
       condition.threshold > 0 &&
       objectiveUnits(worldSnapshot, condition).some(unit => unitId(unit) === unitId(target)),
     ).map(condition => condition.threshold);
-    const threshold = Math.max(LIFE_THREAT_RATIO, ...thresholds);
+    const threshold = Math.max(lifeThreatRatio(worldSnapshot, battleIntent), ...thresholds);
     return Math.max(1, Math.floor(readHpMax(target) * threshold));
   }
 
@@ -88174,6 +88187,78 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     battleExperienceCache.set(unit, value);
     return value;
   }
+  // 几岁几级（V11，用户 2026-11-26 定）: an enemy's age is plain to see, and from its age and the level it is pictured at the
+  // actor reads its talent the way everyone does — MVU 计算等级反推天赋梯队_V1's 入档线 (halfway between two talents' levels at
+  // that age, floored) over each talent's level at that age, without its dice: where talents share a level the likeliest of them
+  // is read (天才, else 优秀, else 正常, else the lowest). Its battle experience (battleExperience) then follows from the talent
+  // read, not from level ÷ 3 years of a 正常 talent (11-26 测量：对手经验平均估 0.407、真值 0.506，自己闪避高估 2.4 点).
+  // The levels: EraCultivation estimateInitialLevel at full precision, 底子波动 1, kept as 计算初始化修为等级 keeps them (floored,
+  // a whole ten from 20 to 90 one higher, 99.5 at most), each era, ages 6～120 (older reads as 120); parameter
+  // era-cultivation-smooth-20261109-v1 — rebuild when the cultivation parameters change. The era is the world's
+  // (EraCultivation resolveEraAtTick at its tick), 斗三 where it cannot be read (the analytics runtime).
+  const AGE_LEVEL_TALENTS = Object.freeze(['劣等', '正常', '优秀', '天才', '顶级天才', '绝世妖孽']);
+  const AGE_LEVEL_BY_ERA = Object.freeze({
+    斗一: Object.freeze([
+      Object.freeze([1,3,4,6,7,9,11,12,14,15,16,18,19,21,21,22,23,24,25,26,26,27,28,28,28,28,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29]), // 劣等
+      Object.freeze([3,5,7,9,11,13,15,17,19,21,24,26,28,31,31,33,34,36,37,38,38,39,41,41,41,42,42,43,43,43,44,44,44,45,45,45,45,46,46,46,47,47,47,47,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48]), // 正常
+      Object.freeze([5,7,9,11,14,16,18,21,23,26,29,31,34,36,38,39,41,42,42,43,44,44,45,46,46,48,49,51,52,53,55,56,57,58,59,61,61,61,61,61,61,61,61,61,61,61,62,62,63,63,64,64,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65,65]), // 优秀
+      Object.freeze([8,10,12,14,16,18,21,24,27,31,34,37,41,43,45,47,48,49,51,51,51,51,52,52,53,54,55,57,58,59,61,61,62,63,64,64,65,65,65,66,66,66,67,67,67,68,68,68,69,69,71,71,72,73,74,75,75,76,76,77,77,78,78,79,79,79,81,81,81,82,82,83,83,84,85,85,85,86,86,86,86,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87,87]), // 天才
+      Object.freeze([9,11,14,16,19,22,25,29,33,37,41,43,45,48,51,52,53,54,54,55,55,56,57,58,58,59,61,61,61,62,63,64,65,67,68,68,69,69,71,71,72,73,75,77,79,81,82,83,84,85,86,86,87,87,87,88,88,88,88,88,88,88,88,89,89,89,89,89,89,91,91,91,91,91,92,92,93,93,93,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94]), // 顶级天才
+      Object.freeze([10,12,15,18,21,25,29,33,37,41,45,48,51,54,57,61,64,67,71,74,77,81,82,84,85,86,87,87,87,87,87,87,87,87,88,88,88,89,91,91,91,92,92,93,93,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,95,95,95,95,95,95,96,96,96,96,96,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98]), // 绝世妖孽
+    ]),
+    斗二: Object.freeze([
+      Object.freeze([1,3,4,6,7,9,11,12,14,15,17,18,19,21,22,23,24,25,25,26,27,27,28,28,28,28,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29]), // 劣等
+      Object.freeze([3,5,7,9,11,13,14,17,19,21,23,26,28,31,32,34,35,37,38,41,41,42,43,44,45,46,47,48,49,51,51,52,52,53,53,53,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54,54]), // 正常
+      Object.freeze([5,7,9,11,13,16,19,22,26,31,34,39,42,46,49,51,53,54,55,56,56,57,57,57,57,57,57,57,57,57,57,57,57,57,58,58,58,58,58,58,59,59,61,61,61,62,63,64,65,66,68,69,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71,71]), // 优秀
+      Object.freeze([8,11,14,17,21,24,28,31,35,39,43,47,51,54,56,58,61,62,63,64,65,65,66,67,67,68,68,69,71,71,71,72,73,73,74,75,76,76,77,78,78,79,81,81,81,82,83,84,84,85,86,87,87,88,88,88,88,88,88,88,88,88,88,88,88,88,88,88,88,88,88,88,88,88,88,89,89,89,89,89,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91,91]), // 天才
+      Object.freeze([9,11,14,17,21,24,29,34,39,45,51,57,62,66,69,72,75,77,79,81,82,84,85,86,87,88,89,91,91,91,91,91,91,91,91,91,91,92,92,92,92,93,93,93,93,93,93,94,94,94,94,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,95,96,96,96,96,96,96,96,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97]), // 顶级天才
+      Object.freeze([10,12,15,18,21,25,29,34,39,45,51,57,62,66,69,72,76,81,84,87,91,91,93,93,94,95,95,96,96,97,97,97,98,98,98,99,99,99,99,99,99,99,99,99,99,99,99,99,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5]), // 绝世妖孽
+    ]),
+    斗三: Object.freeze([
+      Object.freeze([1,3,4,6,8,9,11,13,14,16,18,19,21,22,24,25,25,26,27,27,28,28,28,28,28,28,28,28,28,28,28,28,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29,29]), // 劣等
+      Object.freeze([3,6,8,11,13,14,16,18,19,21,23,24,26,28,31,33,36,38,41,43,45,48,49,51,53,54,55,56,57,57,58,59,59,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61,61]), // 正常
+      Object.freeze([5,8,10,13,16,19,21,24,27,31,32,35,38,41,44,47,49,52,54,56,58,59,61,62,62,63,64,64,65,65,65,65,66,66,66,66,66,67,67,68,68,69,69,71,71,72,73,75,76,77,78,79,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81,81]), // 优秀
+      Object.freeze([8,12,17,21,24,27,31,33,37,41,43,46,49,53,56,59,62,65,67,71,72,74,77,79,81,82,84,85,86,87,87,88,88,88,88,89,89,89,89,89,91,91,91,91,91,91,91,91,92,92,92,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,93,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94]), // 天才
+      Object.freeze([9,13,17,21,25,28,32,35,39,42,46,49,53,57,61,65,69,73,76,81,84,87,89,91,93,93,94,94,94,94,95,95,95,95,95,95,95,95,95,95,95,95,95,96,96,96,96,96,96,96,96,96,96,96,96,96,96,96,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,97,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,99,99,99,99,99,99]), // 顶级天才
+      Object.freeze([10,13,17,21,25,28,32,35,39,42,46,49,53,58,65,72,79,85,91,94,95,96,97,97,98,98,98,99,99,99,99,99,99,99,99,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5]), // 绝世妖孽
+    ]),
+    斗四: Object.freeze([
+      Object.freeze([1,4,6,9,11,14,16,18,21,22,24,26,28,29,31,31,32,33,33,33,33,34,34,34,34,34,34,34,34,35,35,35,35,35,35,35,36,36,36,36,36,36,36,36,36,36,36,37,37,37,38,38,38,39,39,39,41,41,41,41,41,41,41,41,41,41,41,41,41,41,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,43,43,43,43,44,44,44,44,44,44,44,45,45,45,45,45,45]), // 劣等
+      Object.freeze([3,6,8,11,14,17,21,23,26,29,32,34,37,41,43,45,47,49,51,53,55,57,58,59,61,61,62,63,64,64,65,65,66,66,66,67,67,67,67,68,68,68,68,68,68,68,68,68,69,69,69,69,69,69,69,69,69,69,69,71,71,71,71,71,71,71,71,71,71,71,71,71,71,72,72,72,73,73,73,74,74,74,74,75,75,76,76,76,77,77,77,78,78,78,78,79,79,79,79,79,79,79,79,79,79,79,79,81,81,81,81,81,81,81,81]), // 正常
+      Object.freeze([5,8,11,14,18,22,26,31,36,41,44,48,51,54,57,61,62,65,68,71,73,76,79,81,84,86,88,89,91,92,92,93,93,93,93,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94,94]), // 优秀
+      Object.freeze([8,11,15,21,24,28,34,41,47,53,59,64,69,73,76,79,82,84,87,89,91,92,93,94,95,95,96,97,97,97,97,97,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,98,99,99]), // 天才
+      Object.freeze([9,15,21,27,34,41,47,53,59,64,69,74,77,81,84,86,89,91,92,94,95,96,97,97,97,98,98,99,99,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5]), // 顶级天才
+      Object.freeze([10,15,21,27,34,41,47,53,59,64,69,74,78,82,85,89,91,93,95,97,98,99,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5,99.5]), // 绝世妖孽
+    ]),
+  });
+  function talentFromAgeLevel(age, level, era = '斗三') {
+    const years = Number(age), value = Number(level);
+    if (!Number.isFinite(years) || years < 6 || !Number.isFinite(value)) return '';
+    if (value <= 0) return '天赋极差';
+    const rows = AGE_LEVEL_BY_ERA[era] || AGE_LEVEL_BY_ERA.斗三, at = Math.min(rows[0].length - 1, Math.floor(years) - 6);
+    const groups = [];
+    AGE_LEVEL_TALENTS.forEach((talent, order) => {
+      const base = rows[order][at], last = groups[groups.length - 1];
+      if (last && Math.abs(last.base - base) <= 1e-4) last.talents.push(talent);
+      else groups.push({ base, talents: [talent] });
+    });
+    let read = groups[0];
+    groups.forEach((group, index) => { if (index && value >= Math.floor((groups[index - 1].base + group.base) / 2)) read = group; });
+    return ['天才', '优秀', '正常'].find(talent => read.talents.length > 1 && read.talents.includes(talent)) || read.talents[0];
+  }
+  const cultivationEraCache = new Map();
+  function cultivationEraOf(world = {}) {
+    const tick = Number(world?.当前世界tick ?? world?.当前tick);
+    if (!Number.isFinite(tick)) return '斗三';
+    if (cultivationEraCache.has(tick)) return cultivationEraCache.get(tick);
+    let era = '斗三';
+    try {
+      const read = root.__LWCS_ERA_CULTIVATION_RUNTIME_V1__?.resolveEraAtTick?.(tick);
+      if (AGE_LEVEL_BY_ERA[read]) era = read;
+    } catch (_) { /* 没有库运行时：按斗三 */ }
+    cultivationEraCache.set(tick, era);
+    return era;
+  }
   function unitLevelOf(unit = {}) {
     const level = [unit?.等级, unit?.level, unit?.属性?.等级].map(Number).find(Number.isFinite);
     return Math.max(1, level || 1);
@@ -88625,6 +88710,8 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     guardHolds,
     counterOpeningProbability,
     battleExperience,
+    talentFromAgeLevel,
+    cultivationEraOf,
     counterStaminaFactor,
     declarationStaminaFactor,
     // 接战链 阶段二 (2026-11-12): clashing and preempting.
@@ -88803,6 +88890,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     BATTLE_TYPE_DEFAULT_INTENT,
     lifeThreatExit,
     LIFE_THREAT_RATIO,
+    lifeThreatRatio,
     INJURY_STAMINA_SHARE,
     LOW_RESOURCE_STAMINA_RATIO,
     DEFERRED_STAMINA_CUT,
@@ -99348,6 +99436,15 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
         阵营: publicSide === 'team_enemy' ? '敌方' : publicSide === 'team_player' ? '玩家' : '',
         level: perceivedLevel,
         等级: perceivedLevel,
+        // 几岁几级（V11，用户 2026-11-26 定）: its age is plain to see, and its talent is read from that age and the level it is
+        // pictured at (BattlePreview talentFromAgeLevel, in the world's era) — its battle experience (BattlePreview battleExperience:
+        // the dodge contest, the counter opening) follows, not level ÷ 3 years of a 正常 talent.
+        ...(() => {
+          const age = Number(sourceUnit?.年龄 ?? sourceUnit?.属性?.年龄);
+          if (!Number.isFinite(age)) return {};
+          const talent = preview.talentFromAgeLevel(age, perceivedLevel, preview.cultivationEraOf(worldSnapshot));
+          return talent ? { 年龄: age, 天赋梯队: talent } : { 年龄: age };
+        })(),
         系别: system,
         type: system,
         hp,
@@ -148216,9 +148313,10 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
   // A line set higher by an HP_RATIO_AT_OR_BELOW condition is that condition's to settle (lifeThreatExit).
   function settleKnockdownExit(combatData = {}, unit = {}, floor = 0, info = {}) {
     const hp = previewRuntime.readHp(unit);
-    if (!(floor > 0) || !(hp > 0) || hp > floor + 1e-9 || String(unit?.__战斗失能原因 || '').trim() || !previewRuntime.lifeThreatExit(floor, unit)) return null;
-    const beforeActionState = cloneValue(unit?.状态 || {});
     const root = combatData?.__父级战斗数据 || combatData;
+    if (!(floor > 0) || !(hp > 0) || hp > floor + 1e-9 || String(unit?.__战斗失能原因 || '').trim() ||
+      !previewRuntime.lifeThreatExit(floor, unit, root, { mode: String(root?.战斗意图 || '').trim() })) return null;
+    const beforeActionState = cloneValue(unit?.状态 || {});
     const lineRules = previewRuntime.battleRules(root, { mode: String(root?.战斗意图 || '').trim() });
     const lineCode = lineRules.spar ? 'NONLETHAL_INTENT_DISABLE' : lineRules.match ? 'LIFE_THREAT_WITHDRAWN' : 'KNOCKDOWN_SUBDUED';
     unit.__战斗失能原因 = lineCode === 'KNOCKDOWN_SUBDUED' ? 'SUBDUED' : 'INCAPACITATED';
@@ -157460,8 +157558,14 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
               settleSpecialPassiveBoundary(specialSegmentHp, facts.slice(specialSegmentFactStart), sourceEffectId, segment + 1, previewRuntime.unitId(target));
               break;
             }
+            // 切磋（用户 2026-11-26）：这一击会把人打到切磋线（五成）以下时，出手方收手——近身来得及才收得住（BattlePreview
+            // concedeHoldsBack：一记普攻的前摇 × 敏捷比短于这一招的前摇）；收不住的照常落下，但不致死，最多打到 LIFE_THREAT_RATIO。
+            // 被打到线下的判负。
+            const sparHeld = sparring && !alreadyOut && previewRuntime.concedeHoldsBack(actor, declaration, target);
+            const sparOvershoot = sparring && !alreadyOut && !sparHeld;
             const nonlethal = sparring || protectedBattle && alreadyOut;
-            const nonlethalHpFloor = nonlethal ? lifeFloor : 0;
+            const nonlethalHpFloor = !nonlethal ? 0 : sparOvershoot
+              ? Math.min(lifeFloor, Math.max(1, Math.floor(previewRuntime.readHpMax(target) * previewRuntime.LIFE_THREAT_RATIO))) : lifeFloor;
             const hitHpFloor = Math.max(nonlethalHpFloor, knockdownFloor);
             const hpDamageLimit = hitHpFloor > 0 ? Math.max(0, before - hitHpFloor) : before;
             const incomingDamage = Math.max(0, Math.min(
@@ -157537,8 +157641,9 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
             const hpAfter = previewRuntime.readHp(target);
             const traumaUnconscious = previewRuntime.shouldTriggerTraumaUnconscious(damage, hpAfter, previewRuntime.readHpMax(target));
             // Held at the line (the fighters, or the referee), or landed whole and left under it: out of the fight.
-            const heldAtLine = nonlethal && !alreadyOut && previewRuntime.lifeThreatExit(nonlethalHpFloor, target) && before > 0 && damage >= before - nonlethalHpFloor - 1e-9;
-            const leftUnderLine = protectedBattle && !nonlethal && hpAfter > 0 && previewRuntime.lifeThreatExit(lifeFloor, target) && hpAfter < lifeFloor;
+            const lineIntent = { mode: battleMode };
+            const heldAtLine = nonlethal && !alreadyOut && previewRuntime.lifeThreatExit(nonlethalHpFloor, target, combatData, lineIntent) && before > 0 && damage >= before - nonlethalHpFloor - 1e-9;
+            const leftUnderLine = protectedBattle && (!nonlethal || sparOvershoot) && hpAfter > 0 && previewRuntime.lifeThreatExit(lifeFloor, target, combatData, lineIntent) && hpAfter < lifeFloor;
             // Held at the knockdown line: subdued, out of the fight (BattlePreview battleRules knockdown).
             const knockedDown = knockdownFloor > 0 && !nonlethal && !alreadyOut && before > 0 && (before > knockdownFloor
               ? damage >= before - knockdownFloor - 1e-9 : settledSegmentDamage > shieldBefore + 1e-9);
@@ -157617,7 +157722,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
                 ruleCode: abyssRepelled ? 'ABYSS_REPELLED' : traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
-                  : leftUnderLine ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
+                  : leftUnderLine && !sparring ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
                 result: 'applied', resultState: 'SUCCESS', primaryOutcome: traumaUnconscious ? 'trauma_unconscious' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
                 meta: {
@@ -157631,7 +157736,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
                   nonlethalIncapacitated,
                   ...(refereeRescue ? { refereeRescue: { ...refereeRescue }, reasonText: `${refereeRescue.name}出手拦下这一击，${previewRuntime.unitName(target)}出局` } : {}),
                   ...(knockedDown ? { knockdownFloor, reasonText: `${previewRuntime.unitName(target)}被制服，失去战斗力` }
-                    : leftUnderLine ? { lifeFloor, reasonText: `${previewRuntime.unitName(target)}生命已到危险线，出局` } : {}),
+                    : leftUnderLine ? { lifeFloor, reasonText: sparring ? `${previewRuntime.unitName(target)}到了切磋的生命线，出局` : `${previewRuntime.unitName(target)}生命已到危险线，出局` } : {}),
                   traumaUnconscious,
                   before: beforeActionState,
                   after: cloneValue(target.状态),
