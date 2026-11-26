@@ -45733,6 +45733,77 @@
     r20ReleasedRequests.set(request, out);
     return out;
   }
+  // 看不清的对手按可能的系别分别推演（K14，11-26 用户选「算胜算时按可能的系别分别推演」）：信念把系别按后验（__systemBelief）平均成一个
+  // 对手，看清程度 0 时各项属性就是各系典型值的平均——对精神系、元素系防御估高约一倍（信念复查 cur-010：交手 0 次 防御 估计/真值 2.02、
+  // 1.88，防御系 0.69），推演拿这个「平均对手」打出「原始输 1.000」，实际精神系能赢。r20SystemView 把这一部分换成系别 system 的典型值：
+  // 各项按（该系典型 ÷ 按后验平均的典型）^（1 − 看清程度）缩放——看清的那部分已往真值靠了，不动；常规攻击倍率同样换。
+  const R20_MIX_SYSTEMS = 3, R20_MIX_CLEAR = 0.9;
+  const R20_VIEW_STATS = Object.freeze([['str', '力量'], ['def', '防御'], ['agi', '敏捷'], ['hp_max', 'HP上限', 'hp', 'HP'], ['sp_max', '魂力上限', 'sp', '魂力'],
+    ['men_max', '精神力上限', 'men', '精神力'], ['vit_max', '体力上限', 'vit', '体力']]);
+  function r20Unclear(unit) {
+    const weights = unit?.__systemBelief;
+    if (!weights || typeof weights !== 'object') return false;
+    return clamp(Number(unit.__clarity ?? 0), 0, 1) < R20_MIX_CLEAR && Math.max(0, ...Object.values(weights).map(Number)) < R20_MIX_CLEAR;
+  }
+  function r20SystemView(unit, system) {
+    const weights = unit?.__systemBelief, level = Number(unit?.__perceivedLevel ?? unit?.等级 ?? unit?.level);
+    const mine = Number.isFinite(level) ? typicalSystemStat(level, system) : null;
+    if (!weights || !mine) return unit;
+    const open = 1 - clamp(Number(unit.__clarity ?? 0), 0, 1);
+    const blendOf = read => Object.entries(weights).reduce((sum, [name, weight]) => sum + (Number(weight) || 0) * (read(name) || 0), 0);
+    const scaleOf = (own, blended) => (blended > 0 && own > 0 ? (own / blended) ** open : 1);
+    const view = { ...unit, 属性: { ...(unit.属性 || {}) } };
+    const statKey = { str: 'str', def: 'def', agi: 'agi', hp_max: 'hp_max', sp_max: 'sp_max', men_max: 'men_max', vit_max: 'vit_max' };
+    for (const [key, label, current, currentLabel] of R20_VIEW_STATS) {
+      const scale = scaleOf(mine[statKey[key]], blendOf(name => typicalSystemStat(level, name)?.[statKey[key]]));
+      if (Number.isFinite(Number(unit[key]))) view[key] = Number(unit[key]) * scale;
+      if (Number.isFinite(Number(view.属性[label]))) view.属性[label] = Number(view.属性[label]) * scale;
+      if (current && Number.isFinite(Number(unit[current]))) view[current] = Number(unit[current]) * scale;
+      if (currentLabel && Number.isFinite(Number(view.属性[currentLabel]))) view.属性[currentLabel] = Number(view.属性[currentLabel]) * scale;
+    }
+    const attack = scaleOf(typicalAttackRatio(level, system), blendOf(name => typicalAttackRatio(level, name)));
+    for (const key of ['routine_attack_ratio', '__routine_full_ratio']) if (Number.isFinite(Number(unit[key]))) view[key] = Number(unit[key]) * attack;
+    view.系别 = system;
+    return preview.inheritOverlayOrigin(view, unit);
+  }
+  // 按系别混合的胜算：看不清的每个对手取后验最大的 R20_MIX_SYSTEMS 个系别（第 k 个情形取每人的第 k 个），各推演一遍，按权重（各人第 k 个
+  // 权重之积）加权；没覆盖到的权重按平均对手（原推演 base）算。返回校准后的胜率与原始输面；没有看不清的对手时 null。
+  const r20SystemMixes = new WeakMap();
+  function r20SystemMix(request, own, base) {
+    if (r20SystemMixes.has(request)) return r20SystemMixes.get(request);
+    let mix = null;
+    const world = request?.visibleWorld, teams = world?.参战者;
+    if (teams && typeof teams === 'object' && root.__LWCS_TUNE__?.SYSTEM_MIX !== false && base?.outcomes) {
+      const unclear = [];
+      for (const list of Object.values(teams)) for (const unit of Array.isArray(list) ? list : []) {
+        if (sideOf(world, unit) !== own && r20Unclear(unit)) unclear.push(unit);
+      }
+      if (unclear.length) {
+        const levelOf = unit => Number(unit?.__perceivedLevel ?? unit?.等级 ?? unit?.level) || 1;
+        const ranked = unclear.map(unit => Object.entries(unit.__systemBelief).filter(([name]) => typicalSystemStat(levelOf(unit), name)).sort((a, b) => b[1] - a[1]).slice(0, R20_MIX_SYSTEMS));
+        let covered = 0, win = 0, rawLose = 0;
+        for (let k = 0; k < R20_MIX_SYSTEMS; k += 1) {
+          if (ranked.some(list => !list[k])) break;
+          const weight = ranked.reduce((product, list) => product * (Number(list[k][1]) || 0), 1);
+          if (!(weight > 0)) continue;
+          const views = new Map(unclear.map((unit, index) => [unit, r20SystemView(unit, ranked[index][k][0])]));
+          const nextTeams = Object.fromEntries(Object.entries(teams).map(([key, list]) => [key, Array.isArray(list) ? list.map(unit => views.get(unit) || unit) : list]));
+          const report = {}, mixTable = r20Facts({ ...request, visibleWorld: { ...world, 参战者: nextTeams } });
+          r20Race(mixTable, own, { report });
+          // Development hook (absent in play): each system's case of the mix — the views, the table and the race report.
+          if (typeof root.__LWCS_DECISION_DEBUG__?.onSystemMix === 'function') root.__LWCS_DECISION_DEBUG__.onSystemMix({ request, k, weight, views: [...views.values()], table: mixTable, report });
+          if (!report.outcomes) continue;
+          covered += weight; win += weight * report.outcomes.win; rawLose += weight * report.outcomes.rawLose;
+        }
+        if (covered > 0) {
+          const rest = Math.max(0, 1 - covered);
+          mix = { win: win + rest * base.outcomes.win, rawLose: rawLose + rest * base.outcomes.rawLose, covered, clarity: Math.min(...unclear.map(unit => clamp(Number(unit.__clarity ?? 0), 0, 1))) };
+        }
+      }
+    }
+    r20SystemMixes.set(request, mix);
+    return mix;
+  }
   function r20ExitOutlook(request = {}, actor = {}) {
     const table = r20Facts(r20ReleasedRequest(request));
     const own = request.actorSide;
@@ -45814,34 +45885,55 @@
     if (typeof root.__LWCS_DECISION_DEBUG__?.onExitOutlook === 'function') root.__LWCS_DECISION_DEBUG__.onExitOutlook({ request, raced, raceWin, mineOut, foeOut, win, time });
     // 各结局下的状态（K6；r20OutcomeStates）。终局价值（K2）接上之前不参与估值。
     const byOutcome = r20OutcomeStates(table, own, raced.outcomes, actorUnit);
+    // 看不清的对手按系别分别推演的胜算（r20SystemMix），给撤离、罢手的「留下」用（r20StayOutlook）。
+    const mix = r20SystemMix(r20ReleasedRequest(request), own, raced);
     // 上面认输估值用的资源（drainedRes、actorRes、actorSpend）仍取魂力、精神力份额里大的那个（fuel），终局价值接上时按 byOutcome 的分开计。
     return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time, without, byOutcome,
-      raceWin, mineOut, foeOut };
+      raceWin, mineOut, foeOut, mix };
   }
-  // 撤离、罢手的「留下」（K13，11-26 用户选「留下取最好的留下候选」）：留下能做的最好一手才是留下的前景。胜算取这次决策里留下候选（不是撤离、
-  // 罢手、应对时认输）各自推演的胜率（r20Chances）与按全部底牌的眼下推演（r20ReleasedRequest 的各结局）里原始输面最低的那个，体力先耗光的
-  // 折算照旧（mineOut、foeOut）。K8（11-26，504 局 1v1 + 120 局 3v3 按场合）：这样取的胜率 Brier 1v1 0.178、多人 0.146，按分差的旧曲线
-  // 0.205、0.161。STAY_BEST false 回旧（按分差）。没有留下候选的估值时（其他用途）按眼下桌面。
+  // 撤离、罢手的「留下」（K13，11-26 用户选「留下取最好的留下候选」；K16 检查点 C0 两份外部意见：在候选里取胜率最大有赢家诅咒）：胜算取 AI
+  // 实际会选的那手——估值最高的留下候选（不是撤离、罢手、应对时认输）推演的胜率（r20Chances）；自己还没开武魂时，开武魂这一手的候选推演
+  // 算不出它免费、之后还能接着行动（偏悲观），改按全部底牌的眼下推演（r20ReleasedRequest）。看不清对手时按看清程度换到按系别分别推演的
+  // 胜算（r20SystemMix）。体力先耗光的折算照旧（mineOut、foeOut）。K8（11-26，504 局 1v1 + 120 局 3v3 按场合）：最好留下候选的胜率 Brier
+  // 1v1 0.178、多人 0.146，按分差的旧曲线 0.205、0.161。STAY_BEST false 回旧（按分差）。
   const r20StayWins = new WeakMap();
   function r20StayOutlook(request, actor) {
     const outlook = r20ExitOutlook(request, actor);
     if (root.__LWCS_TUNE__?.STAY_BEST === false) return outlook;
-    const options = [r20StayWins.get(request), outlook.byOutcome ? { win: outlook.byOutcome.win.chance, rawLose: outlook.byOutcome.rawLose } : null]
-      .filter(option => option && Number.isFinite(option.win) && Number.isFinite(option.rawLose));
-    if (!options.length) return outlook;
-    const best = options.reduce((a, b) => (b.rawLose < a.rawLose ? b : a));
-    const win = clamp(best.win * (1 - outlook.mineOut) + (1 - best.win) * outlook.foeOut * (1 - outlook.mineOut), 0, 1);
-    return { ...outlook, win, lose: 1 - win, stayBest: best.win, stayRawLose: best.rawLose };
+    const stay = r20StayWins.get(request);
+    const released = outlook.byOutcome ? { win: outlook.byOutcome.win.chance, rawLose: outlook.byOutcome.rawLose } : null;
+    const base = preview.spiritUnreleased?.(actor) && released ? released : stay?.pick || released;
+    if (!base || !Number.isFinite(base.win) || !Number.isFinite(base.rawLose)) return outlook;
+    const clear = outlook.mix ? clamp(outlook.mix.clarity, 0, 1) : 1;
+    const chosen = outlook.mix ? { win: clear * base.win + (1 - clear) * outlook.mix.win, rawLose: clear * base.rawLose + (1 - clear) * outlook.mix.rawLose } : base;
+    const win = clamp(chosen.win * (1 - outlook.mineOut) + (1 - chosen.win) * outlook.foeOut * (1 - outlook.mineOut), 0, 1);
+    return { ...outlook, win, lose: 1 - win, stayBest: chosen.win, stayRawLose: chosen.rawLose, stayTop: stay?.top || null };
   }
-  // 单场比赛只在推演必输时主动认输（11-26 用户「单场比赛劣势时：胜算 0% 才行」，口径选「推演必输」）：比赛（不是切磋）、没有后续场次
-  // （matchFollowUp：接续、团战、剩余场次都没有），留下的原始输面（r20StayOutlook，按全部底牌）不到 R20_SURE_LOSS 就不主动认输。
-  // K8：原始输面 ≥ 0.999 的时刻，1v1 比赛实际仍赢约一成，多人比赛 0%。应对时认输（这一招有生命危险，候选 CONCEDE_*）不经这里，照旧。
+  // 单场比赛只在推演必输时主动认输（11-26 用户「单场比赛劣势时：胜算 0% 才行」，口径选「推演必输」；「无非就是这场的目标到底需不需要消耗
+  // 对方」——单场没有后续，消耗对方没有价值，推演必输就可以认，开场也行）：比赛（不是切磋）、没有后续场次（matchFollowUp：接续、团战、
+  // 剩余场次都没有），留下的原始输面（r20StayOutlook）不到 R20_SURE_LOSS，或估值前三的留下候选里有一手不到，就不主动认输。
+  // K8：原始输面 ≥ 0.999 的时刻，1v1 比赛实际仍赢约一成，多人比赛 0%。应对时认输见 r20ConcedeAllowed。
   const R20_SURE_LOSS = 0.999;
   function r20SingleMatchHolds(request, world, actor, raced) {
     if (root.__LWCS_TUNE__?.STAY_BEST === false || !raced || !Number.isFinite(raced.stayRawLose)) return false;
     const rules = preview.battleRules(world, request.battleIntent || {});
     if (!rules.match || rules.spar || preview.matchFollowUp?.(world, sideOf(world, actor))) return false;
-    return raced.stayRawLose < R20_SURE_LOSS;
+    return raced.stayRawLose < R20_SURE_LOSS || (raced.stayTop || []).some(rawLose => rawLose < R20_SURE_LOSS);
+  }
+  // 应对时认输（候选 CONCEDE_*）在单场比赛里（K16，C0 第二份意见「封住后门」；用户 11-19 ①「这招接不住、有生命危险，必须马上认输让裁判挡」）：
+  // 只在这一招会把自己打过出局线（BattlePreview lethalDamageThreat，来招整招伤害 incomingMoveDamage，不算命中、不算应对），或留下推演必输
+  // （r20SingleMatchHolds 不拦）时才认。11-26 对照里比赛中的 5 次应对认输，4 次这一招都打不过线（生命 0.58～0.90，来招 0.26～0.37）。
+  // 擂台、团体赛（有后续）不经这里：趁对方发大招认输让裁判挡、消耗对方（用户 11-19 ②）照旧由估值决定。
+  function r20ConcedeAllowed(request) {
+    const world = request.visibleWorld || {}, actor = findUnitInWorld(world, request.actorId);
+    if (!actor || root.__LWCS_TUNE__?.STAY_BEST === false) return true;
+    const rules = preview.battleRules(world, request.battleIntent || {});
+    if (!rules.match || rules.spar || preview.matchFollowUp?.(world, sideOf(world, actor))) return true;
+    const sourceId = String(request.actionOpportunity?.sourceActorId || '').trim(), move = request.actionOpportunity?.incomingAction;
+    const source = sourceId ? findUnitInWorld(world, sourceId) : null;
+    const incoming = source && move ? Number(preview.incomingMoveDamage?.(source, move, actor, world)) || 0 : 0;
+    if (incoming > 0 && preview.lethalDamageThreat?.({ worldSnapshot: world, battleIntent: request.battleIntent || {}, target: actor, perSegmentDamage: incoming, shieldBefore: preview.readShield?.(actor) || 0 })) return true;
+    return !r20SingleMatchHolds(request, world, actor, r20StayOutlook(request, actor));
   }
   function r20ExitMargin(request = {}) {
     r20ExitOutlook(request, {});
@@ -46212,7 +46304,7 @@
       // K13：撤离、罢手的「留下」取所有留下候选里最好的胜率，所以它们不在分担里估，留给汇总的那次决策（不出行，汇总时自己估）；
       // 留下候选的行带上各自推演的胜率（stayWin）。
       const leavingShare = candidateId => root.__LWCS_TUNE__?.STAY_BEST !== false &&
-        ['WITHDRAW', 'TRUCE'].includes(String(frozenShare.get(candidateId)?.declaration?.actionKind || '').trim().toUpperCase());
+        (['WITHDRAW', 'TRUCE'].includes(String(frozenShare.get(candidateId)?.declaration?.actionKind || '').trim().toUpperCase()) || frozenShare.get(candidateId)?.declaration?.concede === true);
       for (const candidateId of candidateIds) {
         if (!parallelShare.has(candidateId) || leavingShare(candidateId)) continue;
         const shadow = illegalTargetCandidateIds.has(candidateId) ? null : r20Shadow(request, previewResultsById[candidateId], frozenShare.get(candidateId));
@@ -46408,15 +46500,25 @@
     // K13：先估留下候选、记下各自推演的胜率里最高的（应对时认输不算留下），再估撤离、罢手——它们的「留下」取这个（r20StayOutlook）。
     const stayFirst = root.__LWCS_TUNE__?.STAY_BEST !== false;
     const values = new Map();
-    let bestStay = null;
+    const conceding = candidateId => frozenById.get(candidateId)?.declaration?.concede === true;
+    const stays = [];
     for (const candidateId of candidateIds) {
-      if (stayFirst && leaveKind(candidateId)) continue;
-      values.set(candidateId, valueOf(candidateId, stay => {
-        if (stay && Number.isFinite(stay.rawLose) && frozenById.get(candidateId)?.declaration?.concede !== true && (!bestStay || stay.rawLose < bestStay.rawLose)) bestStay = stay;
-      }));
+      if (stayFirst && (leaveKind(candidateId) || conceding(candidateId))) continue;
+      let seenStay = null;
+      const value = valueOf(candidateId, stay => { seenStay = stay; });
+      values.set(candidateId, value);
+      if (seenStay && Number.isFinite(seenStay.rawLose) && !conceding(candidateId) && !leaveKind(candidateId) && !pruned?.has(candidateId)) stays.push({ value, ...seenStay });
     }
-    if (stayFirst && bestStay) r20StayWins.set(request, bestStay);
+    if (stayFirst && stays.length) {
+      stays.sort((a, b) => b.value - a.value);
+      r20StayWins.set(request, { pick: { win: stays[0].win, rawLose: stays[0].rawLose }, top: stays.slice(0, 3).map(stay => stay.rawLose) });
+    }
     for (const candidateId of candidateIds) if (!values.has(candidateId)) values.set(candidateId, valueOf(candidateId));
+    // 单场比赛的应对时认输（r20ConcedeAllowed）：不许时排到最后（估值记为其余候选最低以下）。
+    if (stayFirst && candidateIds.some(conceding) && !r20ConcedeAllowed(request)) {
+      const floor = Math.min(...[...values.entries()].filter(([id, value]) => !conceding(id) && Number.isFinite(value)).map(([, value]) => value)) - 1;
+      for (const candidateId of candidateIds) if (conceding(candidateId)) values.set(candidateId, Number.isFinite(floor) ? floor : -1);
+    }
     const featureInputs = candidateIds.map(candidateId => ({
       candidateId,
       document: {
