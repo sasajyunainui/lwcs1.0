@@ -45689,14 +45689,20 @@
   function r20OutcomeStates(table, own, outcomes, actorUnit, now = actorUnit) {
     if (!outcomes) return null;
     const elapsed = Math.max(0, Number(table.world?.回合 || 1) - 1) + 0.5;
-    const resources = rounds => Object.fromEntries(['魂力', '精神力'].map(resource => {
-      const max = preview.readResourceMax(actorUnit, resource);
+    // 体力也给（K18，C1 第一份意见：接口缺行动者体力与输时对手的资源）：按这场已花的体力速率加每回合 R20_EXIT_VIT_PRIOR 的先验（同认输估值的
+    // 体力耗尽项）。对手的按信念里看到的份额与同样的速率估（推演不走资源，都是估计）。
+    const resourcesOf = (unit, current, rounds) => Object.fromEntries(['魂力', '精神力', '体力'].map(resource => {
+      const max = preview.readResourceMax(unit, resource);
       if (!(max > 0)) return [resource, null];
-      const spent = 1 - clamp(preview.readResource(actorUnit, resource) / max, 0, 1);
-      const rate = (spent + (r20UsesResource(actorUnit, resource) ? 2 * R20_EXIT_SPEND_PRIOR : 0)) / (elapsed + 2);
-      const nowMax = preview.readResourceMax(now, resource) || max;
-      return [resource, Math.max(0, clamp(preview.readResource(now, resource) / nowMax, 0, 1) - rate * rounds)];
+      const spent = 1 - clamp(preview.readResource(unit, resource) / max, 0, 1);
+      const prior = resource === '体力' ? 2 * R20_EXIT_VIT_PRIOR : r20UsesResource(unit, resource) ? 2 * R20_EXIT_SPEND_PRIOR : 0;
+      const rate = (spent + prior) / (elapsed + 2);
+      const nowMax = preview.readResourceMax(current, resource) || max;
+      return [resource, Math.max(0, clamp(preview.readResource(current, resource) / nowMax, 0, 1) - rate * rounds)];
     }));
+    const resources = rounds => resourcesOf(actorUnit, now, rounds);
+    // 输时对手各人的资源（擂台里对手赢了留场、己方后面有人时，C1「输时对手状态」用）；己方的记 null。
+    const foeResources = rounds => table.units.map((unit, row) => (table.sides[row] === own || preview.isSummonUnit(unit) ? null : resourcesOf(unit, unit, rounds)));
     const lineShare = row => r20Floor(table.units[row]) / Math.max(1, preview.readHpMax(table.units[row]));
     const winHp = table.units.map((unit, row) => (table.sides[row] === own ? Math.min(1, outcomes.winLeft[row] + lineShare(row)) : lineShare(row)));
     const loseHp = table.units.map((unit, row) => (table.sides[row] === own ? lineShare(row) : Math.min(1, outcomes.loseLeft[row] + lineShare(row))));
@@ -45704,7 +45710,7 @@
     return {
       ids: (table.ids || []).slice(), actorRow: actorRow ?? -1, rawWin: outcomes.rawWin, rawLose: outcomes.rawLose,
       win: { chance: outcomes.win, rounds: outcomes.tWin, actorRes: resources(outcomes.tWin), actorHp: actorRow === undefined ? null : winHp[actorRow], hp: winHp },
-      lose: { chance: outcomes.lose, rounds: outcomes.tLose, actorRes: resources(outcomes.tLose), actorHp: actorRow === undefined ? null : loseHp[actorRow], hp: loseHp },
+      lose: { chance: outcomes.lose, rounds: outcomes.tLose, actorRes: resources(outcomes.tLose), actorHp: actorRow === undefined ? null : loseHp[actorRow], hp: loseHp, foeRes: foeResources(outcomes.tLose) },
     };
   }
   // 胜算按自己的全部底牌（11-26 用户「推演胜算肯定是按自己的全部底牌，和对方最起码应该有的底牌来算的啊？如果双方都是魂师的话，那武魂不就是
