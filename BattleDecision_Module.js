@@ -42023,6 +42023,10 @@
     // 照打；落后方拖着求「输得晚」）。还没分出的按分差 tanh 分成赢、输两份，同样只有赢的一份打折扣。WIN_ORDER=false 回旧（按分差 tanh 定方向）。
     const winOrder = distOn && root.__LWCS_TUNE__?.WIN_ORDER !== false;
     let winMass = 0, loseMass = 0, ownDown = 0, foeDown = 0, winMassRaw = 0;
+    // 各结局下的状态（K6，11-26 设计稿《预测量与终局价值》）：赢、输的概率每分出一份，按那一刻各人活着条件下的剩余
+    // （oddsAt left ÷ (1 − fall)）与时间加权累计，结束时写进 plan.report.outcomes。11-26 实测（84 局 1v1 × 438 时刻 × 10 次续打）比
+    // 「推演结束时、不分结局」准：赢时对方生命平均绝对误差 35.9 → 14.5 点，赢时自己 31.1 → 25.5，燃料 55 → 28～32。
+    const outcomeSums = plan?.report && winOrder ? { winT: 0, loseT: 0, winLeft: new Array(count).fill(0), loseLeft: new Array(count).fill(0) } : null;
     const tailZ = (() => { const e = clamp(tailEps, 1e-6, 0.5), t = Math.sqrt(-2 * Math.log(e)); return t - (2.515517 + 0.802853 * t + 0.010328 * t * t) / (1 + 1.432788 * t + 0.189269 * t * t + 0.001308 * t * t * t); })();
     const denied = plan?.denied || facts.held || null, until = plan?.until || null, base = plan?.base || facts;
     // idle[u]: rounds u gives up its own action but still answers what comes at it (援护：只用掉本回合的主动机会，
@@ -43036,6 +43040,14 @@
               const won = Math.max(0, theirs - foeDown) * (1 - (mine + ownDown) / 2), lost = Math.max(0, mine - ownDown) * (1 - (theirs + foeDown) / 2);
               const gain = now - decided, sum = won + lost, share = sum > 1e-12 ? won / sum : 0.5;
               winMass += gain * share * R20_RACE_DISCOUNT ** time; loseMass += gain * (1 - share); winMassRaw += gain * share;
+              if (outcomeSums) {
+                const gainWon = gain * share, gainLost = gain * (1 - share);
+                outcomeSums.winT += gainWon * time; outcomeSums.loseT += gainLost * time;
+                for (let u = 0; u < count; u += 1) {
+                  const odds = oddsAt(u, time), kept = odds.left / Math.max(1e-6, 1 - odds.fall);
+                  outcomeSums.winLeft[u] += gainWon * kept; outcomeSums.loseLeft[u] += gainLost * kept;
+                }
+              }
             }
             discountMass += (now - decided) * R20_RACE_DISCOUNT ** time; decided = now;
           }
@@ -43060,6 +43072,14 @@
     }
     // plan.report（r20ExitOutlook）：推演结束时各单位还剩的与分差。
     if (plan?.report) { plan.report.left = left.map((value, unit) => (stam ? Math.min(value, stam[unit] + (sh?.[unit] || 0)) : value)); plan.report.margin = score; plan.report.time = time; }
+    if (outcomeSums) {
+      // 推演结束时还没分出的，一半算赢、一半算输，按推演结束时的状态补。
+      const open = Math.max(0, 1 - decided) / 2, endKept = u => { const odds = oddsAt(u, time); return odds.left / Math.max(1e-6, 1 - odds.fall); };
+      const win = winMassRaw + open, lose = loseMass + open;
+      plan.report.outcomes = { win, lose, tWin: (outcomeSums.winT + open * time) / Math.max(1e-9, win), tLose: (outcomeSums.loseT + open * time) / Math.max(1e-9, lose),
+        winLeft: outcomeSums.winLeft.map((value, u) => (value + open * endKept(u)) / Math.max(1e-9, win)),
+        loseLeft: outcomeSums.loseLeft.map((value, u) => (value + open * endKept(u)) / Math.max(1e-9, lose)) };
+    }
     // The margin, and winning itself: smooth in the margin (a level fight tips either way on a hair, and a hard ±1 made
     // every candidate of a mirror match worth the whole battle or nothing), worth more the sooner it is decided.
     // 推迟拿下的代价（11-23 对账：领先方自估 80%～85% 仍选让过/防御——终局一样，晚一回合只差 0.85 的折扣）：推演里赢的分量与每回合折扣
@@ -45682,7 +45702,17 @@
     }
     // Development hook (absent in play): the race behind an exit's odds.
     if (typeof root.__LWCS_DECISION_DEBUG__?.onExitOutlook === 'function') root.__LWCS_DECISION_DEBUG__.onExitOutlook({ request, raced, raceWin, mineOut, foeOut, win, time });
-    return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time, without };
+    // 各结局下的状态（K6）：赢时本方、输时对方按分出胜负那一刻活着条件下的剩余（加回出局线），输的一方在出局线上；
+    // 燃料按赢、输各自的期望结束回合扣。多人时每人按自己活着的条件取，是近似（11-26 实测只做了 1v1）。终局价值（K2）接上之前不参与估值。
+    const outcomes = raced.outcomes || null;
+    const lineShare = row => r20Floor(table.units[row]) / Math.max(1, preview.readHpMax(table.units[row]));
+    const byOutcome = outcomes ? {
+      win: { chance: outcomes.win, rounds: outcomes.tWin, actorFuel: Math.max(0, fuel(actorUnit) - rate(actorUnit) * outcomes.tWin),
+        hp: table.units.map((unit, row) => (table.sides[row] === own ? Math.min(1, outcomes.winLeft[row] + lineShare(row)) : lineShare(row))) },
+      lose: { chance: outcomes.lose, rounds: outcomes.tLose, actorFuel: Math.max(0, fuel(actorUnit) - rate(actorUnit) * outcomes.tLose),
+        hp: table.units.map((unit, row) => (table.sides[row] === own ? lineShare(row) : Math.min(1, outcomes.loseLeft[row] + lineShare(row)))) },
+    } : null;
+    return { win, lose: 1 - win, draw: 0, drained, drainedRes, actorKept, actorRes: fuel(actorUnit), actorSpend: Math.min(fuel(actorUnit), rate(actorUnit) * time), worthRatio, time, without, byOutcome };
   }
   function r20ExitMargin(request = {}) {
     r20ExitOutlook(request, {});
