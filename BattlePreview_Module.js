@@ -4673,6 +4673,8 @@
     const rules = battleRules(worldSnapshot, battleIntent);
     if (!rules.exit || !actor || typeof actor !== 'object') return null;
     const side = sideOf(worldSnapshot, actor), id = unitId(actor);
+    // Brought down, a fighter is left at the battle's line (lifeThreatRatio: 切磋五成、有裁判的比赛三成、其余一成).
+    const line = lifeThreatRatio(worldSnapshot, battleIntent);
     // 后面还有比赛（剩余场次，用户 11-20「输不应该是血量为 0 或者过低……不然重伤的话后面的比赛怎么打？」）：被打倒的代价再加
     // EXIT_INJURY_FATE——重伤带进后面的比赛；认输以此刻的状态离场，不吃这一份。
     const fate = exitFate(worldSnapshot, battleIntent) + (matchFollowUp(worldSnapshot, side)?.remaining > 0 ? EXIT_INJURY_FATE : 0);
@@ -4707,9 +4709,9 @@
         // 折算），代价是这一回合自己掉的生命与花的资源——推演里撑不到一回合就倒下，代价就是倒下前的全部（出局线以上）。
         const rounds = Math.max(1, racedNumber('time')), worthRatio = racedNumber('worthRatio') ?? 1;
         const drainRound = (Math.max(0, racedNumber('drained') ?? 0) + FOLLOW_RESOURCE_SHARE * Math.max(0, racedNumber('drainedRes') ?? 0)) / rounds * worthRatio;
-        const hpLossRound = Math.max(0, share(actor) - Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? 0))) / rounds;
+        const hpLossRound = Math.max(0, share(actor) - Math.max(line, Math.min(share(actor), racedNumber('actorKept') ?? 0))) / rounds;
         const resLossRound = Math.max(0, racedNumber('actorSpend') ?? 0) / rounds;
-        const winWorth = 1 + FOLLOW_KEEP * follow.keep * Math.max(LIFE_THREAT_RATIO, Math.min(share(actor), racedNumber('actorKept') ?? share(actor)));
+        const winWorth = 1 + FOLLOW_KEEP * follow.keep * Math.max(line, Math.min(share(actor), racedNumber('actorKept') ?? share(actor)));
         // 这一回合里就结束的那部分（推演的结束时间不到一回合按必定）等不到「下回合再认输」，输了照吃被打倒的代价（11-20：之前一律不计，
         // 每回合都觉得再打一回合更好，擂台模拟 80 场里擂主 0 次认输、生命打到 2%～10% 才出局）。
         const endsNow = racedNumber('time') > 0 ? clamp(1 / racedNumber('time'), 0, 1) : 1;
@@ -4719,7 +4721,7 @@
         stay = oneMore;
       } else {
         const drained = foeHp * reach * fuel;
-        const kept = (outlook.win + 0.5 * outlook.draw) * share(actor) + outlook.lose * LIFE_THREAT_RATIO;
+        const kept = (outlook.win + 0.5 * outlook.draw) * share(actor) + outlook.lose * line;
         followStay = FOLLOW_DRAIN * follow.carry * drained * (1 - outlook.win) + FOLLOW_KEEP * follow.keep * kept;
         stay += followStay;
       }
@@ -4762,16 +4764,27 @@
   // rules below: refereeTiming and after); projections take it that the line holds, which leaves the same units in the
   // fight either way.
   const LIFE_THREAT_RATIO = 0.1;
+  // 出局线按场合（用户 2026-11-26）: a spar's line is SPAR_LINE_RATIO (五成，点到为止: the striker holds a hit that would take
+  // the other under it — BattleRuntime, as far as it can hold back, concedeHoldsBack; one it cannot hold lands, but no lower
+  // than LIFE_THREAT_RATIO); a match with a referee REFEREE_LINE_RATIO (三成: the referee steps in for a hit that would take a
+  // fighter under it, and the one it saves is out — in a match one is badly hurt only where the referee is too late or not
+  // strong enough); a match with no referee keeps LIFE_THREAT_RATIO (the 三成 line is the referee's protection, not the match's).
+  const SPAR_LINE_RATIO = 0.5, REFEREE_LINE_RATIO = 0.3;
+  function lifeThreatRatio(worldSnapshot = {}, battleIntent = {}) {
+    const rules = battleRules(worldSnapshot, battleIntent);
+    return rules.spar ? SPAR_LINE_RATIO : rules.match && rules.refereed ? REFEREE_LINE_RATIO : LIFE_THREAT_RATIO;
+  }
   function isRefereedMatch(worldSnapshot = {}, battleIntent = {}) {
     return battleRules(worldSnapshot, battleIntent).match;
   }
   function isProtectedBattle(worldSnapshot = {}, battleIntent = {}) {
     return battleRules(worldSnapshot, battleIntent).protected;
   }
-  // Whether reaching `floor` takes `target` out of the fight: the life-threat line does; a higher line set by a victory
-  // condition (HP_RATIO_AT_OR_BELOW) is settled by that condition instead.
-  function lifeThreatExit(floor = 0, target = {}) {
-    return floor > 0 && floor <= Math.max(1, Math.floor(readHpMax(target) * LIFE_THREAT_RATIO)) + 1e-9;
+  // Whether reaching `floor` takes `target` out of the fight: the life-threat line does (the battle's, lifeThreatRatio, when
+  // the world is given); a higher line set by a victory condition (HP_RATIO_AT_OR_BELOW) is settled by that condition instead.
+  function lifeThreatExit(floor = 0, target = {}, worldSnapshot = null, battleIntent = {}) {
+    const ratio = worldSnapshot ? lifeThreatRatio(worldSnapshot, battleIntent) : LIFE_THREAT_RATIO;
+    return floor > 0 && floor <= Math.max(1, Math.floor(readHpMax(target) * ratio)) + 1e-9;
   }
 
   // The line a hit is held at (0: none): in a spar or a match the life-threat line (or a higher HP_RATIO_AT_OR_BELOW
@@ -4808,7 +4821,7 @@
       condition.threshold > 0 &&
       objectiveUnits(worldSnapshot, condition).some(unit => unitId(unit) === unitId(target)),
     ).map(condition => condition.threshold);
-    const threshold = Math.max(LIFE_THREAT_RATIO, ...thresholds);
+    const threshold = Math.max(lifeThreatRatio(worldSnapshot, battleIntent), ...thresholds);
     return Math.max(1, Math.floor(readHpMax(target) * threshold));
   }
 
@@ -27388,6 +27401,7 @@ function conditionSubject(condition = {}, actor = {}, target = {}, context = {})
     BATTLE_TYPE_DEFAULT_INTENT,
     lifeThreatExit,
     LIFE_THREAT_RATIO,
+    lifeThreatRatio,
     INJURY_STAMINA_SHARE,
     LOW_RESOURCE_STAMINA_RATIO,
     DEFERRED_STAMINA_CUT,

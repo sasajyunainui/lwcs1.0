@@ -3995,9 +3995,10 @@
   // A line set higher by an HP_RATIO_AT_OR_BELOW condition is that condition's to settle (lifeThreatExit).
   function settleKnockdownExit(combatData = {}, unit = {}, floor = 0, info = {}) {
     const hp = previewRuntime.readHp(unit);
-    if (!(floor > 0) || !(hp > 0) || hp > floor + 1e-9 || String(unit?.__战斗失能原因 || '').trim() || !previewRuntime.lifeThreatExit(floor, unit)) return null;
-    const beforeActionState = cloneValue(unit?.状态 || {});
     const root = combatData?.__父级战斗数据 || combatData;
+    if (!(floor > 0) || !(hp > 0) || hp > floor + 1e-9 || String(unit?.__战斗失能原因 || '').trim() ||
+      !previewRuntime.lifeThreatExit(floor, unit, root, { mode: String(root?.战斗意图 || '').trim() })) return null;
+    const beforeActionState = cloneValue(unit?.状态 || {});
     const lineRules = previewRuntime.battleRules(root, { mode: String(root?.战斗意图 || '').trim() });
     const lineCode = lineRules.spar ? 'NONLETHAL_INTENT_DISABLE' : lineRules.match ? 'LIFE_THREAT_WITHDRAWN' : 'KNOCKDOWN_SUBDUED';
     unit.__战斗失能原因 = lineCode === 'KNOCKDOWN_SUBDUED' ? 'SUBDUED' : 'INCAPACITATED';
@@ -13239,8 +13240,14 @@
               settleSpecialPassiveBoundary(specialSegmentHp, facts.slice(specialSegmentFactStart), sourceEffectId, segment + 1, previewRuntime.unitId(target));
               break;
             }
+            // 切磋（用户 2026-11-26）：这一击会把人打到切磋线（五成）以下时，出手方收手——近身来得及才收得住（BattlePreview
+            // concedeHoldsBack：一记普攻的前摇 × 敏捷比短于这一招的前摇）；收不住的照常落下，但不致死，最多打到 LIFE_THREAT_RATIO。
+            // 被打到线下的判负。
+            const sparHeld = sparring && !alreadyOut && previewRuntime.concedeHoldsBack(actor, declaration, target);
+            const sparOvershoot = sparring && !alreadyOut && !sparHeld;
             const nonlethal = sparring || protectedBattle && alreadyOut;
-            const nonlethalHpFloor = nonlethal ? lifeFloor : 0;
+            const nonlethalHpFloor = !nonlethal ? 0 : sparOvershoot
+              ? Math.min(lifeFloor, Math.max(1, Math.floor(previewRuntime.readHpMax(target) * previewRuntime.LIFE_THREAT_RATIO))) : lifeFloor;
             const hitHpFloor = Math.max(nonlethalHpFloor, knockdownFloor);
             const hpDamageLimit = hitHpFloor > 0 ? Math.max(0, before - hitHpFloor) : before;
             const incomingDamage = Math.max(0, Math.min(
@@ -13316,8 +13323,9 @@
             const hpAfter = previewRuntime.readHp(target);
             const traumaUnconscious = previewRuntime.shouldTriggerTraumaUnconscious(damage, hpAfter, previewRuntime.readHpMax(target));
             // Held at the line (the fighters, or the referee), or landed whole and left under it: out of the fight.
-            const heldAtLine = nonlethal && !alreadyOut && previewRuntime.lifeThreatExit(nonlethalHpFloor, target) && before > 0 && damage >= before - nonlethalHpFloor - 1e-9;
-            const leftUnderLine = protectedBattle && !nonlethal && hpAfter > 0 && previewRuntime.lifeThreatExit(lifeFloor, target) && hpAfter < lifeFloor;
+            const lineIntent = { mode: battleMode };
+            const heldAtLine = nonlethal && !alreadyOut && previewRuntime.lifeThreatExit(nonlethalHpFloor, target, combatData, lineIntent) && before > 0 && damage >= before - nonlethalHpFloor - 1e-9;
+            const leftUnderLine = protectedBattle && (!nonlethal || sparOvershoot) && hpAfter > 0 && previewRuntime.lifeThreatExit(lifeFloor, target, combatData, lineIntent) && hpAfter < lifeFloor;
             // Held at the knockdown line: subdued, out of the fight (BattlePreview battleRules knockdown).
             const knockedDown = knockdownFloor > 0 && !nonlethal && !alreadyOut && before > 0 && (before > knockdownFloor
               ? damage >= before - knockdownFloor - 1e-9 : settledSegmentDamage > shieldBefore + 1e-9);
@@ -13396,7 +13404,7 @@
                 actionName, actionType: 'incapacitation', actorControl, actionRole, actionId: actionEvent.actionId,
                 sourceActionId: actionEvent.actionId, parentNodeId: actionEvent.chainNodeId || '', sourceNodeId: actionEvent.chainNodeId || '',
                 ruleCode: abyssRepelled ? 'ABYSS_REPELLED' : traumaUnconscious ? 'TRAUMA_UNCONSCIOUS' : refereeRescue ? 'REFEREE_RESCUE' : knockedDown ? 'KNOCKDOWN_SUBDUED'
-                  : leftUnderLine ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
+                  : leftUnderLine && !sparring ? 'LIFE_THREAT_WITHDRAWN' : 'NONLETHAL_INTENT_DISABLE',
                 result: 'applied', resultState: 'SUCCESS', primaryOutcome: traumaUnconscious ? 'trauma_unconscious' : 'nonlethal_incapacitation',
                 effectPrototype: prototype, factType: 'STATE', sourceEffectId, operation: 'STATE_APPLY',
                 meta: {
@@ -13410,7 +13418,7 @@
                   nonlethalIncapacitated,
                   ...(refereeRescue ? { refereeRescue: { ...refereeRescue }, reasonText: `${refereeRescue.name}出手拦下这一击，${previewRuntime.unitName(target)}出局` } : {}),
                   ...(knockedDown ? { knockdownFloor, reasonText: `${previewRuntime.unitName(target)}被制服，失去战斗力` }
-                    : leftUnderLine ? { lifeFloor, reasonText: `${previewRuntime.unitName(target)}生命已到危险线，出局` } : {}),
+                    : leftUnderLine ? { lifeFloor, reasonText: sparring ? `${previewRuntime.unitName(target)}到了切磋的生命线，出局` : `${previewRuntime.unitName(target)}生命已到危险线，出局` } : {}),
                   traumaUnconscious,
                   before: beforeActionState,
                   after: cloneValue(target.状态),
