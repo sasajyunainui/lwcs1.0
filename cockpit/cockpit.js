@@ -594,12 +594,20 @@
   const layer = document.createElement('div'); layer.className = 'float-layer'; cockpitEl.appendChild(layer);
   const floatOpen = () => !!layer.firstChild || !!$('.inline-detail');
   function clearFloat() { layer.replaceChildren(); $$('.inline-detail').forEach(el => el.remove()); }
-  // 停靠详情对齐座舱窗口（.screens）的左右与底边，最高占窗口六成，内部自己滚
+  // 停靠详情对齐座舱窗口（.screens）的左右与底边，最高占窗口六成，内部自己滚。
+  // 手机上座舱下半截常落在聊天区可见范围之外（用户 11-26 魂技卡「显示不全」）：底边取座舱底边与聊天区可见底边中靠上的那个，
+  // 高度也不超过可见部分；聊天区滚动时跟着重新停靠。
   const dockDetail = box => {
     const stageEl = $('.stage'), sr = screens.getBoundingClientRect(), gr = stageEl.getBoundingClientRect();
-    Object.assign(box.style, { left: (sr.left - gr.left) + 'px', width: sr.width + 'px', bottom: (gr.bottom - sr.bottom) + 'px', maxHeight: Math.round(sr.height * .62) + 'px' });
+    const outer = outerScroller(), vr = outer && outer !== document.scrollingElement ? outer.getBoundingClientRect() : { top: 0, bottom: innerHeight };
+    const bottomEdge = Math.min(sr.bottom, vr.bottom), visible = bottomEdge - Math.max(sr.top, vr.top);
+    Object.assign(box.style, { left: (sr.left - gr.left) + 'px', width: sr.width + 'px', bottom: (gr.bottom - bottomEdge) + 'px',
+      maxHeight: Math.round(Math.max(160, Math.min(sr.height * .62, visible * .9))) + 'px' });
   };
-  addEventListener('resize', () => { const box = $('.inline-detail.docked'); if (box) dockDetail(box); });
+  const redock = () => { const box = $('.inline-detail.docked'); if (box) dockDetail(box); };
+  addEventListener('resize', redock);
+  let dockScroller = null;
+  const watchDockScroll = () => { const outer = outerScroller(); if (outer && outer !== dockScroller) { dockScroller?.removeEventListener('scroll', redock); outer.addEventListener('scroll', redock, { passive: true }); dockScroller = outer; } };
   function project(html, anchor, swap = false) {
     const old = swap && !isMobile() ? $('.fcard', layer) : null;
     if (old) { $('.holo-in', old).innerHTML = html; tbdPass(old); old.style.transition = reduce ? '' : 'top .2s cubic-bezier(.2,.8,.2,1)'; place(old, anchor); return; }
@@ -612,7 +620,7 @@
         // 从魂环牌打开时，浮层顶部带一排同一武魂的魂环牌（浮层会盖住原来那排），在浮层里直接换环
         const picks = anchor.closest('.ring-picks');
         if (picks) box.prepend(picks.cloneNode(true));
-        box.classList.add('docked'); $('.stage').appendChild(box); dockDetail(box); charge(box);
+        box.classList.add('docked'); $('.stage').appendChild(box); dockDetail(box); watchDockScroll(); charge(box);
         if (!reduce) box.animate([{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
         return;
       }
