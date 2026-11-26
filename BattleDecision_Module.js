@@ -40236,6 +40236,67 @@
     }
     return owed;
   }
+  // DEBUG 模式总开关（K38，用户 11-26「构建整个行为系统时没考虑 DEBUG」「给一个总控开关」）：root.__LWCS_DEBUG__ = { on: true }。
+  // 开着才记开发记录（推演账本在 root.__LWCS_DEBUG__.ledger）；关着（正式游玩默认）每个记录点只多一次判空，不多算任何东西。
+  const lwcsDebug = () => root.__LWCS_DEBUG__?.on === true ? root.__LWCS_DEBUG__ : null;
+  // 推演账本：出招记录重算（r20ReasonRecord，选中与次选）的每次推演记一份——每人的出手份额与来源、每一对假定的来招与接法、格子取的哪一招、
+  // 每一步每人打谁 / 为什么 / 这一下的系数链、交锋、挨的与回复、倒下、结局。只读算式用到的同一批数，不改计算。条目带 opportunityId，
+  // 与战斗账本 action_start.meta.opportunityId 相连。
+  const r20LedgerNum = value => Number.isFinite(Number(value)) ? Number(Number(value).toFixed(5)) : null;
+  const r20LedgerRow = list => Array.from(list || [], r20LedgerNum);
+  const r20LedgerSkill = skill => skill && typeof skill === 'object' ? String(skill.魂技名 || skill.name || skill.id || '') : String(skill || '');
+  const r20LedgerMove = move => !move ? '' : String(move.actionKind || '').toUpperCase() === 'BASIC_ATTACK' ? '普攻' : `魂技：${r20LedgerSkill(move.skill)}`;
+  // 这一步没打敌人的原因（r20Race idleWhy 的编号）。
+  const R20_LEDGER_IDLE = Object.freeze(['打了', '够不着或没有能打的', '帮队友比打划算', '交换不划算又没有更好的目标', '被压住', '份额或倍率为零',
+    '这一下全被挡下', '被控住', '维持控制', '维持增益或召唤', '维持破防']);
+  // r20Cell 最近一次的组成（DEBUG 开时）：取的哪一项、普攻、取的那招整招、技能份额；填格子的地方记下（r20NoteCell）。
+  // 记录按「攻方编号 > 守方编号 | 格子值」存在 DEBUG 对象上：格子行会被分阶段拼表、候选重算、到期后的表多次复制，值相同就是同一次计算。
+  let r20CellLast = null;
+  const r20NoteKey = (attacker, defender, value) => `${preview.unitId(attacker)}>${preview.unitId(defender)}|${Number(value)}`;
+  function r20NoteCell(row, col, attacker, defender, aim = 1, computed = true) {
+    const debug = lwcsDebug();
+    if (!debug || !row) return;
+    const last = computed && r20CellLast && r20CellLast.unit === attacker && r20CellLast.other === defender ? r20CellLast : null;
+    (debug.cellNotes ||= new Map()).set(r20NoteKey(attacker, defender, row[col]), last ? { from: last.from, basic: r20LedgerNum(last.basic), best: r20LedgerNum(last.best),
+      skill: r20LedgerSkill(last.skill), value: r20LedgerNum(last.value), share: r20LedgerNum(last.share), aim: r20LedgerNum(aim), ...(last.why ? { why: last.why } : {}) }
+      : { from: computed ? '未记录' : '不出手（0）', aim: r20LedgerNum(aim) });
+  }
+  // 每一对（攻 → 守）开局这一下假定的来招与接法（r20FillPair），按「攻 > 守 | 留下的份额 keep」存。
+  function r20NotePair(attacker, defender, keep, note) {
+    const debug = lwcsDebug();
+    if (!debug) return;
+    (debug.pairNotes ||= new Map()).set(r20NoteKey(attacker, defender, keep), Object.fromEntries(Object.entries(note).map(([key, value]) => [key, typeof value === 'number' ? r20LedgerNum(value) : value])));
+  }
+  const r20LedgerTag = (plan, tag) => { if (plan?.ledger) plan.ledgerTag = tag; return plan; };
+  function r20LedgerValue(plan, value) {
+    const runs = plan?.ledger?.runs;
+    if (runs?.length && runs[runs.length - 1].value === undefined) runs[runs.length - 1].value = r20LedgerNum(value);
+    return value;
+  }
+  // 一次推演的账：每人的进攻份额、伤害份额、每回合次数与各自来源（与 r20Race 里 attackRate / hitRate / countOf 同一套条件）。
+  function r20LedgerRun(plan, facts, count, rates) {
+    const units = [];
+    for (let row = 0; row < count; row += 1) {
+      const runtime = rates.rateUnits?.[row]?.__battleRuntime || {}, n = key => Array.isArray(runtime[key]) ? runtime[key].length : 0, self = row === rates.rateActor;
+      const fromRate = (planKey, logKey, off) => self && rates.selfRate && Number.isFinite(plan?.[planKey]) ? '这一手（出手按 1，不出手按最近份额）'
+        : !(rates.rateUnits?.[row] && row < (plan?.baseCount ?? count) && (!self || rates.selfRate)) ? '不按记录（按 1）'
+        : off ? '开关关（按 1）' : n(logKey) ? `先验 ${R20_ATTACK_PRIOR} 次 + 记录 ${n(logKey)} 次` : '没有记录（按 1）';
+      units.push({ id: (facts.ids || plan?.base?.ids)?.[row] ?? `+${row}`, side: facts.sides?.[row] ?? null, actor: self,
+        attackRate: r20LedgerNum(rates.attackRate[row]), attackFrom: fromRate('selfRate', 'attackLog', root.__LWCS_TUNE__?.OPPONENT_RATE_OFF === true),
+        hitRate: r20LedgerNum(rates.hitRate[row]), hitFrom: rates.intentRate ? fromRate('selfDamage', 'intentLog', false) : '同进攻份额（INTENT_RATE 关）',
+        count: r20LedgerNum(rates.countOf[row]), countFrom: root.__LWCS_TUNE__?.ACTION_COUNT !== true ? '开关关（按 1）'
+          : n('turnLog') ? `先验 ${R20_COUNT_PRIOR} 次 + 记录 ${n('turnLog')} 回合` : '没有记录（按 1）' });
+    }
+    const run = { tag: plan.ledgerTag || '主推演', weight: r20LedgerNum(plan.traceWeight ?? 1), units, steps: [] };
+    (plan.ledger.runs ||= []).push(run);
+    return run;
+  }
+  // 这一下的系数链：格子（取的哪一招）、开局这一下的接法、以及 r20Race 乘上的各系数（ids：推演表的编号）。
+  function r20LedgerStrike(view, unit, target, factors, ids) {
+    const debug = lwcsDebug(), key = value => `${ids?.[unit]}>${ids?.[target]}|${Number(value)}`;
+    return { out: r20LedgerNum(view.out?.[unit]?.[target]), cell: debug?.cellNotes?.get(key(view.out?.[unit]?.[target])) || null,
+      pair: debug?.pairNotes?.get(key(view.keep?.[target]?.[unit])) || null, ...Object.fromEntries(Object.entries(factors).map(([k, value]) => [k, r20LedgerNum(value)])) };
+  }
   // 招式混合（MOVE_MIX，11-24 对账：按实际接法比，推演每一下落下仍多算 1.3～1.4 倍——格子按「魂力够就放最好的技能」，实际带伤害的出手
   // 普攻占 61～78%）：技能加成按观察到的魂技份额（moveLog）折算，先验 R20_ATTACK_PRIOR 次按原来的份额（用得起几次 ÷ R20_HORIZON，看到的技能按 1）。
   // 11-24 转正默认开（对账、2×2 分叉、检验题三关）；LWCS_TUNE {"MOVE_MIX":false} 关回。
@@ -40254,7 +40315,12 @@
     const basic = friendly || hasStateFlag(unit, 'disarm') || hidden({ 目标: '单体' }) ? 0 : cachedBaseActionValue(unit, other, 'BASIC_ATTACK', null, context, world);
     let best = basic, struck = basic, resources = null, cellFrom = 'basic';
     r20Struck = basic / 100;
-    if (hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) return best / 100;
+    // DEBUG：这一格取的那招、整招、技能份额（r20CellLast，填格子处 r20NoteCell 记下）。
+    const note = lwcsDebug() ? { skill: '', value: basic / 100, share: 0 } : null;
+    if (hasStateFlag(unit, 'silence') || preview.isSummonSkillDisabled(unit)) {
+      if (note) r20CellLast = { unit, other, from: cellFrom, basic: basic / 100, best: best / 100, ...note, why: '沉默或召唤被禁，只算普攻' };
+      return best / 100;
+    }
     const all = affordablePreparedSkills(unit), own = r20Usable(unit, all);
     // An enemy as believed lists no skills: the ones it has shown count as it used them (their cost is not known).
     if (!all.length) for (const skill of r20Shown(unit)) {
@@ -40264,7 +40330,10 @@
         : !(profile.startsWith('HOSTILE_') || profile === 'ANY_SINGLE') || hidden(preview.collectEffects(skill)[0])) continue;
       const value = cachedBaseActionValue(unit, other, 'RELEASE_SKILL', skill, context, world);
       const shownValue = friendly || root.__LWCS_TUNE__?.MOVE_MIX === false ? value : basic + (value - basic) * r20SkillShare(unit, R20_UNSEEN_SKILL_SHARE);
-      if (shownValue > best) cellFrom = 'shown';
+      if (shownValue > best) {
+        cellFrom = 'shown';
+        if (note) Object.assign(note, { skill, value: value / 100, share: friendly || root.__LWCS_TUNE__?.MOVE_MIX === false ? 1 : r20SkillShare(unit, R20_UNSEEN_SKILL_SHARE) });
+      }
       best = Math.max(best, shownValue);
       if (!friendly && r20StrikesBack(skill)) struck = Math.max(struck, R20_STRUCK_MIX ? shownValue : value);
     }
@@ -40299,8 +40368,8 @@
         if (r20FusionOnce(fusion)) uses = Math.min(uses, 1);
         if (!(uses >= 1)) continue;
       }
-      const kept = basic + (value - basic) * (friendly ? Math.max(1, uses) / R20_HORIZON : r20SkillShare(unit, Math.max(1, uses) / R20_HORIZON));
-      if (kept > best) cellFrom = 'skill';
+      const mix = friendly ? Math.max(1, uses) / R20_HORIZON : r20SkillShare(unit, Math.max(1, uses) / R20_HORIZON), kept = basic + (value - basic) * mix;
+      if (kept > best) { cellFrom = 'skill'; if (note) Object.assign(note, { skill, value: value / 100, share: mix }); }
       best = Math.max(best, kept);
       // A strike back is one release, at what it lands now (the skill is affordable now): not the per-round average the
       // cell keeps for its output. 11-14 (推演—实际对账, 72 battles): a strike back was read at 2.7% a time against 5.0%
@@ -40319,7 +40388,10 @@
       // MOVE_MIX：典型技能按技能使用份额摊（看不见技能的人，没有观察时 R20_UNSEEN_SKILL_SHARE）——11-24 对账：格子取典型技能、实际出的是普攻时，
       // 格子是出手者预演的 2.2～3.4 倍（3v3 对手的技能大多还没露过）。
       const mixedRoutine = root.__LWCS_TUNE__?.MOVE_MIX !== false ? basic + (routine - basic) * r20SkillShare(unit, R20_UNSEEN_SKILL_SHARE) : routine;
-      if (mixedRoutine > best) cellFrom = 'routine';
+      if (mixedRoutine > best) {
+        cellFrom = 'routine';
+        if (note) Object.assign(note, { skill: '典型技能（看不见技能列表）', value: routine / 100, share: root.__LWCS_TUNE__?.MOVE_MIX !== false ? r20SkillShare(unit, R20_UNSEEN_SKILL_SHARE) : 1 });
+      }
       best = Math.max(best, mixedRoutine);
       // The routine attack is a skill released at once (routineAttackEffect: no charge), so it may strike back too — as
       // often as a unit has a counter skill ready (R20_ROUTINE_COUNTER_SHARE); else its basic attack.
@@ -40328,6 +40400,7 @@
     r20Struck = struck / 100;
     // 开发钩子（对账）：格子取的是哪一项（basic 普攻、skill 看得见的技能按用得起摊开、shown 看到过的技能、routine 看不见技能时的典型技能）。
     root.__LWCS_DECISION_DEBUG__?.cellParts?.({ unit, other, friendly, basic: basic / 100, best: best / 100, from: cellFrom, struck: struck / 100 });
+    if (note) r20CellLast = { unit, other, from: cellFrom, basic: basic / 100, best: best / 100, ...note };
     return best / 100;
   }
   // A release's upkeep (维持) on `actor` as the release leaves it: the shares of its pools one round end takes, summed, and
@@ -41354,6 +41427,10 @@
     const openStand = raw ? { ...(raw.move && root.__LWCS_TUNE__?.RAW_MOVE_OFF !== true ? r20Stand(units[row], units[other], raw.move) : stand), theirs: raw.damage,
       incomingRanged: !!raw.move && preview.declarationDamageClass?.(raw.move) === 'RANGED' } : stand;
     const opening = r20Meet(openStand, r20Weight(cells.out[other][row])), struck = r20Meet(stand, r20Weight(cells.back[other][row]));
+    // DEBUG：开局这一下按哪一招接（来招者整招最强的一招，r20RawHit）、接法与留下的份额；之后挨的还手按假定的普攻（stand）。
+    if (lwcsDebug()) r20NotePair(units[other], units[row], opening.keep, { move: !raw ? '算不出整招（按格子）' : raw.move && root.__LWCS_TUNE__?.RAW_MOVE_OFF !== true ? r20LedgerMove(raw.move) : '按格子（RAW_MOVE_OFF）',
+      theirs: raw?.damage, soak: openStand.soak, guard: openStand.guard, dodge: openStand.dodge, kind: opening.kind, keep: opening.keep, answer: opening.answer, back: opening.back,
+      weight: r20Weight(cells.out[other][row]), afterMove: '普攻（假定）', afterKind: struck.kind, afterKeep: struck.keep, afterDodge: stand.dodge });
     // Development hook (absent in play): which answer a pair's opening hit meets, with the stand it was weighed on.
     root.__LWCS_DECISION_DEBUG__?.onFillPair?.({ units, row, other, stand: openStand, opening, weight: r20Weight(cells.out[other][row]), out: cells.out[other][row], struck });
     cells.keep[row][other] = opening.keep; cells.answerOpen[row][other] = opening.answer;
@@ -42182,6 +42259,9 @@
     const hitRate = !intentRate ? attackRate : Array.from({ length: count }, (value, row) => row === rateActor && selfRate && Number.isFinite(plan?.selfDamage) ? plan.selfDamage
       : rateUnits?.[row] && row < (plan?.baseCount ?? count) && (row !== rateActor || selfRate) ? r20DamageShare(rateUnits[row]) : 1);
     const countOf = Array.from({ length: count }, (value, row) => rateUnits?.[row] && row < (plan?.baseCount ?? count) ? r20ActionCount(rateUnits[row]) : 1);
+    // DEBUG：推演账本（plan.ledger 只在出招记录重算、DEBUG 开时有，见 r20LedgerRun）。
+    const lg = plan?.ledger ? r20LedgerRun(plan, facts, count, { attackRate, hitRate, countOf, rateUnits, rateActor, selfRate, intentRate }) : null;
+    const lgIds = facts.ids || plan?.base?.ids || null, lgId = row => lgIds?.[row] ?? `+${row}`;
     const observedCache = new Map(), observedRef = plan?.base || facts;
     const observedRatio = (unit, target) => {
       // 默认关（OBSERVED_STRIKE 开）：11-23 逐目标对账（ec3|6|4 B1 元素系开武魂真身）推演两回合 218%、实际约 84%/下——比例拿单次重击（实际）
@@ -42237,6 +42317,9 @@
     const groupUnits = bond ? (facts.units || base.units || []) : null, groupRoles = bond ? r20RaceRoles(groupUnits, count) : null;
     for (let step = 0; step < 64 && time < horizon - 1e-9; step += 1) {
       r20Work.steps += 1;
+      // DEBUG：这一步的账——每人打谁、为什么、这一下的系数链；步末补挨的、回复、倒下（decided 是到上一步末已分出的）。
+      const lgStep = lg ? { t: r20LedgerNum(time), decided: r20LedgerNum(decided), left0: r20LedgerRow(left), u: new Array(count).fill(null) } : null;
+      if (lgStep) lg.steps.push(lgStep);
       // D2 退场：期望已打穿剩余、存活概率低于 tailEps 的人这一步起不在场（按退场时的状态与上一步的速率外推，见 oddsAt）。
       if (flowOn) for (let unit = 0; unit < count; unit += 1) {
         if (!(left[unit] > 1e-9) || !(debt[unit] > 1e-12) || !(surv[unit] < tailEps) || (revive && revive[unit] > 0)) continue;
@@ -42718,10 +42801,11 @@
         const stuckRow = stickyTarget(unit), stuck = stuckRow >= 0 && left[stuckRow] > 1e-9 && Number(cells(unit, stuckRow).out?.[unit]?.[stuckRow]) > 0 ? stuckRow : -1;
         if (stuck >= 0) aimAt = stuck;
         let target = struck(aimAt), strike = cells(unit, target).out[unit][target] * takes(cells(unit, target), target, unit);
+        if (lgStep) lgStep.u[unit] = { why: stuck >= 0 ? '续打' : aimAt !== focus[foe].unit ? '分工' : '集火', aim: lgId(aimAt) };
         if (!(strike > 0)) for (let aim = 0; aim < count; aim += 1) {
           if (sides[aim] === sides[unit] || !(left[aim] > 1e-9) || !inRole(aim)) continue;
           const other = struck(aim), value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
-          if (value > strike) { strike = value; target = other; }
+          if (value > strike) { strike = value; target = other; if (lgStep) lgStep.u[unit].why = '原目标打不动，改打最划算的'; }
         }
         // 交战关系：缠斗中的人默认打自己的对手；集火目标的这一下减去脱身代价（对手追击）仍比打对手划算才换（用户 11-21）。
         const lockedTo = facts.locked?.[unit], switchCost = row => lockedTo && !lockedTo.has(row) ? facts.lockCost?.[unit] || 0 : 0;
@@ -42732,7 +42816,7 @@
             const other = struck(row), value = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
             if (value > bestValue) { bestValue = value; best = other; }
           }
-          if (best >= 0 && !(strike - switchCost(target) > bestValue)) { target = best; strike = bestValue; }
+          if (best >= 0 && !(strike - switchCost(target) > bestValue)) { target = best; strike = bestValue; if (lgStep) lgStep.u[unit].why = '缠斗（打自己缠着的对手）'; }
         }
         // 局部战团：打的人不在能打的范围里（集火目标在别的战团、又不落单），改打范围里最划算的。
         if (reach && reach[unit] && stuck < 0) {
@@ -42744,19 +42828,24 @@
               const other = struck(row), v = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
               if (v > value) { value = v; pick = other; }
             }
-            if (pick >= 0) { target = pick; strike = value; }
+            if (pick >= 0) { target = pick; strike = value; if (lgStep) lgStep.u[unit].why = '战团（集火目标不在能打的范围）'; }
           }
         }
         if (paired && paired[unit] >= 0 && left[paired[unit]] > 1e-9 && stuck < 0) {
           const other = struck(paired[unit]);
           target = other; strike = cells(unit, other).out[unit][other] * takes(cells(unit, other), other, unit);
+          if (lgStep) lgStep.u[unit].why = '配对';
         }
         const share = free(unit), rawStrike = strike;
         strike *= share * offMul[unit] * defMul[target] * hitRate[unit] * observedRatio(unit, target) * countOf[unit];
+        // DEBUG：这一下的系数链（strike = 格子 out × 留下 takes × 出手份额 [held·pace·press·surv·burst] × 攻防倍率 × 伤害份额 × 观察校准 × 每回合次数）。
+        if (lgStep) Object.assign(lgStep.u[unit], r20LedgerStrike(cells(unit, target), unit, target, { takes: takes(cells(unit, target), target, unit), held: heldShare[unit], pace: pace[unit],
+          press: pressEff[unit], surv: surv[unit], burst: burst ? burst[unit] : 1, off: offMul[unit], def: defMul[target], hitRate: hitRate[unit], observed: observedRatio(unit, target),
+          count: countOf[unit], strike }, lgIds), { target: lgId(target) });
         // 围攻：同时挨 n 人打，挡下的份额打折（见 pressEff 处）。
         if (besiegedBy[target] > 1 && strike > 0) {
           const kept = takes(cells(unit, target), target, unit);
-          if (kept > 1e-9 && kept < 1) strike *= (1 - (1 - kept) * besiegeShare(besiegedBy[target])) / kept;
+          if (kept > 1e-9 && kept < 1) { const siege = (1 - (1 - kept) * besiegeShare(besiegedBy[target])) / kept; strike *= siege; if (lgStep) lgStep.u[unit].siege = r20LedgerNum(siege); }
         }
         const help = cells(unit, ally).support[unit][ally] * share * offMul[unit];
         // The exchange its strike opens; a unit that would take more than it lands aims at the enemy it does best
@@ -42774,6 +42863,7 @@
         if (idleWhy) idleWhy[unit] = !(strike > 0) ? (!(rawStrike > 0) ? (Number(cells(unit, target).out?.[unit]?.[target]) > 0 ? 6 : 1) : !(share > 0) ? (!(pressEff[unit] > 0) ? 4 : heldShare[unit] >= 1 - 1e-9 ? 7 : paceWhy?.[unit] || 8) : 5) : exchange ? 0 : 2;
         if (exchange && !(strike + exchange.more > exchange.taken)) {
           let best = 0;
+          const lgKeep = lgStep ? { ...lgStep.u[unit], unfavorable: true } : null;
           // 按记录估份额的人（不是行动者本人、有出手记录）找不到更划算的目标时照样打（11-23 对账：推演里对手 42% 的出手时间「交换不划算」
           // 按兵不动，再乘记录的进攻份额，两回合有效出手 0.74 次、实际 1.46 次——份额里已经含了他不划算就不打的那部分，再扣是重复）。
           // OBSERVED_HOLD_ON 恢复照扣。
@@ -42788,13 +42878,20 @@
               (root.__LWCS_TUNE__?.SWITCH_RATE_OFF === true ? 1 : hitRate[unit] * observedRatio(unit, other));
             if (!(hit > 0)) continue;
             const trial = open(other), net = hit + trial.more - trial.taken - switchCost(other);
-            if (net > best) { best = net; exchange = trial; strike = hit; target = other; }
+            if (net > best) {
+              best = net; exchange = trial; strike = hit; target = other;
+              // DEBUG：换目标这一下照乘出手份额、攻防倍率、伤害份额与观察校准，没乘每回合次数与围攻（与上面的 strike 不同）。
+              if (lgStep) lgStep.u[unit] = { ...lgKeep, ...r20LedgerStrike(cells(unit, other), unit, other, { takes: takes(cells(unit, other), other, unit), held: heldShare[unit], pace: pace[unit],
+                press: pressEff[unit], surv: surv[unit], burst: burst ? burst[unit] : 1, off: offMul[unit], def: defMul[other],
+                hitRate: root.__LWCS_TUNE__?.SWITCH_RATE_OFF === true ? 1 : hitRate[unit], observed: root.__LWCS_TUNE__?.SWITCH_RATE_OFF === true ? 1 : observedRatio(unit, other), count: 1, strike: hit }, lgIds),
+                target: lgId(other), why: '换目标（原目标交换不划算）', siege: null, switchCost: r20LedgerNum(switchCost(other)), note: '换目标这一下没乘每回合次数与围攻' };
+            }
           }
-          if (!exchange && keep) ({ exchange, strike, target } = keep);
-          if (stuck >= 0 && keep) ({ exchange, strike, target } = keep);
+          if (!exchange && keep) { ({ exchange, strike, target } = keep); if (lgStep) lgStep.u[unit] = { ...lgKeep, kept: '交换不划算也照打（记录的份额已含不打的部分）' }; }
+          if (stuck >= 0 && keep) { ({ exchange, strike, target } = keep); if (lgStep) lgStep.u[unit] = { ...lgKeep, kept: '续打（不换目标）' }; }
         }
         if (idleWhy && !exchange && idleWhy[unit] === 0) idleWhy[unit] = 3;
-        if (!exchange) { if (help > 0) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; } }
+        if (!exchange) { if (help > 0) { mended[ally] += help; aimed[unit] = ally; landed[unit] = -help; if (lgStep) lgStep.u[unit].help = { ally: lgId(ally), amount: r20LedgerNum(help) }; } }
         else {
           // 交锋按次（TAKEN_SHARE，11-25 对账：一例对手进攻挨行动者反击推演 0.055/回合、实际约 0.006——exchange 是「每打一下」引出的收支，
           // 这一行的 strike 已乘出手份额 share × 伤害份额 × 每回合次数，more / taken 却按每回合整下算，被压、拖尾、少出手的人照样挨满反击）：
@@ -42802,6 +42899,9 @@
           // 自己 0.097→0.091（只开它反而变差）→ 默认开，TAKEN_SHARE false 关回。
           const perStrike = root.__LWCS_TUNE__?.TAKEN_SHARE !== false ? share * hitRate[unit] * countOf[unit] : 1;
           const more = exchange.more * offMul[unit] * defMul[target] * perStrike, taken = exchange.taken * offMul[target] * defMul[unit] * surv[target] * perStrike;
+          // DEBUG：交锋（每打一下引出的：多打出 more、挨回 taken，都按每回合真正打几下 perStrike 折）。
+          if (lgStep) Object.assign(lgStep.u[unit], { strikeFinal: r20LedgerNum(strike), exMore: r20LedgerNum(exchange.more), exTaken: r20LedgerNum(exchange.taken), perStrike: r20LedgerNum(perStrike),
+            more: r20LedgerNum(more), taken: r20LedgerNum(taken) });
           const ward = partialWard[target];
           // 这一下的方差（FALL_DIST）：每回合 n 次、每次以 p 打中，打中时每下 X ÷ (n·p)、离散度 cv²：X² (1 + cv² − p) ÷ (n·p)。
           const spreadHit = distOn && strike + more > 0 ? (() => { const amount = strike + more, p = clamp(hitRate[unit] * spreadLand(unit, target), 0.02, 1), n = Math.max(1, countOf[unit]);
@@ -42811,6 +42911,7 @@
             // 挡下的份额 = 1 − 它出招的前摇 ÷ 一次行动的时长（r20GuardHold，记在掩护上），其余落回被保护者（按出手者打两人的常规输出之比换算防御差别）。
             const onGuard = cells(unit, target).out[unit][target], onWard = cells(unit, ward).out[unit][ward];
             const hold = Number.isFinite(cover?.[ward]?.hold) ? cover[ward].hold : R20_GUARD_HOLD_SHARE;
+            if (lgStep) Object.assign(lgStep.u[unit], { ward: lgId(ward), hold: r20LedgerNum(hold) });
             dealt[target] += (strike + more) * hold;
             dealt[ward] += (strike + more) * (1 - hold) * (onGuard > 1e-9 ? onWard / onGuard : 1); hits[ward] += 1;
             if (distOn) { varIn[target] += spreadHit * hold * hold; varIn[ward] += spreadHit * ((1 - hold) * (onGuard > 1e-9 ? onWard / onGuard : 1)) ** 2; }
@@ -42818,7 +42919,10 @@
           } else { dealt[target] += strike + more; if (distOn) varIn[target] += spreadHit; if (srcHit) srcHit[target][srcOf(unit)] += strike + more; }
           hits[target] += 1;
           aimed[unit] = target; landed[unit] = strike + more;
-          if (helpRate && observed && help > 0 && attackRate[unit] < 1) mended[ally] += help * (1 - attackRate[unit]);
+          if (helpRate && observed && help > 0 && attackRate[unit] < 1) {
+            mended[ally] += help * (1 - attackRate[unit]);
+            if (lgStep) lgStep.u[unit].help = { ally: lgId(ally), amount: r20LedgerNum(help * (1 - attackRate[unit])), part: '出手份额之外' };
+          }
           // What it lands gives it HP back (伤害吸收), in its own HP maximum.
           if (drain && drain[unit] > 0) mended[unit] += landed[unit] * drain[unit] * facts.hpMax[target] / facts.hpMax[unit];
           // A share of what lands is thrown back at the attacker (反伤), in its own HP maximum.
@@ -42828,6 +42932,9 @@
           // OPEN_BACK_SCALE（11-24 对齐窗口对账：开 OPEN_BACK 后行动者打回对面多算约 1.7 倍，每次应对的值本身却少算——推演里应对次数偏多，查明前先按折算校准）。行内读，默认 1。
           const openTaken = openView?.openBack ? (Number(openView.openBack[target]?.[unit]) || 0) * (1 - heldHard[target]) * share * hitRate[unit] * countOf[unit] * offMul[target] * defMul[unit] * surv[target] * Number(root.__LWCS_TUNE__?.OPEN_BACK_SCALE ?? 1) : 0;
           dealt[unit] += taken + openTaken + (facts.reflect?.[target] > 0 ? (strike + more) * facts.reflect[target] * facts.hpMax[target] / facts.hpMax[unit] : 0);
+          if (lgStep) Object.assign(lgStep.u[unit], { landed: r20LedgerNum(landed[unit]), openTaken: r20LedgerNum(openTaken),
+            reflect: r20LedgerNum(facts.reflect?.[target] > 0 ? (strike + more) * facts.reflect[target] * facts.hpMax[target] / facts.hpMax[unit] : 0),
+            drain: r20LedgerNum(drain && drain[unit] > 0 ? landed[unit] * drain[unit] * facts.hpMax[target] / facts.hpMax[unit] : 0) });
           if (srcHit) srcHit[unit][3] += taken + openTaken + (facts.reflect?.[target] > 0 ? (strike + more) * facts.reflect[target] * facts.hpMax[target] / facts.hpMax[unit] : 0);
           takenBy[unit] = taken;
           // 开发钩子（对账）：推演每一步谁打谁、落下多少、自己挨回多少（按步，未乘步长）。
@@ -42853,7 +42960,11 @@
       if (assist) for (let unit = 0; unit < count; unit += 1) {
         if (!(summonOut[unit] > 0) || !(left[unit] > 1e-9)) continue;
         const foe = sideNames.find(side => side !== sides[unit]), target = foe !== undefined ? struck(focus[foe].unit) : -1;
-        if (target >= 0 && left[target] > 1e-9) { dealt[target] += summonOut[unit] * defMul[target] * surv[unit]; hits[target] += 1; if (srcHit) srcHit[target][4] += summonOut[unit] * defMul[target]; }
+        if (target >= 0 && left[target] > 1e-9) {
+          dealt[target] += summonOut[unit] * defMul[target] * surv[unit]; hits[target] += 1; if (srcHit) srcHit[target][4] += summonOut[unit] * defMul[target];
+          if (lgStep) (lgStep.summon ||= []).push({ from: lgId(unit), target: lgId(target), out: r20LedgerNum(summonOut[unit]), def: r20LedgerNum(defMul[target]), surv: r20LedgerNum(surv[unit]),
+            amount: r20LedgerNum(summonOut[unit] * defMul[target] * surv[unit]) });
+        }
       }
       // The periodic HP the kept changes bring (r20Assists tick).
       if (assist) for (let unit = 0; unit < count; unit += 1) {
@@ -43012,6 +43123,16 @@
         }
         if (total > 0) left[aimed[unit]] = Math.max(0, left[aimed[unit]] - (before / total - 0.5) * landed[unit]);
       }
+      // DEBUG：步末——步长与截步的候选（下一次变化 next、拖尾封顶 tailStep、各人按当前速率倒下 falls）、每人每轮挨的 dealt、回复 mended、
+      // 剩余 left、倒下概率 fall、拖尾欠账 debt、没打敌人的原因 idle。
+      if (lgStep) {
+        const why = unit => !(lgStep.left0[unit] > 1e-9) ? '已倒' : denied && time < denied[unit] ? '没轮到或被打断' : busy && time < busy[unit] ? '在出招（前摇）'
+          : idle && time < idle[unit] ? '让过这一回合' : idleWhy ? R20_LEDGER_IDLE[idleWhy[unit]] || String(idleWhy[unit]) : '';
+        Object.assign(lgStep, { dt: r20LedgerNum(stepTime), next: r20LedgerNum(nextChange - time), ...(flowOn ? { tailStep: r20LedgerNum(tailStep) } : {}), falls: r20LedgerRow(falls),
+          dealt: r20LedgerRow(dealt), mended: r20LedgerRow(mended), hits: r20LedgerRow(hits), left: r20LedgerRow(left), held: r20LedgerRow(heldShare), pace: r20LedgerRow(pace),
+          surv: r20LedgerRow(surv), ...(distOn ? { fall: Array.from({ length: count }, (value, unit) => r20LedgerNum(oddsAt(unit, time + stepTime).fall)), debt: r20LedgerRow(debt), varIn: r20LedgerRow(varIn) } : {}),
+          tick: tick ? r20LedgerRow(tick) : null, tickAdd: r20LedgerRow(tickAdd), idle: Array.from({ length: count }, (value, unit) => why(unit)) });
+      }
       time += stepTime;
       // 出招记录（plan.falls，只在记录重算时给）: who falls when in the flow.
       if (plan?.falls) for (let unit = 0; unit < count; unit += 1) if (!(left[unit] > 1e-9) && !plan.falls.some(entry => entry.row === unit)) plan.falls.push({ row: unit, time: Number(time.toFixed(2)) });
@@ -43100,6 +43221,12 @@
     const chances = winOrder ? r20Chances(winMassRaw, loseMass, open, twoSides ? lean : 0, team, twoSides) : null;
     // 这一手推演出的胜率（K13：撤离、罢手的「留下」取最好的留下候选的胜率，r20Shadow 取走）。
     if (plan) plan.chances = chances;
+    // DEBUG：推演结束——为什么结束、已分出的赢 / 输、还没分出的 open（按分差 lean 划给两边）、分差、各人倒下概率。
+    if (lg) lg.end = { time: r20LedgerNum(time), horizon: r20LedgerNum(horizon), steps: lg.steps.length,
+      why: time >= horizon - 1e-9 ? '到推演上限' : standing.size < 2 ? '一方全倒' : lg.steps.length >= 64 ? '步数用完' : '步长为零（中止）',
+      decided: r20LedgerNum(decided), winMass: r20LedgerNum(winMassRaw), loseMass: r20LedgerNum(loseMass), open: r20LedgerNum(open), lean: r20LedgerNum(lean),
+      margin: r20LedgerNum(score), ownLeft: r20LedgerNum(ownLeft), chances: chances ? Object.fromEntries(Object.entries(chances).map(([key, value]) => [key, r20LedgerNum(value)])) : null,
+      fall: Array.from({ length: count }, (value, unit) => r20LedgerNum(distOn ? oddsAt(unit, time).fall : left[unit] > 1e-9 ? 0 : 1)) };
     if (outcomeSums) {
       // 推演结束时还没分出的，按分差分成赢、输（同 r20Chances），按推演结束时的状态补；概率取 r20Chances（校准后），条件下的回合与剩余按推演的份量。
       const openWin = Math.max(0, open) * (1 + (twoSides ? lean : 0)) / 2, openLose = Math.max(0, open) - openWin;
@@ -43186,6 +43313,7 @@
         if (sides[index] === sides[other]) { if (acts[index]) support[index][other] = r20Cell(units[index], units[other], true, index === other, context, world, skipped); continue; }
         if (!acts[index] || bound[index] && !bound[index].has(ids[other])) continue;
         out[index][other] = aim[index] * r20Cell(units[index], units[other], false, false, context, world, skipped);
+        if (lwcsDebug()) r20NoteCell(out[index], other, units[index], units[other], aim[index]);
         back[index][other] = aim[index] * r20Struck;
         ({ stop: stop[index][other], control: control[index][other] } = r20Control(units[index], units[other], world));
       }
@@ -43609,7 +43737,8 @@
     const rows = [];
     for (const pick of picks) {
       if (!pick?.candidate || !pick?.result) continue;
-      const trace = {};
+      // DEBUG：推演账本（选中与次选各一份，见 r20LedgerRun）。
+      const trace = lwcsDebug() ? { ledger: { runs: [] } } : {};
       const shadow = r20Shadow(request, pick.result, pick.candidate, trace);
       if (!shadow) continue;
       if (['WITHDRAW', 'TRUCE'].includes(String(pick.candidate?.declaration?.actionKind || '').trim().toUpperCase()) && typeof options.passBase === 'function') {
@@ -43620,9 +43749,15 @@
         }
       }
       rows.push({ id: pick.candidate.candidateId, label: r20CandidateLabel(pick.candidate, request.visibleWorld), value: Number(Number(shadow.value).toFixed(4)), terms: trace.terms || [],
-        falls: trace.falls || [], ...(trace.branch ? { branch: trace.branch } : {}), counter: trace.counter || 0, unseen: trace.unseen, wary: trace.wary, flow0: trace.flow0 || null, round1: trace.round1 || null, charge: trace.charge || null });
+        falls: trace.falls || [], ...(trace.branch ? { branch: trace.branch } : {}), counter: trace.counter || 0, unseen: trace.unseen, wary: trace.wary, flow0: trace.flow0 || null, round1: trace.round1 || null, charge: trace.charge || null,
+        ...(trace.ledger ? { ledger: trace.ledger } : {}) });
     }
     if (!rows.length) return null;
+    // DEBUG：这次决策的账本条目放进 root.__LWCS_DEBUG__.ledger，带 opportunityId（与战斗账本 action_start.meta.opportunityId 相连）。
+    const debug = lwcsDebug();
+    if (debug) (debug.ledger ||= []).push({ opportunityId: String(request.actionOpportunity?.opportunityId || ''), round: Number(request.visibleWorld?.回合 || 0),
+      actorId: String(request.actorId || ''), role: String(request.actionOpportunity?.role || 'ACTIVE').toUpperCase(), drawn: options.drawn === true,
+      picks: rows.map(row => ({ id: row.id, label: row.label, value: row.value, terms: row.terms, race: row.ledger?.runs || [] })) });
     const [chosen, runner] = rows;
     const actor = findUnitInWorld(request.visibleWorld, request.actorId) || {};
     const win = Number(r20ExitOutlook(request, actor)?.win);
@@ -43974,12 +44109,14 @@
           const free = acts[row] && (!bound || bound.has(table.ids[other])), reach = acts[other] && (!table.bound[other] || table.bound[other].has(table.ids[row]));
           const aimed = free ? r20Aim(next, table.sides.filter(side => side === table.sides[row]).length / Math.max(1, count)) : 0;
           out[row][other] = free ? aimed * r20Cell(next, units[other], false, false, context, after, null) : 0;
+          if (lwcsDebug()) r20NoteCell(out[row], other, next, units[other], free ? aimed : 0, !!free);
           back[row][other] = free ? aimed * r20Struck : 0;
           ({ stop: stop[row][other], control: control[row][other] } = free ? r20Control(next, units[other], after) : R20_NO_CONTROL);
           // What the other keeps off and answers of its hits goes with their weight.
           r20FillPair(cells, units, acts, other, row);
           if (ownCellsOnly) continue;
           out[other][row] = reach ? r20Cell(units[other], next, false, false, context, after, null) : 0;
+          if (lwcsDebug()) r20NoteCell(out[other], row, units[other], next, 1, !!reach);
           back[other][row] = reach ? r20Struck : 0;
           ({ stop: stop[other][row], control: control[other][row] } = reach ? r20Control(units[other], next, after) : R20_NO_CONTROL);
           r20FillPair(cells, units, acts, row, other);
@@ -44078,8 +44215,10 @@
             continue;
           }
           out[row][other] = acts[row] ? r20Cell(unit, otherUnit, false, false, context, after, null) : 0;
+          if (lwcsDebug()) r20NoteCell(out[row], other, unit, otherUnit, 1, !!acts[row]);
           back[row][other] = acts[row] ? r20Struck : 0;
           out[other][row] = acts[other] ? r20Cell(otherUnit, unit, false, false, context, after, null) : 0;
+          if (lwcsDebug()) r20NoteCell(out[other], row, otherUnit, unit, 1, !!acts[other]);
           back[other][row] = acts[other] ? r20Struck : 0;
           r20FillPair(cells, all, acts, row, other); r20FillPair(cells, all, acts, other, row);
         }
@@ -44584,7 +44723,7 @@
     const pressSeed = idle && commitRow !== undefined && table.sides[commitRow] !== table.sides[actorRow] && root.__LWCS_TUNE__?.PRESS_SEED !== false &&
       ['BASIC_ATTACK', 'RELEASE_SKILL'].includes(seedKind) && seedAnswered
       ? { row: commitRow, actor: actorRow, time: Math.max(0, Number(preview.pressTime?.(table.units[actorRow], declaredNow, table.units[commitRow], table.world)) || 0) } : null;
-    const plan = { pressSeed, denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, selfDamage, ...(selfPress > 0 ? { selfPress: { row: actorRow, time: selfPress, by: pressSourceRow } } : {}), ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}),
+    const plan = { pressSeed, denied, until, base: table, leaves, baseCount: count, changed, busy, strikes: strikes.length ? strikes : null, expired: expiredCells, cuts: cuts.length ? cuts : null, idle, strikeAt, selfRate, selfDamage, ...(selfPress > 0 ? { selfPress: { row: actorRow, time: selfPress, by: pressSourceRow } } : {}), ...(commit ? { commit } : {}), ...(trace ? { falls: [] } : {}), ...(trace?.ledger ? { ledger: trace.ledger } : {}),
       // 每个候选各自的结局（K10，11-26 外部意见「价值函数要选 A / 选 B 之后各怎样」）：CANDIDATE_OUTCOMES 开时这一手的推演也出 report.outcomes，
       // 下面按各结局的状态（r20OutcomeStates）放进返回的 outcomes。终局价值（K2）接上之前不参与估值，默认关（多算各结局的剩余要花时间）。
       ...(root.__LWCS_TUNE__?.CANDIDATE_OUTCOMES === true ? { report: {} } : {}) };
@@ -44598,7 +44737,8 @@
       if (chance > 0.05 && chance < 0.95 && (open < 0 || Math.abs(chance - 0.5) < Math.abs(0.5 - alive[open]))) open = row;
     }
     let raced;
-    if (open < 0) raced = r20Race(facts, own, plan);
+    // DEBUG：每次推演在账本里标上是哪一支、记下推演值（r20LedgerTag 先于 r20Race 求值）。
+    if (open < 0) raced = r20LedgerValue(r20LedgerTag(plan, '主推演'), r20Race(facts, own, plan));
     else {
       const chance = 1 - alive[open], standingLeft = Math.min(table.remaining[open] + Math.max(0, remaining[open] - table.remaining[open]), remaining[open] / alive[open]);
       const withUnit = (left, weight) => ({ ...facts, remaining: remaining.map((value, row) => row === open ? left : value), alive: alive.map((value, row) => row === open ? weight : value) });
@@ -44606,12 +44746,12 @@
       // 标记分支（plan.branch），对账可单列（11-23 对账复核：此前两支直接累加、或只留先写的一支）。
       const traced = !!plan.falls;
       if (traced) plan.traceWeight = chance;
-      const down = chance * r20Race(withUnit(0, 0), own, plan);
+      const down = chance * r20LedgerValue(r20LedgerTag(plan, '分支：' + table.ids[open] + ' 倒下'), r20Race(withUnit(0, 0), own, plan));
       const first = traced ? { falls: plan.falls, flow0: plan.flow0, firstAim: plan.firstAim } : null;
       if (traced) { plan.falls = []; plan.flow0 = undefined; plan.firstAim = undefined; if (plan.round1) plan.round1.sealed = false; plan.traceWeight = 1 - chance; }
       const downReport = plan.report, downChances = plan.chances;
       if (downReport) plan.report = {};
-      const up = (1 - chance) * r20Race(withUnit(standingLeft, 1), own, plan);
+      const up = (1 - chance) * r20LedgerValue(r20LedgerTag(plan, '分支：' + table.ids[open] + ' 站着'), r20Race(withUnit(standingLeft, 1), own, plan));
       if (downReport) plan.report = { ...plan.report, outcomes: r20MixOutcomes(downReport.outcomes, chance, plan.report.outcomes, 1 - chance) };
       if (downChances && plan.chances) plan.chances = Object.fromEntries(['win', 'lose', 'rawWin', 'rawLose'].map(key => [key, chance * downChances[key] + (1 - chance) * plan.chances[key]]));
       if (traced) {
@@ -44850,7 +44990,7 @@
           if (p > 0 && lands > 0) meets.push({ from: actorRow, to: row, at: 0, delta: -(1 - none) * p / odds * lands });
         }
         const withMeets = { ...plan, strikes: [...(plan.strikes || []), ...meets].sort((left, right) => left.at - right.at) };
-        const metRace = meets.length ? r20Race(facts, own, withMeets) - r20Race(facts, own, plan) : 0;
+        const metRace = meets.length ? r20LedgerValue(r20LedgerTag(withMeets, '佯攻：有人冲上来'), r20Race(facts, own, withMeets)) - r20LedgerValue(r20LedgerTag(plan, '佯攻：对照'), r20Race(facts, own, plan)) : 0;
         let meetShare = 0;
         const stages = preview.readSkillCostStages?.(declaration.feintSkill, { costActor: feinter })?.启动 || {};
         for (const [resource, amount] of Object.entries(stages)) {
