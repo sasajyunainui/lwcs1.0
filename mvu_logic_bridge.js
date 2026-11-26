@@ -7491,6 +7491,10 @@
     [...(参战者.team_player || []), ...(参战者.team_enemy || [])].forEach(单位 => {
       const 属性 = 数据根?.char?.[toText(单位?.name ?? 单位, '').trim()]?.属性;
       if (!属性 || typeof 属性 !== 'object') return;
+      // 下一子场重新开武魂（用户 11-26）：存档里还留着的「武魂已释放 / 未释放」标记清掉（战斗写回时已不留，这里兜底）。
+      if (属性.状态效果 && typeof 属性.状态效果 === 'object') {
+        Object.keys(属性.状态效果).forEach(键 => { const 记录 = 属性.状态效果[键]; if (记录 && (记录.__武魂已释放 === true || 记录.__武魂未释放 === true)) delete 属性.状态效果[键]; });
+      }
       // 精神力恢复只有魂力、体力的一半（用户 11-20：无魂核时 魂力 = 体力 > 精神力）。
       [['魂力', '魂力上限', 1], ['精神力', '精神力上限', 0.5], ['体力', '体力上限', 1]].forEach(([当前键, 上限键, 比]) => {
         const 上限 = toNumber(属性[上限键], 0);
@@ -27601,7 +27605,7 @@ ${播报文本}
     return persisted;
   }
 
-  function 构建战斗状态集合落盘值(conditionMap) {
+  function 构建战斗状态集合落盘值(conditionMap, battleOver = false) {
     if (!conditionMap || typeof conditionMap !== 'object' || Array.isArray(conditionMap)) return {};
     return Object.fromEntries(
       Object.entries(conditionMap)
@@ -27610,6 +27614,9 @@ ${播报文本}
         .filter(([, condition]) => !condition.__换下槽位 && !(condition.__equipmentState === true && condition.__equipmentActionId))
         // 斗铠 / 机甲 未释放（S80-A）只在战斗里：每回合开始补上，不进存档。
         .filter(([, condition]) => !condition.__装备未释放)
+        // 开武魂只在这一场里（用户 11-26「不带，下一场重新开」）：战斗打完（进行中 false）写回时不留「武魂已释放 / 未释放」标记，下一场（含擂台下一子场）
+        // 开战时由回合开始重新补「武魂未释放」。同一场分几次写回时照留（还在打）。此前标记持续 100 万回合随存档走，之后每场开局武魂都是开着的。
+        .filter(([, condition]) => !(battleOver && (condition.__武魂已释放 === true || condition.__武魂未释放 === true)))
         .map(([name, condition]) => [name, 构建战斗状态落盘值(condition)]),
     );
   }
@@ -27700,6 +27707,7 @@ ${播报文本}
               participant.状态效果 && typeof participant.状态效果 === 'object'
                 ? participant.状态效果
                 : attributeSource.状态效果,
+              finalSnapshot.进行中 === false,
             )
           : ['HP', '体力', '魂力', '精神力'].includes(key) && 战斗写回本体视角值_桥接(participant, key) !== null
             ? 战斗写回本体视角值_桥接(participant, key)
