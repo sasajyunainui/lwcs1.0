@@ -107,11 +107,15 @@
   const talentIndex = talent => Math.max(0, talents.indexOf(String(talent || '').trim()));
   const safeEra = era => PARAMETERS.meta.eras.includes(era) ? era : '斗一';
 
+  // 性能（2026-11-26：TT 每次收到回复卡顿，estimateInitialLevel 逐日模拟里每段都跨窗口找一次，自身占 0.5 秒）：找到一次就记住。
+  let cachedLibraryRuntime = null;
   function libraryRuntime() {
+    if (cachedLibraryRuntime) return cachedLibraryRuntime;
     const candidates = [global];
     try { if (global.parent && global.parent !== global) candidates.push(global.parent); } catch (_) {}
     try { if (global.top && global.top !== global) candidates.push(global.top); } catch (_) {}
-    return candidates.map(item => item && item.__LWCS_LIBRARY_DATA_RUNTIME_V1__).find(item => item && typeof item === 'object') || null;
+    cachedLibraryRuntime = candidates.map(item => item && item.__LWCS_LIBRARY_DATA_RUNTIME_V1__).find(item => item && typeof item === 'object') || null;
+    return cachedLibraryRuntime;
   }
 
   function resolveEraAtTick(tick) {
@@ -576,7 +580,22 @@
   // 逐日模拟的检查点（11-20：库角色按时间点往后推等级要算两个年龄，每次都从 6 岁逐日模拟，20 岁 0.4 秒、60 岁 1.5 秒）。
   // 结果只取决于天赋、底子波动、时代与时代混合比例：同一组参数模拟到过的年龄存一份状态，下次从不超过目标年龄的最近一份接着算。
   const initialLevelCheckpoints = new Map();
+  // 初始化等级是确定性的逐日模拟：结果只取决于输入与当前时刻的时代混合（resolveBlend），按这些缓存（2026-11-26 性能，同上）。
+  const initialLevelCache = new Map();
   function estimateInitialLevel(options = {}) {
+    let key = '';
+    try {
+      const blend = options.currentTick !== undefined && options.currentTick !== null ? resolveBlend(options.currentTick, options) : null;
+      const era = options.currentTick !== undefined && options.currentTick !== null ? resolveCultivationEra({}, { currentTick: options.currentTick }) : '';
+      const { currentTick, ...rest } = options;
+      key = JSON.stringify([rest, era, blend]);
+    } catch (_) { key = ''; }
+    if (key && initialLevelCache.has(key)) return initialLevelCache.get(key);
+    const value = estimateInitialLevelUncached(options);
+    if (key) { if (initialLevelCache.size >= 2000) initialLevelCache.clear(); initialLevelCache.set(key, value); }
+    return value;
+  }
+  function estimateInitialLevelUncached(options = {}) {
     const targetAge = Math.max(0, finite(options.age, 6));
     if (targetAge < Number(PARAMETERS.meta.startAge || 6)) return 0;
     const talent = talents.includes(String(options.talent || '').trim()) ? String(options.talent).trim() : '正常';
