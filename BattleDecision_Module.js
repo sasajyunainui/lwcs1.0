@@ -2511,6 +2511,15 @@
         阵营: publicSide === 'team_enemy' ? '敌方' : publicSide === 'team_player' ? '玩家' : '',
         level: perceivedLevel,
         等级: perceivedLevel,
+        // 几岁几级（V11，用户 2026-11-26 定）: its age is plain to see, and its talent is read from that age and the level it is
+        // pictured at (BattlePreview talentFromAgeLevel, in the world's era) — its battle experience (BattlePreview battleExperience:
+        // the dodge contest, the counter opening) follows, not level ÷ 3 years of a 正常 talent.
+        ...(() => {
+          const age = Number(sourceUnit?.年龄 ?? sourceUnit?.属性?.年龄);
+          if (!Number.isFinite(age)) return {};
+          const talent = preview.talentFromAgeLevel(age, perceivedLevel, preview.cultivationEraOf(worldSnapshot));
+          return talent ? { 年龄: age, 天赋梯队: talent } : { 年龄: age };
+        })(),
         系别: system,
         type: system,
         hp,
