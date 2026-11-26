@@ -1,6 +1,6 @@
 /* 此文件由 Build_Runtime_Bundles.cjs 生成，禁止直接编辑。 */
 ;
-/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:144d1f5faad0c4f60a3aa40fab28fd5a53053feaed347969af3eb376ebcf3eff|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:7e73b283e6eb90d5fce38995a27956c32f5089537ebeefaf0e68cac4b0176909|MVU_Schema_Runtime.js:4a9cc935c5d3a1bc33763b7bf923656ff1be1699bccda0490e49e7364f9e7a76|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:4c14aacce834aeeedd79143c483ee90436c776f64eb173b38d38ab499f702dad */
+/* sources-sha256: LWCS_Location_Path.js:d483d4dfbbe0ae338fc379acba9fb7b6a2cdeedb16573650dd58930ab08dd205|LWCS_TT_AutoUpdate_Debug.js:eac053d8254946452ab7dd84782ebd3ef6051da9fdd2cbcff5318e5d22f8847e|LibraryData_Runtime.js:192c1279f5d061a84bf963c44af15429e78cc443fe8dc1fa7a3b8f3455aa8327|EraDataRegistry.js:74d280273114bcbb92a05015205f71fd35407f122a8fd4c03d36262bd7b3cc85|EraCurrencyRegistry.js:0f525f04cde0a09165467dfb60a6235d3c6533c0d19cb19042ecec23b0bc29d6|TimelineRuntime.js:bd39c241a145f01e315010128d4924f32f4aacf72dd3f7eec83bce8cd770c7c8|EraRuntime_Integration.js:afa433280c1eb9d514a0efd9d4cd570ea48dae7d6e03bc83f2c43360723ecca2|EraCultivation_Runtime.js:5bd9512ab59721fe7b2ce4f84c6af4f3c52375514db8bab552886b4a207bc129|IntelEvents.js:d208d9f02be49b17373093bc02609b36739ce9556e8cc0763f6e7c55cafe61e6|MVU_Skill_Runtime.js:7e73b283e6eb90d5fce38995a27956c32f5089537ebeefaf0e68cac4b0176909|MVU_Schema_Runtime.js:4a9cc935c5d3a1bc33763b7bf923656ff1be1699bccda0490e49e7364f9e7a76|MVU_Competition_Runtime.js:19b01728fafb9359d7e6dc713d3dca2d96a29474fef1b66531b78ce7507376fc|MVU_Runtime_View.js:f10b930e8ea2a428ca9944c937c5c1290945f4b76caa9017cbd751727a6a6f0f */
 ;
 /* source: LWCS_Location_Path.js */
 /* LWCS 地点路径：存档地点树的共用解析（交易模块、桥接、座舱共用） */
@@ -3795,11 +3795,15 @@
   const talentIndex = talent => Math.max(0, talents.indexOf(String(talent || '').trim()));
   const safeEra = era => PARAMETERS.meta.eras.includes(era) ? era : '斗一';
 
+  // 性能（2026-11-26：TT 每次收到回复卡顿，estimateInitialLevel 逐日模拟里每段都跨窗口找一次，自身占 0.5 秒）：找到一次就记住。
+  let cachedLibraryRuntime = null;
   function libraryRuntime() {
+    if (cachedLibraryRuntime) return cachedLibraryRuntime;
     const candidates = [global];
     try { if (global.parent && global.parent !== global) candidates.push(global.parent); } catch (_) {}
     try { if (global.top && global.top !== global) candidates.push(global.top); } catch (_) {}
-    return candidates.map(item => item && item.__LWCS_LIBRARY_DATA_RUNTIME_V1__).find(item => item && typeof item === 'object') || null;
+    cachedLibraryRuntime = candidates.map(item => item && item.__LWCS_LIBRARY_DATA_RUNTIME_V1__).find(item => item && typeof item === 'object') || null;
+    return cachedLibraryRuntime;
   }
 
   function resolveEraAtTick(tick) {
@@ -4264,7 +4268,22 @@
   // 逐日模拟的检查点（11-20：库角色按时间点往后推等级要算两个年龄，每次都从 6 岁逐日模拟，20 岁 0.4 秒、60 岁 1.5 秒）。
   // 结果只取决于天赋、底子波动、时代与时代混合比例：同一组参数模拟到过的年龄存一份状态，下次从不超过目标年龄的最近一份接着算。
   const initialLevelCheckpoints = new Map();
+  // 初始化等级是确定性的逐日模拟：结果只取决于输入与当前时刻的时代混合（resolveBlend），按这些缓存（2026-11-26 性能，同上）。
+  const initialLevelCache = new Map();
   function estimateInitialLevel(options = {}) {
+    let key = '';
+    try {
+      const blend = options.currentTick !== undefined && options.currentTick !== null ? resolveBlend(options.currentTick, options) : null;
+      const era = options.currentTick !== undefined && options.currentTick !== null ? resolveCultivationEra({}, { currentTick: options.currentTick }) : '';
+      const { currentTick, ...rest } = options;
+      key = JSON.stringify([rest, era, blend]);
+    } catch (_) { key = ''; }
+    if (key && initialLevelCache.has(key)) return initialLevelCache.get(key);
+    const value = estimateInitialLevelUncached(options);
+    if (key) { if (initialLevelCache.size >= 2000) initialLevelCache.clear(); initialLevelCache.set(key, value); }
+    return value;
+  }
+  function estimateInitialLevelUncached(options = {}) {
     const targetAge = Math.max(0, finite(options.age, 6));
     if (targetAge < Number(PARAMETERS.meta.startAge || 6)) return 0;
     const talent = talents.includes(String(options.talent || '').trim()) ? String(options.talent).trim() : '正常';
@@ -47866,14 +47885,18 @@ function 构建远端原著时间线频率上下文_V1(事件列表 = [], 词列
   ));
   const 频率 = new Map(统计词列表.map(词 => [词, 0]));
   const 字段频率 = new Map(统计词列表.map(词 => [词, new Map()]));
+  // 性能（2026-11-26：TT 每次收到回复卡 1～4 秒，这里占大头）：每个词的证据词只算一次并预先转小写，每条事件的文本只转一次小写；
+  // 判定与逐次调用 运行时文本包含片段_V1（片段去空白转小写、至少 2 字，文本转小写后包含）完全相同。
+  const 证据表 = 统计词列表.map(词 => [词, 收集远端原著时间线字段证据词_V1(词, '事件词')
+    .map(证据词 => String(证据词 || '').trim().toLowerCase()).filter(证据词 => 证据词.length >= 2)]);
+  const 包含任一 = (小写文本, 证据列表) => 证据列表.some(证据词 => 小写文本.includes(证据词));
   事件列表.forEach(事件 => {
-    const 事件文本 = 构建远端原著时间线事件检索文本_V1(事件);
-    const 字段文本 = 构建远端原著时间线事件字段文本_V1(事件);
-    统计词列表.forEach(词 => {
-      const 统计证据词列表 = 收集远端原著时间线字段证据词_V1(词, '事件词');
-      if (统计证据词列表.some(证据词 => 运行时文本包含片段_V1(事件文本, 证据词))) 频率.set(词, (频率.get(词) || 0) + 1);
-      Object.entries(字段文本).forEach(([字段, 文本]) => {
-        if (!统计证据词列表.some(证据词 => 运行时文本包含片段_V1(文本, 证据词))) return;
+    const 事件文本 = String(构建远端原著时间线事件检索文本_V1(事件) || '').toLowerCase();
+    const 字段条目 = Object.entries(构建远端原著时间线事件字段文本_V1(事件)).map(([字段, 文本]) => [字段, String(文本 || '').toLowerCase()]);
+    证据表.forEach(([词, 证据列表]) => {
+      if (包含任一(事件文本, 证据列表)) 频率.set(词, (频率.get(词) || 0) + 1);
+      字段条目.forEach(([字段, 文本]) => {
+        if (!包含任一(文本, 证据列表)) return;
         const 词字段频率 = 字段频率.get(词);
         词字段频率.set(字段, (词字段频率.get(字段) || 0) + 1);
       });
